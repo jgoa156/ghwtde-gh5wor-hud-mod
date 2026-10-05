@@ -844,3 +844,11 @@
   7 byte-checked sites + the 0.5 constant; inert on mismatch. Log: <game>\wor_hud_fixes.log.
 - To install: dinput8.dll + wor_hud_fixes.asi into the game folder, python build.py --install.
 - v0.37 INSTALLED (game closed): STAR_NUM_K 0.78 -> 0.77 (user); dinput8.dll (ASI loader) + wor_hud_fixes.asi copied to the game folder. Not yet tested in game.
+
+### v0.38 (2026-10-05, installed with plugin 1.1, not yet tested)
+- v0.37 test (user): streak lights worked incl. song 2 (log: "streak lights: patched"); the star power fill textures
+  did NOT load on song 2 (same cause: the SP tube widget sets the stock names hud_rock_tube_glow_full / _b).
+- RE: SP tube widget update 0x478630 sets the fill with two SetTexture calls (0x4786f5, 0x47877f) using the literal
+  checksums 0x20273d7b (+0xea155069 when active = 0x0a3c8de4). Fix: the six segments start on WoR_HUD_spseg
+  (the pak also ships WoR_HUD_spseg / _b = the same slanted fill band); plugin 1.1 redirects those two calls to a
+  wrapper that swaps the stock name for ours when the element's current texture (+0x214) is one of ours.

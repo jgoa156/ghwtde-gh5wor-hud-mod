@@ -18,3 +18,9 @@ static const uint32_t kOurLights[] = {
 	0x79e02c22, 0xb54a2cbc, 0x3bc52b5f,
 	0x5c19c88f, 0x97451b2a, 0x11d16984,
 };
+
+// star power fill: stock name the DE sets -> our name (segments start on the second column)
+static const uint32_t kSpFill[][2] = {
+	{ 0x20273d7b, 0x4a17ef20 },   // hud_rock_tube_glow_full -> WoR_HUD_spseg
+	{ 0x0a3c8de4, 0x3baed0b3 },   // hud_rock_tube_glow_full_b -> WoR_HUD_spseg_b
+};

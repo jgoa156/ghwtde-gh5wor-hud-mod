@@ -8,6 +8,10 @@
 //   - our own texture names (WoR_HUD_light_*), which the stock z_in_game textures can't shadow from the 2nd song on.
 // WoR widgets are recognised by their first light element's texture (the desc starts it on WoR_HUD_light_0, and
 // the plugin only ever sets WoR_HUD_light_* names on it). Every other widget runs the game's own code.
+//
+// Fix 2, star power fill: the SP tube widget (update at 0x478630) sets the stock fill names on its segments with
+// two SetTexture calls. For segments that still carry one of our fill names (the desc starts them on it) the
+// stock name is replaced by ours, so the stock textures can't shadow ours from the 2nd song on.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -27,6 +31,8 @@ namespace
 	constexpr uintptr_t kIsStarPower = 0x4649d0;     // bool __thiscall (obj, player index)      (DE thunk)
 	constexpr uintptr_t kSetTexture = 0x59e6d0;      // void __thiscall (element, texture checksum)
 	constexpr uintptr_t kHalf = 0xa0f028;            // double 0.5 (marks -> lights)
+	constexpr uintptr_t kSpCall1 = 0x4786f5;         // call SetTexture(stock SP fill name) in the SP tube update
+	constexpr uintptr_t kSpCall2 = 0x47877f;
 	constexpr size_t kElementTexture = 0x214;        // sprite element: texture checksum
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
@@ -38,6 +44,8 @@ namespace
 		{ kIsStarPower, { 0xFF, 0x25, 0xD8, 0x3C, 0xB6, 0x01 }, 6, "star power thunk" },
 		{ kSetTexture, { 0x6A, 0xFF, 0x68, 0x83, 0xDA, 0x96, 0x00 }, 7, "SetTexture prologue" },
 		{ 0x4766e0, { 0xE8 }, 1, "set_lights SetTexture call" },
+		{ kSpCall1, { 0xE8 }, 1, "SP tube SetTexture call (1)" },
+		{ kSpCall2, { 0xE8 }, 1, "SP tube SetTexture call (2)" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -67,6 +75,36 @@ namespace
 			if (t == texture)
 				return true;
 		return false;
+	}
+
+	uint32_t texture_of(void *element)
+	{
+		return *reinterpret_cast<uint32_t *>(static_cast<uint8_t *>(element) + kElementTexture);
+	}
+
+	bool is_our_fill(uint32_t texture)
+	{
+		for (const auto &p : kSpFill)
+			if (p[1] == texture)
+				return true;
+		return false;
+	}
+
+	// replaces the two SP tube SetTexture calls: same calling convention (thiscall, one stack argument)
+	void __fastcall sp_set_texture_hook(void *element, void *edx, uint32_t texture)
+	{
+		if (element && is_our_fill(texture_of(element)))
+		{
+			for (const auto &p : kSpFill)
+			{
+				if (p[0] == texture)
+				{
+					texture = p[1];
+					break;
+				}
+			}
+		}
+		reinterpret_cast<SetTextureFn>(kSetTexture)(element, edx, texture);
 	}
 
 	uint8_t *field(void *base, size_t off) { return static_cast<uint8_t *>(base) + off; }
@@ -136,6 +174,18 @@ namespace
 		return true;
 	}
 
+	bool install_call(uintptr_t site, void *target)
+	{
+		DWORD old = 0;
+		if (!VirtualProtect(reinterpret_cast<void *>(site), 5, PAGE_EXECUTE_READWRITE, &old))
+			return false;
+		uint8_t *p = reinterpret_cast<uint8_t *>(site);
+		*reinterpret_cast<int32_t *>(p + 1) = static_cast<int32_t>(reinterpret_cast<uintptr_t>(target) - (site + 5));
+		VirtualProtect(p, 5, old, &old);
+		FlushInstructionCache(GetCurrentProcess(), p, 5);
+		return true;
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -148,6 +198,9 @@ namespace
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
 		                         : "streak lights: patch failed (VirtualProtect)");
+		const bool sp = install_call(kSpCall1, reinterpret_cast<void *>(&sp_set_texture_hook)) &&
+		                install_call(kSpCall2, reinterpret_cast<void *>(&sp_set_texture_hook));
+		log(sp ? "star power fill: patched (own texture names)" : "star power fill: patch failed (VirtualProtect)");
 		(void)self;
 	}
 }

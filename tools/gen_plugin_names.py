@@ -28,6 +28,10 @@ def main():
     out += ['};', '', 'static const uint32_t kOurLights[] = {']
     out += ['\t' + ', '.join(f'0x{qbkey(n):08x}' for n in r) + ',' for r in rows]
     out += ['};', '']
+    out += ['// star power fill: stock name the DE sets -> our name (segments start on the second column)',
+            'static const uint32_t kSpFill[][2] = {']
+    out += [f'\t{{ 0x{qbkey(a):08x}, 0x{qbkey(b):08x} }},   // {a} -> {b}' for a, b in wor_1g.SP_FILL_NAMES]
+    out += ['};', '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))
     print('wrote', p)

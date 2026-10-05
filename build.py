@@ -20,7 +20,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.37'
+VERSION = '0.38'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
@@ -269,7 +269,7 @@ def main():
     # parallelogram the segments expect; the colour comes from the segments' rgba, as in WoR. Flipped: the star power
     # tube is mirrored but the DE overwrites the segments' scale, so the mirror is baked into the texture.
     seg_h, seg_w = wor_1g.seg_canvas_size()
-    for name in ('hud_rock_tube_glow_full', 'hud_rock_tube_glow_full_b'):
+    for name in [n for pair in wor_1g.SP_FILL_NAMES for n in pair]:
         ship(name, os.path.join(WOR_PNG, 'SP_Fill01.png'), wor_1g.SP_FILL_BAND, (64, 16), flip=wor_1g.SP_FILL_FLIP)
         wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS, seg_h, seg_w)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)

@@ -274,6 +274,11 @@ def sm(x, y):
 
 # ---------------------------------------------------------------- star power fill
 SP_SEGMENTS = 6
+# The DE's SP tube widget sets the stock fill names hud_rock_tube_glow_full / _b on the segments (and the stock
+# textures shadow ours from the 2nd song on). The segments start on our own names; the HUD fixes plugin swaps the
+# stock names for these on WoR segments. Without the plugin the DE sets the stock names, as before.
+SP_FILL_MARKER = 'WoR_HUD_spseg'
+SP_FILL_NAMES = (('hud_rock_tube_glow_full', 'WoR_HUD_spseg'), ('hud_rock_tube_glow_full_b', 'WoR_HUD_spseg_b'))
 SP_DEFAULT_SCALE = 0.3          # the DE's star-power tube scale for non-classic themes (hud_widgets)
 SP_FILL_BAND = (0, 44, 64, 60)  # SP_Fill01 rows without its tapered top / bent tail (shipped as 64x16)
 SP_FILL_FLIP = True             # mirrored like the tube (the DE overwrites the segments' scale, so it's baked in)
@@ -345,7 +350,7 @@ def sp_segments():
         h = h + 2 * d
         segs.append(E(f'sp_seg{i}', 'SpriteElement', pos=base, just=(0, 1), rot=RIGHT.rot, z=3.5,
                       dims=(wc / SP_DEFAULT_SCALE, h / SP_DEFAULT_SCALE), scale=(SP_DEFAULT_SCALE, 0.0),
-                      rgba=SP_FILL_RGBA, texture='hud_rock_tube_glow_full', blend='Add'))
+                      rgba=SP_FILL_RGBA, texture=SP_FILL_MARKER, blend='Add'))
     return segs
 
 

@@ -852,3 +852,15 @@
   checksums 0x20273d7b (+0xea155069 when active = 0x0a3c8de4). Fix: the six segments start on WoR_HUD_spseg
   (the pak also ships WoR_HUD_spseg / _b = the same slanted fill band); plugin 1.1 redirects those two calls to a
   wrapper that swaps the stock name for ours when the element's current texture (+0x214) is one of ours.
+
+### Plugin 1.2 (2026-10-05): theme switch crash (installed, not yet tested)
+- User: switching to other themes still crashes. Dumps (CrashDumps 05:12 without the plugin, 05:37 with it):
+  first chance AV at exe+0x2403d0 (0x6403d0) reading 0x1c5d004, then 0xc00001a5 at 0x96b448. 0x6403b0 = font
+  unload (cdecl, font checksum; edi = 0xd2324e44 = WoR_HUD_num_a1, our numeral font in the theme pak). It searches
+  the loaded-font table (32 x 0x1c at 0xeecd60); in memory the DE had patched the loop end to 0x63001e98 but the
+  start was still 0xeecd60, so a font outside the first 32 slots ran the loop into unmapped memory (esi 0x7adcf).
+  Stock themes ship no fonts in their paks, so only ours hits it.
+- Plugin 1.2 hooks the unload entry and, on the first call, copies the DE-patched bounds of the font-add loop
+  (0x64072f / 0x640743) into the unload loop (0x6403c9 / 0x640417 / 0x64041e start, 0x6403dc end); logs both.
+  Fallback if that fails: ship no font (use a DE font for the digits).
+- tools/dump_info.py / dump_mem.py: minidump exception summary and captured-memory reader.

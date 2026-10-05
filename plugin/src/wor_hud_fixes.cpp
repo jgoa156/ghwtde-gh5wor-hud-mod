@@ -1,4 +1,4 @@
-// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -12,6 +12,11 @@
 // Fix 2, star power fill: the SP tube widget (update at 0x478630) sets the stock fill names on its segments with
 // two SetTexture calls. For segments that still carry one of our fill names (the desc starts them on it) the
 // stock name is replaced by ours, so the stock textures can't shadow ours from the 2nd song on.
+//
+// Fix 3, theme switch crash (DE bug): the font unload function (0x6403b0) searches the loaded-font table with a loop
+// whose end bound the DE patches to its enlarged table while the start stays the original 0xeecd60, so unloading a
+// font that isn't in the first 32 slots (the WoR numeral font, shipped in our theme pak) runs off into unmapped
+// memory. On its first call the unload loop is given the same bounds as the DE-patched font-add loop (0x640720).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -34,6 +39,13 @@ namespace
 	constexpr uintptr_t kSpCall1 = 0x4786f5;         // call SetTexture(stock SP fill name) in the SP tube update
 	constexpr uintptr_t kSpCall2 = 0x47877f;
 	constexpr size_t kElementTexture = 0x214;        // sprite element: texture checksum
+	constexpr uintptr_t kUnloadFont = 0x6403b0;      // cdecl (font checksum)
+	constexpr uintptr_t kAddLoopStart = 0x64072f;    // imm32 of mov eax, <table start> in the font-add loop
+	constexpr uintptr_t kAddLoopEnd = 0x640743;      // imm32 of cmp eax, <table end>
+	constexpr uintptr_t kUnloadStarts[] = { 0x6403c9, 0x640417, 0x64041e };   // table start in the unload function
+	constexpr uintptr_t kUnloadEnd = 0x6403dc;       // imm32 of cmp ecx, <table end>
+	constexpr uint32_t kFontTable = 0xeecd60;        // original table (32 entries of 0x1c bytes)
+	constexpr uint32_t kFontEntry = 0x1c;
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
 	const Site kSites[] = {
@@ -46,6 +58,13 @@ namespace
 		{ 0x4766e0, { 0xE8 }, 1, "set_lights SetTexture call" },
 		{ kSpCall1, { 0xE8 }, 1, "SP tube SetTexture call (1)" },
 		{ kSpCall2, { 0xE8 }, 1, "SP tube SetTexture call (2)" },
+		{ kUnloadFont, { 0x51, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x6A, 0x00, 0x57, 0xE8 }, 10, "font unload prologue" },
+		{ kAddLoopStart - 1, { 0xB8 }, 1, "font add loop start" },
+		{ kAddLoopEnd - 1, { 0x3D }, 1, "font add loop end" },
+		{ 0x6403c8, { 0xB9 }, 1, "font unload loop start" },
+		{ 0x6403da, { 0x81, 0xF9 }, 2, "font unload loop end" },
+		{ 0x640414, { 0x8B, 0x14, 0x8D }, 3, "font unload slot read" },
+		{ 0x64041b, { 0x8D, 0x34, 0x8D }, 3, "font unload slot address" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -174,6 +193,88 @@ namespace
 		return true;
 	}
 
+	uint32_t read32(uintptr_t a) { return *reinterpret_cast<const uint32_t *>(a); }
+
+	void write32(uintptr_t a, uint32_t v)
+	{
+		DWORD old = 0;
+		VirtualProtect(reinterpret_cast<void *>(a), 4, PAGE_EXECUTE_READWRITE, &old);
+		*reinterpret_cast<uint32_t *>(a) = v;
+		VirtualProtect(reinterpret_cast<void *>(a), 4, old, &old);
+		FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void *>(a), 4);
+	}
+
+	bool readable(uint32_t a, uint32_t n)
+	{
+		MEMORY_BASIC_INFORMATION mi{};
+		for (uint32_t p = a; p < a + n; p = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mi.BaseAddress) + mi.RegionSize))
+		{
+			if (!VirtualQuery(reinterpret_cast<void *>(static_cast<uintptr_t>(p)), &mi, sizeof(mi)) || mi.State != MEM_COMMIT ||
+			    (mi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+				return false;
+		}
+		return true;
+	}
+
+	// Gives the unload loop the add loop's bounds (read now: the DE patches them after the plugin loads).
+	void fix_font_bounds()
+	{
+		const uint32_t s = read32(kAddLoopStart), e = read32(kAddLoopEnd);
+		const uint32_t us = read32(kUnloadStarts[0]), ue = read32(kUnloadEnd);
+		log("font table: add loop %08x..%08x, unload loop %08x..%08x", s, e, us, ue);
+		if (us == s && ue == e)
+		{
+			log("font table: consistent, nothing to do");
+			return;
+		}
+		if (e <= s || (e - s) % kFontEntry != 0 || !readable(s, e - s))
+		{
+			log("font table: add loop bounds look wrong, left alone");
+			return;
+		}
+		for (uintptr_t a : kUnloadStarts)
+			if (read32(a) == kFontTable || read32(a) == us)
+				write32(a, s);
+		write32(kUnloadEnd, e);
+		log("font table: unload loop now %08x..%08x (%u slots)", read32(kUnloadStarts[0]), read32(kUnloadEnd), (e - s) / kFontEntry);
+	}
+
+	using UnloadFontFn = uint32_t(__cdecl *)(uint32_t font);
+	UnloadFontFn g_unload_font = nullptr;
+	bool g_font_fixed = false;
+
+	uint32_t __cdecl unload_font_hook(uint32_t font)
+	{
+		if (!g_font_fixed)
+		{
+			g_font_fixed = true;
+			fix_font_bounds();
+		}
+		return g_unload_font(font);
+	}
+
+	// 5-byte jmp at site to target; the first `len` bytes (whole instructions) move to a trampoline
+	void *install_jmp(uintptr_t site, size_t len, void *target)
+	{
+		uint8_t *tramp = static_cast<uint8_t *>(VirtualAlloc(nullptr, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+		if (!tramp)
+			return nullptr;
+		memcpy(tramp, reinterpret_cast<const void *>(site), len);
+		tramp[len] = 0xE9;
+		*reinterpret_cast<int32_t *>(tramp + len + 1) = static_cast<int32_t>((site + len) - reinterpret_cast<uintptr_t>(tramp + len + 5));
+		DWORD old = 0;
+		if (!VirtualProtect(reinterpret_cast<void *>(site), len, PAGE_EXECUTE_READWRITE, &old))
+			return nullptr;
+		uint8_t *p = reinterpret_cast<uint8_t *>(site);
+		p[0] = 0xE9;
+		*reinterpret_cast<int32_t *>(p + 1) = static_cast<int32_t>(reinterpret_cast<uintptr_t>(target) - (site + 5));
+		for (size_t i = 5; i < len; ++i)
+			p[i] = 0x90;
+		VirtualProtect(p, len, old, &old);
+		FlushInstructionCache(GetCurrentProcess(), p, len);
+		return tramp;
+	}
+
 	bool install_call(uintptr_t site, void *target)
 	{
 		DWORD old = 0;
@@ -193,7 +294,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.0 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.2 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -201,6 +302,9 @@ namespace
 		const bool sp = install_call(kSpCall1, reinterpret_cast<void *>(&sp_set_texture_hook)) &&
 		                install_call(kSpCall2, reinterpret_cast<void *>(&sp_set_texture_hook));
 		log(sp ? "star power fill: patched (own texture names)" : "star power fill: patch failed (VirtualProtect)");
+		// push ecx; push edi; mov edi, [esp+0xc] = 6 bytes of whole instructions
+		g_unload_font = reinterpret_cast<UnloadFontFn>(install_jmp(kUnloadFont, 6, reinterpret_cast<void *>(&unload_font_hook)));
+		log(g_unload_font ? "font unload: hooked (bounds fixed on first use)" : "font unload: hook failed");
 		(void)self;
 	}
 }

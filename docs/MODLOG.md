@@ -833,3 +833,13 @@
   verify/mock_inputs/base.png; tools/mock_base.py rebuilds that base (reproduces it exactly). Removed one-offs:
   border_mock, wor_import, star_measure.
 - Add-on source moved in as addon/ (deps not committed); MODLOG / HANDOFF / PLUGIN_NOTES / ADDON_PLAN in docs/.
+
+### v0.36 + HUD fixes plugin 1.0 (2026-10-05, built, NOT installed: the game was running)
+- User OKs: pink x1 set (GH3:WoR lights luminance-tinted with WoR's x1 colour 255,180,180; off state stays grey),
+  Ultimate ASI Loader v9.7.4 (Ultimate-ASI-Loader-NoPDB.zip, x86 dinput8.dll sha256 ec2f4824...617ab), Mod.ini
+  author Guilherme Almeida.
+- Theme pak: + WoR_HUD_light_{0,1,2}{_pink,'',_green,_purple,_blue}; light elements start on WoR_HUD_light_0.
+- plugin/wor_hud_fixes.asi: detour of set_lights 0x476590 for widgets whose first light element's texture (+0x214)
+  is one of ours; WoR mapping x1 pink / x2 orange / x3 green / x4 purple / SP blue with the game's mark maths.
+  7 byte-checked sites + the 0.5 constant; inert on mismatch. Log: <game>\wor_hud_fixes.log.
+- To install: dinput8.dll + wor_hud_fixes.asi into the game folder, python build.py --install.

@@ -59,7 +59,8 @@ def state(health, sp, mult):
     v['side_meter_needle'] = {'pos': (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)}
     for i in range(6):
         fill = min(1.0, max(0.0, sp * 6 - i))
-        v[f'sp_seg{i}'] = {'scale': (wor_1g.SP_DEFAULT_SCALE, wor_1g.SP_DEFAULT_SCALE * fill)}   # DE: (default.x, default.y*fill)
+        v[f'sp_seg{i}'] = {'scale': (wor_1g.SP_DEFAULT_SCALE, wor_1g.SP_DEFAULT_SCALE * fill),   # DE: (default.x, default.y*fill)
+                            'texture': wor_1g.SP_FILL_NAMES[1][1] if sp >= 0.5 else wor_1g.SP_FILL_MARKER}   # DE: _b from 50%
     v['nixie'] = {'texture': f'WoR_HUD_mult_{mult}'}
     col = {1: '', 2: '_green', 3: '_purple', 4: '_purple'}.get(mult, '')
     for i, st in enumerate((2, 2, 2, 1, 0)):

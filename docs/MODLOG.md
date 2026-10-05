@@ -864,3 +864,18 @@
   (0x64072f / 0x640743) into the unload loop (0x6403c9 / 0x640417 / 0x64041e start, 0x6403dc end); logs both.
   Fallback if that fails: ship no font (use a DE font for the digits).
 - tools/dump_info.py / dump_mem.py: minidump exception summary and captured-memory reader.
+
+### v0.39 + plugin 1.3 (2026-10-05, installed, NOT yet tested): smooth star power fill
+- User: SP fixed on song 2 (plugin 1.1 OK); wants GH5's charged look (lightning inside the bar from 50%) and no
+  "pngs on top of pngs" (the six overlapping Add segments). GH5 full footage analysed (activation ~80 s / 160 s):
+  charged bar = bright cyan + white crackle; activation star burst; teal highway wash + neon borders; lightning into
+  hit gems. WoR builds its meter from one fill sprite scaled by a descpropertypair (script-only, not reachable).
+- RE: tube update 0x478630 (value**, event; range [w+0xc]/[w+0x10]; segments vector [w+0x1c]); charged threshold
+  50.0 at 0xa10548 (game picks the _b texture >= 50% or active); SetPos 0x5a0fd0, SetScale 0x5a17e0, SetDims
+  0x5a14e0; element pos 0xa8, scale 0xc0, dims 0x1bc, parent 0x64.
+- HUD: the six segments now sit in a clip window `sp_clip` (static = unchanged look without the plugin); fill colour
+  baked into the textures (sprites white) so lightning stays white; new WoR_HUD_spfull (glass-shaped full-length fill)
+  and WoR_HUD_spfull_b (+ two WoR crackle wires, 0c30522c frames 3/9). wor_art.tube_fill / tint_rgb.
+- Plugin 1.3: after each tube update (WoR tubes only) segments 1-5 -> scale 0, segment 0 -> spfull(_b) with the tube
+  transform, clip window top = charge level (piecewise through the half divider). Geometry generated into names.h.
+- Docs: HANDOFF, PLUGIN_NOTES (rewritten as the plugin reference), plugin/README, README updated.

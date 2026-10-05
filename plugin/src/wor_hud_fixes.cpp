@@ -1,4 +1,4 @@
-﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -17,6 +17,11 @@
 // whose end bound the DE patches to its enlarged table while the start stays the original 0xeecd60, so unloading a
 // font that isn't in the first 32 slots (the WoR numeral font, shipped in our theme pak) runs off into unmapped
 // memory. On its first call the unload loop is given the same bounds as the DE-patched font-add loop (0x640720).
+//
+// Fix 4, smooth star power fill: after the SP tube update (0x478630) runs, WoR tubes get one continuous fill instead
+// of six stretched segments: segments 1-5 are scaled to 0, segment 0 becomes the full-length glass-shaped fill
+// (WoR_HUD_spfull, or _b with lightning when the game picked the charged texture, i.e. >= 50% or active) and its
+// parent clip window's top edge is moved to the charge level (0-50% bottom -> half divider, 50-100% -> top).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -46,6 +51,12 @@ namespace
 	constexpr uintptr_t kUnloadEnd = 0x6403dc;       // imm32 of cmp ecx, <table end>
 	constexpr uint32_t kFontTable = 0xeecd60;        // original table (32 entries of 0x1c bytes)
 	constexpr uint32_t kFontEntry = 0x1c;
+	constexpr uintptr_t kTubeUpdate = 0x478630;      // void __thiscall (widget, value*, event*)
+	constexpr uintptr_t kSetPos = 0x5a0fd0;          // void __thiscall (element, x, y, int)
+	constexpr uintptr_t kSetScale = 0x5a17e0;        // void __thiscall (element, x, y, int, int)
+	constexpr uintptr_t kSetDims = 0x5a14e0;         // void __thiscall (element, w, h)
+	constexpr size_t kElementParent = 0x64;
+	constexpr uint32_t kRefreshEvent = 0x8683400c;   // tube update event that only refreshes textures
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
 	const Site kSites[] = {
@@ -65,6 +76,11 @@ namespace
 		{ 0x6403da, { 0x81, 0xF9 }, 2, "font unload loop end" },
 		{ 0x640414, { 0x8B, 0x14, 0x8D }, 3, "font unload slot read" },
 		{ 0x64041b, { 0x8D, 0x34, 0x8D }, 3, "font unload slot address" },
+		{ kTubeUpdate, { 0x51, 0x53, 0x56, 0x8B, 0xF1, 0x80, 0x7E, 0x28, 0x00 }, 9, "SP tube update prologue" },
+		{ 0x4786ff, { 0x8B, 0x4E, 0x1C }, 3, "SP tube segment vector" },
+		{ kSetPos, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xEC, 0x00, 0x00, 0x00 }, 11, "SetPos prologue" },
+		{ kSetScale, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0x04, 0x01, 0x00, 0x00 }, 11, "SetScale prologue" },
+		{ kSetDims, { 0xF3, 0x0F, 0x10, 0x54, 0x24, 0x04, 0xF3, 0x0F, 0x10, 0x64, 0x24, 0x08 }, 12, "SetDims prologue" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -112,7 +128,8 @@ namespace
 	// replaces the two SP tube SetTexture calls: same calling convention (thiscall, one stack argument)
 	void __fastcall sp_set_texture_hook(void *element, void *edx, uint32_t texture)
 	{
-		if (element && is_our_fill(texture_of(element)))
+		const uint32_t current = element ? texture_of(element) : 0;
+		if (element && (is_our_fill(current) || current == kSpFull || current == kSpFullB))
 		{
 			for (const auto &p : kSpFill)
 			{
@@ -253,6 +270,66 @@ namespace
 		return g_unload_font(font);
 	}
 
+	// ---- smooth star power fill
+	using TubeUpdateFn = void(__fastcall *)(void *widget, void *edx, void *value, void *event);
+	using SetPosFn = void(__fastcall *)(void *element, void *edx, float x, float y, int flag);
+	using SetScaleFn = void(__fastcall *)(void *element, void *edx, float x, float y, int a, int b);
+	using SetDimsFn = void(__fastcall *)(void *element, void *edx, float w, float h);
+	TubeUpdateFn g_tube_update = nullptr;
+	bool g_tube_logged = false;
+
+	bool is_tube_texture(uint32_t t)
+	{
+		return is_our_fill(t) || t == kSpFull || t == kSpFullB;
+	}
+
+	float level_y(float level)
+	{
+		if (level <= 0.5f)
+			return kLevel0 + (kLevel50 - kLevel0) * (level / 0.5f);
+		return kLevel50 + (kLevel100 - kLevel50) * ((level - 0.5f) / 0.5f);
+	}
+
+	void __fastcall tube_update_hook(void *widget, void *edx, void *value, void *event)
+	{
+		g_tube_update(widget, edx, value, event);
+		void **first = *reinterpret_cast<void ***>(field(widget, 0x1c));
+		void **last = *reinterpret_cast<void ***>(field(widget, 0x20));
+		if (!first || last - first < 6 || !first[0] || !is_tube_texture(texture_of(first[0])))
+			return;
+		void *fill = first[0];
+		void *clip = *reinterpret_cast<void **>(field(fill, kElementParent));
+		if (!clip)
+			return;
+		const float lo = *reinterpret_cast<float *>(field(widget, 0xc)), hi = *reinterpret_cast<float *>(field(widget, 0x10));
+		if (*reinterpret_cast<uint32_t *>(field(event, 4)) == kRefreshEvent || hi <= lo)
+			return;   // texture refresh only: the last level stays
+		float level = (**reinterpret_cast<float **>(value) - lo) / (hi - lo);
+		level = level < 0.0f ? 0.0f : level > 1.0f ? 1.0f : level;
+		const bool charged = texture_of(fill) == kSpFill[1][1];    // the game picked the _b texture (>= 50% or active)
+
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
+		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
+		reinterpret_cast<SetTextureFn>(kSetTexture)(fill, nullptr, charged ? kSpFullB : kSpFull);
+		for (void **p = first + 1; p < first + 6; ++p)
+			if (*p)
+				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
+		set_dims(fill, nullptr, 64.0f, 256.0f);
+		set_scale(fill, nullptr, kFillSX, kFillSY, 0, 0);
+		// the window keeps its bottom; its top edge is the charge level (none at 0, unclipped at 100%)
+		const float bottom = kClipY + kClipH;
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
+		set_pos(clip, nullptr, kClipX, top, 0);
+		set_dims(clip, nullptr, kClipW, bottom - top);
+		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 0);
+		if (!g_tube_logged)
+		{
+			g_tube_logged = true;
+			log("star power fill: smooth fill active (level %.2f, %s)", level, charged ? "charged" : "charging");
+		}
+	}
+
 	// 5-byte jmp at site to target; the first `len` bytes (whole instructions) move to a trampoline
 	void *install_jmp(uintptr_t site, size_t len, void *target)
 	{
@@ -294,7 +371,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.2 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.3 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -305,6 +382,9 @@ namespace
 		// push ecx; push edi; mov edi, [esp+0xc] = 6 bytes of whole instructions
 		g_unload_font = reinterpret_cast<UnloadFontFn>(install_jmp(kUnloadFont, 6, reinterpret_cast<void *>(&unload_font_hook)));
 		log(g_unload_font ? "font unload: hooked (bounds fixed on first use)" : "font unload: hook failed");
+		// push ecx; push ebx; push esi; mov esi, ecx = 5 bytes of whole instructions
+		g_tube_update = reinterpret_cast<TubeUpdateFn>(install_jmp(kTubeUpdate, 5, reinterpret_cast<void *>(&tube_update_hook)));
+		log(g_tube_update ? "star power fill: smooth fill hooked" : "star power fill: smooth fill hook failed");
 		(void)self;
 	}
 }

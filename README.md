@@ -15,6 +15,7 @@ the score / star / note-streak panel, the multiplier badge and soft HUD shadows.
 | No messages (optional) | `DATA\MODS\WoR_HUD_NoMessages\` | adds a theme variant without in-play messages, like GH5 |
 | Dark highway metal (optional) | `DATA\MODS\WoR_HUD_DarkMetal\` | darker border, fret bars and neck for every theme |
 | Background-only shaders (optional) | `ghwt_bgfx.addon32`, `reshade-shaders\Shaders\GH5_Grade.fx` | ReShade add-on: the preset applies to the venue only, never the HUD |
+| HUD fixes (optional, not packaged yet) | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | native fixes: WoR streak light colours, textures on the 2nd song, smooth star power fill, theme switch crash |
 
 ## Building
 
@@ -43,4 +44,5 @@ sources in `addon\deps`, see `addon/README.md`).
 - `tools/build_hashes.py`: fingerprints the build output (refactors must keep it identical).
 - `tests/`: offline suite, in-game smoke test, passive screenshot collector.
 - `addon/`: the background-only shaders ReShade add-on and the GH5 grade shader.
-- `docs/`: `HANDOFF.md` (current state), `MODLOG.md` (full history), `PLUGIN_NOTES.md` (planned native plugin).
+- `plugin/`: the HUD fixes plugin (`wor_hud_fixes.asi`); `tools/gen_plugin_names.py` writes its generated header.
+- `docs/`: `HANDOFF.md` (current state), `MODLOG.md` (full history), `PLUGIN_NOTES.md` (plugin reverse engineering).

@@ -89,6 +89,7 @@ RAIL_Z = {'rm_shadow': 3.01, 'sp_shadow': 3.01, 'rm_gap0': 3.012, 'rm_gap1': 3.0
           'green_light': 3.04, 'sp_base': 3.02, 'sp_marker': 3.08,
           'needle_anchor': 3.09, 'side_meter_needle': 3.09, 'side_meter_red_ON': 3.06, 'nixie': 0.05}
 RAIL_Z.update({f'sp_seg{i}': 3.05 for i in range(6)})
+RAIL_Z['sp_clip'] = 3.05
 RAIL_Z.update({f'{t}_void{n}': 0.04 for t in ('rm', 'sp') for n in ('', '1', '2', '3')})
 
 
@@ -284,7 +285,17 @@ SP_FILL_BAND = (0, 44, 64, 60)  # SP_Fill01 rows without its tapered top / bent 
 SP_FILL_FLIP = True             # mirrored like the tube (the DE overwrites the segments' scale, so it's baked in)
 SP_FILL_COLS = (0, 28)          # fill band texture columns holding the fill art (after the flip)
 SP_FILL_ROWS = (14.0, 237.0)    # SP_Base rows the six segments span
-SP_FILL_RGBA = (20, 235, 180, 235)   # GH5's teal
+SP_FILL_RGBA = (20, 235, 180, 235)   # GH5's teal: baked into the fill textures (the sprites draw white), so the
+                                     # charged fill's lightning stays white
+SP_SPRITE_RGBA = (255, 255, 255, SP_FILL_RGBA[3])
+# Smooth fill (HUD fixes plugin): the six segments sit in a clip window; the plugin hides segments 1-5, turns
+# segment 0 into one glass-shaped fill along the whole tube (WoR_HUD_spfull / _b, drawn with the tube's own
+# transform) and moves the window's top edge to the charge level. Without the plugin the window is static and the
+# segments work as before.
+SP_FULL_NAMES = ('WoR_HUD_spfull', 'WoR_HUD_spfull_b')
+SP_CHARGED_BOLTS = ((3, -3.0), (9, 3.0))   # (crackle frame, texture px off the centre line) for the charged fill
+SP_CHARGED_BOLT_K = 0.8
+SP_CLIP_MARGIN = 6.0                 # canvas px around the fill inside the clip window
 SP_RIM = 3.0                    # tube rim on each side, texture px (the fill sits inside the glass)
 SP_SLANT_DEG = 8.3              # screen angle of a partial segment's top edge (level-ish, like the divider)
 SP_MARKER_Y = 528.0             # GH5's half divider (canvas y); x = tube centre
@@ -333,11 +344,38 @@ def seg_canvas_size():
     return h, w
 
 
+def sp_clip_rect():
+    """(x, y, w, h) on the canvas of the clip window around the whole fill (static size = no clipping)."""
+    pts = []
+    for row in (SP_FILL_ROWS[0], SP_FILL_ROWS[1]):
+        half = sp_tube_width(row) / 2
+        c = TEX_CENTER[0] + TEX_CENTER[1] * row
+        pts += [RIGHT.tex((c - half, row)), RIGHT.tex((c + half, row))]
+    x0, x1 = min(p[0] for p in pts) - SP_CLIP_MARGIN, max(p[0] for p in pts) + SP_CLIP_MARGIN
+    y0, y1 = min(p[1] for p in pts) - SP_CLIP_MARGIN, max(p[1] for p in pts) + SP_CLIP_MARGIN
+    return (x0, y0, x1 - x0, y1 - y0)
+
+
+def sp_level_points():
+    """Canvas y of the fill's bottom, the half divider and the top on the tube centre line (0%, 50%, 100%)."""
+    return (RIGHT.at(256.0 - SP_FILL_ROWS[1])[1], SP_MARKER_Y, RIGHT.at(256.0 - SP_FILL_ROWS[0])[1])
+
+
+def plugin_geometry():
+    """Values the HUD fixes plugin needs (written into plugin/src/names.h by tools/gen_plugin_names.py)."""
+    x, y, w, h = sp_clip_rect()
+    return {'kClipX': x, 'kClipY': y, 'kClipW': w, 'kClipH': h,
+            'kFillX': RIGHT.pos[0], 'kFillY': RIGHT.pos[1], 'kFillSX': RIGHT.sx, 'kFillSY': RAIL_SY,
+            'kLevel0': sp_level_points()[0], 'kLevel50': sp_level_points()[1], 'kLevel100': sp_level_points()[2]}
+
+
 def sp_segments():
-    """Six sprite segments; the DE writes each one's texture and scale (glow{i}_texture / glow{i}_scale). The shared
-    fill texture is a parallelogram, so each sprite is taller by the slant and sits d lower (the content bottom at
-    the tube centre stays put); the slant margin scales with the segment's height."""
+    """Six sprite segments in a clip window; the DE writes each one's texture and scale (glow{i}_texture /
+    glow{i}_scale). The shared fill texture is a parallelogram, so each sprite is taller by the slant and sits d lower
+    (the content bottom at the tube centre stays put); the slant margin scales with the segment's height. Children
+    of the window are placed relative to its top-left corner."""
     seg_h = seg_canvas_size()[0]
+    cx, cy, cw, ch = sp_clip_rect()
     segs = []
     for i, (top, y0) in enumerate(sp_fill_rows()):
         ym = y0 - (y0 - top) / 2
@@ -348,10 +386,10 @@ def sp_segments():
         d = sp_slant_geom()[0] * h / seg_h
         base = add(base, rot((0.0, d), RIGHT.rot))
         h = h + 2 * d
-        segs.append(E(f'sp_seg{i}', 'SpriteElement', pos=base, just=(0, 1), rot=RIGHT.rot, z=3.5,
-                      dims=(wc / SP_DEFAULT_SCALE, h / SP_DEFAULT_SCALE), scale=(SP_DEFAULT_SCALE, 0.0),
-                      rgba=SP_FILL_RGBA, texture=SP_FILL_MARKER, blend='Add'))
-    return segs
+        segs.append(E(f'sp_seg{i}', 'SpriteElement', pos=(base[0] - cx, base[1] - cy), just=(0, 1), rot=RIGHT.rot,
+                      z=3.5, dims=(wc / SP_DEFAULT_SCALE, h / SP_DEFAULT_SCALE), scale=(SP_DEFAULT_SCALE, 0.0),
+                      rgba=SP_SPRITE_RGBA, texture=SP_FILL_MARKER, blend='Add'))
+    return [E('sp_clip', 'windowelement', pos=(cx, cy), dims=(cw, ch), just=(-1, -1), z=3.5, children=segs)]
 
 
 def sp_marker_pos():

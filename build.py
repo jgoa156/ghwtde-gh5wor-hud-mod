@@ -20,7 +20,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.38'
+VERSION = '0.39'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
@@ -272,6 +272,18 @@ def main():
     for name in [n for pair in wor_1g.SP_FILL_NAMES for n in pair]:
         ship(name, os.path.join(WOR_PNG, 'SP_Fill01.png'), wor_1g.SP_FILL_BAND, (64, 16), flip=wor_1g.SP_FILL_FLIP)
         wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS, seg_h, seg_w)
+        wor_art.tint_rgb(os.path.join(work, name + '.png'), wor_1g.SP_FILL_RGBA)     # colour baked in (sprites are white)
+    # full-length fill for the plugin's smooth meter (normal / charged with WoR's crackle wires)
+    for name, bolts in zip(wor_1g.SP_FULL_NAMES, ((), wor_1g.SP_CHARGED_BOLTS)):
+        out = os.path.join(work, name + '.png')
+        wor_art.tube_fill(os.path.join(WOR_PNG, 'SP_Base.png'), os.path.join(WOR_PNG, 'SP_Fill01.png'),
+                          (wor_1g.SP_FILL_BAND[1], wor_1g.SP_FILL_BAND[3]), (35, 63), wor_1g.SP_FILL_ROWS,
+                          int(wor_1g.SP_RIM), wor_1g.SP_FILL_RGBA, out, bolts=bolts,
+                          bolt_png=paths.wor('basic_gems_png', '0c30522c.png'), bolt_k=wor_1g.SP_CHARGED_BOLT_K,
+                          center=wor_1g.TEX_CENTER)
+        pngs.append(out)
+        sources[name] = {'src': os.path.join(WOR_PNG, 'SP_Fill01.png'), 'shape': os.path.join(WOR_PNG, 'SP_Base.png'),
+                         'box': None, 'flip': False, 'bolts': [list(b) for b in bolts]}
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)

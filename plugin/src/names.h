@@ -24,3 +24,18 @@ static const uint32_t kSpFill[][2] = {
 	{ 0x20273d7b, 0x4a17ef20 },   // hud_rock_tube_glow_full -> WoR_HUD_spseg
 	{ 0x0a3c8de4, 0x3baed0b3 },   // hud_rock_tube_glow_full_b -> WoR_HUD_spseg_b
 };
+
+// smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc
+static const uint32_t kSpFull = 0xe735c742;   // WoR_HUD_spfull
+static const uint32_t kSpFullB = 0x59d0dc4e;  // WoR_HUD_spfull_b
+static const float kClipX = 807.8485f;
+static const float kClipY = 461.6706f;
+static const float kClipW = 104.3341f;
+static const float kClipH = 156.7945f;
+static const float kFillX = 909.0798f;
+static const float kFillY = 616.2195f;
+static const float kFillSX = -0.7000f;
+static const float kFillSY = 0.7000f;
+static const float kLevel0 = 607.6238f;
+static const float kLevel50 = 528.0000f;
+static const float kLevel100 = 471.1043f;

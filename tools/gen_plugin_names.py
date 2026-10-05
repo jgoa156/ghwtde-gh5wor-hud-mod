@@ -32,6 +32,11 @@ def main():
             'static const uint32_t kSpFill[][2] = {']
     out += [f'\t{{ 0x{qbkey(a):08x}, 0x{qbkey(b):08x} }},   // {a} -> {b}' for a, b in wor_1g.SP_FILL_NAMES]
     out += ['};', '']
+    out += ['// smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc',
+            f'static const uint32_t kSpFull = 0x{qbkey(wor_1g.SP_FULL_NAMES[0]):08x};   // {wor_1g.SP_FULL_NAMES[0]}',
+            f'static const uint32_t kSpFullB = 0x{qbkey(wor_1g.SP_FULL_NAMES[1]):08x};  // {wor_1g.SP_FULL_NAMES[1]}']
+    out += [f'static const float {k} = {v:.4f}f;' for k, v in wor_1g.plugin_geometry().items()]
+    out += ['']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))
     print('wrote', p)

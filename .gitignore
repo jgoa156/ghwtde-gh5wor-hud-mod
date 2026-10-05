@@ -1,0 +1,8 @@
+# build output and packaged zips
+build/
+dist/
+# test sessions, mocks and game logs (large, machine-specific)
+verify/
+tests/results/
+__pycache__/
+*.pyc

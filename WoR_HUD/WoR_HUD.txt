@@ -1,0 +1,400 @@
+Unknown [GHWT_HEADER]
+
+SectionStruct WoR_HUD_themes
+{
+	StructHeader
+	{
+		StructStruct 0x09982fd5
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = hud_1g
+				StructQBKey hud_2g = hud_2g
+				StructQBKey hud_1v = hud_1v
+				StructQBKey hud_2v = hud_1v
+				StructQBKey hud_1g1v = hud_1g1v
+				StructQBKey hud_2g1v = hud_2g1v
+				StructQBKey hud_3g1v = hud_3g1v
+				StructInt 0x75e47d17 = 0
+				StructInt d5045305 = 0
+				StructInt 0x4f5ca9fd = 1
+				StructFloat highway_flash_dying = 0.5
+				StructFloat bar_y_just = 1.00
+				StructFloatX2 0x3dacb46b
+				{
+					Floats [0.00000, 0.00000]
+				}
+				StructFloatX2 0x4dd26977
+				{
+					Floats [0.00000, 0.00000]
+				}
+				StructQBKey f6faf84b = vocal_highway_note_space
+				StructQBKey a53e0834 = vocal_highway_note_spoken
+				StructQBKey c5e00a8d = vocal_highway_note_sung
+			}
+		}
+		StructStruct 0x90737ab7
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = 0x5e3d7df2
+				StructQBKey hud_2g = 0x4f40178b
+				StructQBKey hud_1v = a580a0e8
+				StructQBKey hud_1g1v = 0x0fa7e105
+				StructQBKey hud_2g1v = 0x5c3dba81
+				StructQBKey hud_3g1v = db9b71c2
+				StructString pak = "hud_ghwt_withtime"
+				StructInt 0x75e47d17 = 1
+				StructInt 0x54d8f06c = 1
+				StructString 0x3fb45eb1 = "vocals_highway_wtde"
+				StructQBKey 0x2b2e42e6 = ad5f7542
+				StructQBKey bf72b22c = fontgrid_text_a6
+				StructFloat 0x642ef3a8 = 1.2000000476837158
+			}
+		}
+		StructStruct d3010702
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = 0x41a823c6
+				StructQBKey hud_2g = c73c5168
+				StructQBKey hud_1v = 0x1c289df4
+				StructQBKey hud_1g1v = aef5298e
+				StructQBKey hud_2g1v = 0x207a2e6d
+				StructQBKey hud_3g1v = ecd02ef3
+				StructQBKey 0x6bd128d8 = 0x032444f0
+				StructFloat highway_flash_dying = 1.00
+				StructFloat sidebar_x_scale = 1.5
+				StructFloat bar_y_just = 0.8999999761581421
+				StructFloatX2 0x3dacb46b
+				{
+					Floats [-2.00000, 0.00000]
+				}
+				StructFloatX2 0x4dd26977
+				{
+					Floats [2.00000, 0.00000]
+				}
+				StructString pak = "hud_ghm"
+				StructQBKey 0x18f90ff6 = 0x0d6323dc
+				StructString c2bf76cf = "hud_gamertag_ghm"
+				StructQBKey a53e0834 = 0x5bb83942
+				StructQBKey vocal_lyric_font = b109df9d
+				StructInt 0x75e47d17 = 0
+				StructInt d5045305 = 1
+				StructInt b6a3064a = 1
+				StructInt d38da2b2 = 1
+				StructInt cd149bb0 = 1
+				StructInt 0x82296d77 = 1
+				StructInt 0x54d8f06c = 1
+				StructInt 0x6c53ab0d = 1
+				StructInt 0x56b8466d = 1
+				StructInt 0x1b486820 = 1
+				StructInt 0x882f22a1 = 1
+				StructInt b5e1dfd2 = 1
+				StructInt 0x4f5ca9fd = 0
+				StructInt ae1193b0 = 1
+				StructInt 0x984db5a1 = 1
+				StructInt 0x642a1eb5 = 1
+				StructString 0x3fb45eb1 = "vocals_highway_wtde"
+				StructQBKey 0x2b2e42e6 = ad5f7542
+				StructQBKey bf72b22c = 0x30d90b40
+				StructQBKey d5927557 = 0x30d90b40
+				StructArray bc95780d
+				{
+					ArrayQBKey
+					[
+						vocal_HUD_score_2a
+						vocal_HUD_score_4a
+						vocal_HUD_score_6a
+						vocal_HUD_score_8b
+					]
+				}
+				StructArray 0x112feba3
+				{
+					ArrayQBKey
+					[
+						0x0fa4a06e
+						vocal_HUD_score_2a
+						vocal_HUD_score_3a
+						vocal_HUD_score_4a
+					]
+				}
+			}
+		}
+		StructStruct 0x79f5b69e
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = e56e1913
+				StructQBKey hud_2g = d486038e
+				StructQBKey hud_1v = 0x2de4c82d
+				StructQBKey hud_1g1v = 0x9d868dbb
+				StructQBKey hud_2g1v = a40bb17e
+				StructQBKey hud_3g1v = b370a53d
+				StructQBKey 0x6bd128d8 = 0x2a9600ed
+				StructFloat highway_flash_dying = 1.00
+				StructFloat sidebar_x_scale = 1.5
+				StructFloat bar_y_just = 0.8999999761581421
+				StructFloatX2 0x3dacb46b
+				{
+					Floats [-2.00000, 0.00000]
+				}
+				StructFloatX2 0x4dd26977
+				{
+					Floats [2.00000, 0.00000]
+				}
+				StructFloatX2 0x2a5a553e
+				{
+					Floats [0.00000, 65.0000]
+				}
+				StructFloatX2 e9243b3a
+				{
+					Floats [869.948, 438.000]
+				}
+				StructString pak = "hud_sh"
+				StructQBKey 0x18f90ff6 = 0x0d6323dc
+				StructString c2bf76cf = "hud_gamertag_ghsh"
+				StructQBKey a53e0834 = 0x48398887
+				StructQBKey vocal_lyric_font = b109df9d
+				StructInt 0x75e47d17 = 0
+				StructInt d5045305 = 1
+				StructInt b6a3064a = 1
+				StructInt d38da2b2 = 1
+				StructInt cd149bb0 = 0
+				StructInt 0x82296d77 = 1
+				StructInt 0x54d8f06c = 1
+				StructInt 0x6c53ab0d = 1
+				StructInt 0x56b8466d = 1
+				StructInt 0x1b486820 = 0
+				StructInt 0x882f22a1 = 1
+				StructInt b5e1dfd2 = 1
+				StructInt 0x4f5ca9fd = 0
+				StructInt ae1193b0 = 1
+				StructInt 0x984db5a1 = 1
+				StructInt 0x642a1eb5 = 1
+				StructString 0x3fb45eb1 = "vocals_highway_wtde"
+				StructQBKey 0x2b2e42e6 = ad5f7542
+				StructQBKey bf72b22c = fontgrid_bordello
+				StructFloat 0x642ef3a8 = 1.2999999523162842
+				StructQBKey d5927557 = fontgrid_bordello
+				StructQBKey 0x21a2c597 = 0x24b6268b
+				StructQBKey bda08791 = Star_Meter_Gain
+				StructArray bc95780d
+				{
+					ArrayQBKey
+					[
+						vocal_HUD_score_2a
+						vocal_HUD_score_4a
+						vocal_HUD_score_6a
+						vocal_HUD_score_8b
+					]
+				}
+				StructArray 0x112feba3
+				{
+					ArrayQBKey
+					[
+						0x8af78d71
+						vocal_HUD_score_2a
+						vocal_HUD_score_3a
+						vocal_HUD_score_4a
+					]
+				}
+			}
+		}
+		StructStruct 0x048242db
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = 0x9819ed56
+				StructQBKey hud_2g = a9f1f7cb
+				StructQBKey hud_1v = 0x50933c68
+				StructQBKey hud_1g1v = e0f179fe
+				StructQBKey hud_2g1v = d97c453b
+				StructQBKey hud_3g1v = ce075178
+				StructQBKey 0x6bd128d8 = 0x57e1f4a8
+				StructFloat highway_flash_dying = 1.00
+				StructFloat sidebar_x_scale = 1.5
+				StructFloat bar_y_just = 0.8999999761581421
+				StructFloatX2 0x3dacb46b
+				{
+					Floats [-2.00000, 0.00000]
+				}
+				StructFloatX2 0x4dd26977
+				{
+					Floats [2.00000, 0.00000]
+				}
+				StructString pak = "hud_vh"
+				StructQBKey 0x18f90ff6 = 0x0d6323dc
+				StructString c2bf76cf = "hud_gamertag_ghvh"
+				StructQBKey a53e0834 = 0x354e7cc2
+				StructQBKey vocal_lyric_font = b109df9d
+				StructInt 0x75e47d17 = 0
+				StructInt d5045305 = 1
+				StructInt b6a3064a = 1
+				StructInt d38da2b2 = 1
+				StructInt cd149bb0 = 1
+				StructInt 0x82296d77 = 1
+				StructInt 0x54d8f06c = 1
+				StructInt 0x6c53ab0d = 1
+				StructInt 0x56b8466d = 1
+				StructInt 0x1b486820 = 1
+				StructInt 0x882f22a1 = 1
+				StructInt b5e1dfd2 = 1
+				StructInt 0x4f5ca9fd = 0
+				StructInt ae1193b0 = 1
+				StructInt 0x984db5a1 = 0
+				StructInt 0x642a1eb5 = 1
+				StructString 0x3fb45eb1 = "vocals_highway_wtde"
+				StructQBKey 0x2b2e42e6 = ad5f7542
+				StructQBKey bf72b22c = 0x56e31cfe
+				StructFloat 0x642ef3a8 = 1.149999976158142
+				StructFloat e145701d = 0.550000011920929
+				StructQBKey d5927557 = 0x56e31cfe
+				StructQBKey bda08791 = Star_Get
+				StructArray bc95780d
+				{
+					ArrayQBKey
+					[
+						vocal_HUD_score_2a
+						vocal_HUD_score_4a
+						vocal_HUD_score_6a
+						vocal_HUD_score_8b
+					]
+				}
+				StructArray 0x112feba3
+				{
+					ArrayQBKey
+					[
+						f7807934
+						vocal_HUD_score_2a
+						vocal_HUD_score_3a
+						vocal_HUD_score_4a
+					]
+				}
+			}
+		}
+		StructStruct ghwor
+		{
+			StructHeader
+			{
+				StructQBKey hud_1g = 0x9819ed56
+				StructQBKey hud_2g = a9f1f7cb
+				StructQBKey hud_1v = 0x50933c68
+				StructQBKey hud_1g1v = e0f179fe
+				StructQBKey hud_2g1v = d97c453b
+				StructQBKey hud_3g1v = ce075178
+				StructQBKey 0x6bd128d8 = 0x57e1f4a8
+				StructFloat highway_flash_dying = 1.00
+				StructFloat sidebar_x_scale = 1.5
+				StructFloat bar_y_just = 0.8999999761581421
+				StructFloatX2 0x3dacb46b
+				{
+					Floats [-2.00000, 0.00000]
+				}
+				StructFloatX2 0x4dd26977
+				{
+					Floats [2.00000, 0.00000]
+				}
+				StructQBKey 0x18f90ff6 = 0x0d6323dc
+				StructString c2bf76cf = "hud_gamertag_ghvh"
+				StructQBKey a53e0834 = 0x354e7cc2
+				StructQBKey vocal_lyric_font = b109df9d
+				StructInt 0x75e47d17 = 0
+				StructInt d5045305 = 1
+				StructInt b6a3064a = 1
+				StructInt d38da2b2 = 1
+				StructInt cd149bb0 = 1
+				StructInt 0x82296d77 = 1
+				StructInt 0x54d8f06c = 1
+				StructInt 0x6c53ab0d = 1
+				StructInt 0x56b8466d = 1
+				StructInt 0x1b486820 = 1
+				StructInt 0x882f22a1 = 1
+				StructInt b5e1dfd2 = 1
+				StructInt 0x4f5ca9fd = 0
+				StructInt ae1193b0 = 1
+				StructInt 0x984db5a1 = 0
+				StructInt 0x642a1eb5 = 1
+				StructString 0x3fb45eb1 = "vocals_highway_wtde"
+				StructQBKey 0x2b2e42e6 = ad5f7542
+				StructQBKey bf72b22c = 0x56e31cfe
+				StructFloat 0x642ef3a8 = 1.149999976158142
+				StructFloat e145701d = 0.550000011920929
+				StructQBKey d5927557 = 0x56e31cfe
+				StructQBKey bda08791 = Star_Get
+				StructArray bc95780d
+				{
+					ArrayQBKey
+					[
+						vocal_HUD_score_2a
+						vocal_HUD_score_4a
+						vocal_HUD_score_6a
+						vocal_HUD_score_8b
+					]
+				}
+				StructArray 0x112feba3
+				{
+					ArrayQBKey
+					[
+						f7807934
+						vocal_HUD_score_2a
+						vocal_HUD_score_3a
+						vocal_HUD_score_4a
+					]
+				}
+			}
+		}
+	}
+}
+
+SectionArray WoR_HUD_choices
+{
+	ArrayStruct
+	[
+		StructHeader
+		{
+			StructString Title = "Guitar Hero: World Tour +"
+			StructQBKey value = 0x90737ab7
+			StructString value_string = "ghwt_plus"
+		}
+		StructHeader
+		{
+			StructString Title = "Guitar Hero: World Tour"
+			StructQBKey value = 0x09982fd5
+			StructString value_string = "ghwt"
+		}
+		StructHeader
+		{
+			StructString Title = "Guitar Hero: Metallica"
+			StructQBKey value = d3010702
+			StructString value_string = "ghm"
+		}
+		StructHeader
+		{
+			StructString Title = "Guitar Hero: Smash Hits"
+			StructQBKey value = 0x79f5b69e
+			StructString value_string = "ghsh"
+		}
+		StructHeader
+		{
+			StructString Title = "Guitar Hero: Van Halen"
+			StructQBKey value = 0x048242db
+			StructString value_string = "ghvh"
+		}
+	
+			StructHeader
+		{
+			StructString Title = "Guitar Hero: Warriors of Rock"
+			StructQBKey value = ghwor
+			StructString value_string = "ghwor"
+		}
+	
+]
+}
+
+Script WoR_HUD_Load [
+	:i $printf$ %s("WoR_HUD: registering Warriors of Rock HUD theme")
+	:i $change$$[8ef7f1be]$ = (~$WoR_HUD_themes$)
+	:i $change$$[1f644846]$ = (~$WoR_HUD_choices$)
+	:i endfunction
+]

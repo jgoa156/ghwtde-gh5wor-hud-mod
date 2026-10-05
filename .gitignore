@@ -9,3 +9,5 @@ __pycache__/
 # add-on: third-party SDKs (ReShade include/, Dear ImGui; see addon/README.md) and its build output
 addon/deps/
 addon/build/
+# plugin build output
+plugin/build/

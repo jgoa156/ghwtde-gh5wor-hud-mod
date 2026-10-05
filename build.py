@@ -20,7 +20,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.35'
+VERSION = '0.36'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
@@ -253,6 +253,18 @@ def main():
     # note-streak counter: GH3:WoR's light images, same names as the DE's (state 0 off, 1 half, 2 lit)
     for name in wor_1g.STREAK_LIGHTS:
         ship(name, os.path.join(paths.GH3WOR_PNG, name + '.png'))
+    # the same lights under unique names (used by the HUD fixes plugin), plus WoR's x1 pink set (lit states tinted)
+    for name, src in wor_1g.OWN_LIGHTS.items():
+        ship(name, os.path.join(paths.GH3WOR_PNG, src + '.png'))
+    for name, src in wor_1g.PINK_LIGHTS.items():
+        p = os.path.join(paths.GH3WOR_PNG, src + '.png')
+        if name.startswith('WoR_HUD_light_0'):
+            ship(name, p)
+        else:
+            out = os.path.join(work, name + '.png')
+            wor_art.tint_luma(p, out, wor_1g.PINK_TINT)
+            pngs.append(out)
+            sources[name] = {'src': p, 'box': None, 'flip': False, 'tint_luma': list(wor_1g.PINK_TINT)}
     # star-power fill: WoR's SP_Fill01 under the DE's tube-glow names (charging / active), cut into the slanted
     # parallelogram the segments expect; the colour comes from the segments' rgba, as in WoR. Flipped: the star power
     # tube is mirrored but the DE overwrites the segments' scale, so the mirror is baked into the texture.
@@ -294,7 +306,7 @@ def main():
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD).\n'
-        f'Author=rockb\nVersion={VERSION}\n')
+        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
     assert os.path.exists(os.path.join(OUT, f'{MOD_NAME}.qb.xen')), 'compile failed'
     # Guard: decompile the binary and check every section made it (script bytecode is encoded, so the strings are
@@ -370,7 +382,7 @@ def build_no_messages(themes2, choices2, wor):
     open(os.path.join(OUT_NOMSG, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: no messages\n'
         'Description=Adds "Guitar Hero: Warriors of Rock (no messages)" to the HUD Theme options: no in-play text or '
         'streak flame burst, like GH5. Needs the GH5 / Warriors of Rock HUD.\n'
-        f'Author=rockb\nVersion={VERSION}\n')
+        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
     sdk('compile', f'{NOMSG_NAME}.txt', cwd=OUT_NOMSG)
     assert os.path.exists(os.path.join(OUT_NOMSG, f'{NOMSG_NAME}.qb.xen')), 'compile failed (no messages)'
     print('built', OUT_NOMSG)
@@ -449,7 +461,7 @@ def build_dark_metal(work):
     open(os.path.join(OUT_DARK, f'{DARK_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT_DARK, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: dark highway metal\n'
         'Description=Darker highway borders, fret bars and strikeline rings, like GH5. Works with every HUD theme.\n'
-        f'Author=rockb\nVersion={VERSION}\n')
+        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
     sdk('compile', f'{DARK_NAME}.txt', cwd=OUT_DARK)
     assert os.path.exists(os.path.join(OUT_DARK, f'{DARK_NAME}.qb.xen')), 'compile failed (dark metal)'
     print('built', OUT_DARK, '|', len(all_found), 'materials')

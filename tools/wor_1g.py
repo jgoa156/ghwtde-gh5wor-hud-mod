@@ -489,7 +489,7 @@ def player_meter():
     turn = RIGHT.angle - BADGE_STICK_ANGLE          # align the image's stick with the tube
     just = (2 * BADGE_STICK_END[0] / BADGE_TEX[0] - 1, 2 * BADGE_STICK_END[1] / BADGE_TEX[1] - 1)
     leds = [E(f'light{i}', 'SpriteElement', pos=add(badge_point(top, turn, q), LIGHT_SHIFT, (-G1[0], -G1[1])),
-              dims=(32, 32), scale=(BADGE_K, BADGE_K), rot=turn, z=6.5, texture='HUD_score_light_0')
+              dims=(32, 32), scale=(BADGE_K, BADGE_K), rot=turn, z=6.5, texture=LIGHT_MARKER)
             for i, q in enumerate(LED_CROP)]
     root = E('container', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
         E('nixie', 'SpriteElement', pos=badge, dims=BADGE_TEX, just=just, scale=(BADGE_K, BADGE_K), rot=turn, z=6.0,
@@ -589,8 +589,15 @@ MULT_NORMAL = [('WoR_HUD_mult_1', 'HUD_score_nixie_1a'), ('WoR_HUD_mult_2', 'HUD
                ('WoR_HUD_mult_3', 'HUD_score_nixie_3a'), ('WoR_HUD_mult_4', 'HUD_score_nixie_4a')]
 MULT_SP = [(f'WoR_HUD_mult_sp{n}', f'HUD_score_nixie_{n}b') for n in (2, 4, 6, 8)]
 # Note-streak lights: GH3:WoR's images under the DE's own names (state 0/1/2 x base/green/purple/blue). The DE script
-# hard-codes these names and shares the base set between x1 and x2 (pink x1 needs the plugin: docs/PLUGIN_NOTES.md).
+# hard-codes these names and shares the base set between x1 and x2, and the stock z_in_game textures shadow them
+# from the 2nd song on. The HUD fixes plugin (plugin/) switches our widgets to the unique WoR_HUD_light_* names
+# below, with WoR's x1 pink; without the plugin the DE keeps using the stock names.
 STREAK_LIGHTS = [f'HUD_score_light_{st}{c}' for st in range(3) for c in ('', '_green', '_purple', '_blue')]
+LIGHT_SETS = ('_pink', '', '_green', '_purple', '_blue')     # plugin order: x1, x2, x3, x4, star power
+OWN_LIGHTS = {f'WoR_HUD_light_{st}{c}': f'HUD_score_light_{st}{c}' for st in range(3) for c in LIGHT_SETS if c != '_pink'}
+PINK_TINT = (255, 180, 180)          # WoR's x1 colour (hud_widgets combolights led_colors)
+PINK_LIGHTS = {f'WoR_HUD_light_{st}_pink': f'HUD_score_light_{st}' for st in range(3)}   # off state stays grey
+LIGHT_MARKER = 'WoR_HUD_light_0'     # the light elements' starting texture: the plugin recognises our widgets by it
 
 # WoR's highway border (z_in_game basic_gems 388dd606: thick dark bevel + thin inner rail), shipped in a copy of the
 # WoR gem pak (the game reads the theme's border texture, key 18f90ff6, before the theme pak loads). Needs

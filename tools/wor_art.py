@@ -17,6 +17,15 @@ def flip_h(src_png, out_png):
     Image.open(src_png).transpose(Image.FLIP_LEFT_RIGHT).save(out_png)
 
 
+def tint_luma(src_png, out_png, rgb):
+    """The image's luminance (normalised to its brightest pixel) times rgb, alpha kept: recolours a lit light."""
+    import numpy as np
+    a = np.asarray(Image.open(src_png).convert('RGBA')).astype(float)
+    lum = a[..., :3] @ np.array([0.299, 0.587, 0.114])
+    a[..., :3] = (lum / (lum.max() or 1.0))[..., None] * np.array(rgb, float)
+    Image.fromarray(np.clip(a + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
 def slant_band(png, geom, cols, h_canvas, w_canvas, out_h=32):
     """Turn the fill band (64 x 16, content columns cols) into a parallelogram on a 64 x out_h canvas: every column
     keeps the band's colour profile, shifted down by slope * (column offset from the content centre). The sprite

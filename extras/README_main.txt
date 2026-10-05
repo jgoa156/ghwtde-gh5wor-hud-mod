@@ -1,5 +1,6 @@
 GH5 / Warriors of Rock HUD for Guitar Hero World Tour: Definitive Edition
 =========================================================================
+By WitchDoctoR
 
 A Guitar Hero 5 / Warriors of Rock style HUD: rock meter and star power tubes along the highway, the WoR
 multiplier, score box, star meter and fonts, laid out from GH5 gameplay.

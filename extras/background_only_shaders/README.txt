@@ -1,5 +1,6 @@
 Background-only shaders (optional file for the GH5 / Warriors of Rock HUD)
 =========================================================================
+By WitchDoctoR
 
 Makes ReShade apply its effects to the venue only (band, crowd, stage), never to the highway or the HUD, and
 only during songs. Without it, ReShade blurs and tints the HUD along with everything else.

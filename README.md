@@ -1,5 +1,7 @@
 # GH5 / Warriors of Rock HUD for GHWT: Definitive Edition
 
+By WitchDoctoR.
+
 A data-only HUD theme for *Guitar Hero World Tour: Definitive Edition* that rebuilds the Guitar Hero 5 /
 Warriors of Rock gameplay HUD from the games' own art: rock meter and star power tubes on the WoR highway border,
 the score / star / note-streak panel, the multiplier badge and soft HUD shadows. It adds

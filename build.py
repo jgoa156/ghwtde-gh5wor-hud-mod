@@ -306,7 +306,7 @@ def main():
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD).\n'
-        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
+        f'Author=WitchDoctoR\nVersion={VERSION}\n')
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
     assert os.path.exists(os.path.join(OUT, f'{MOD_NAME}.qb.xen')), 'compile failed'
     # Guard: decompile the binary and check every section made it (script bytecode is encoded, so the strings are
@@ -382,7 +382,7 @@ def build_no_messages(themes2, choices2, wor):
     open(os.path.join(OUT_NOMSG, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: no messages\n'
         'Description=Adds "Guitar Hero: Warriors of Rock (no messages)" to the HUD Theme options: no in-play text or '
         'streak flame burst, like GH5. Needs the GH5 / Warriors of Rock HUD.\n'
-        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
+        f'Author=WitchDoctoR\nVersion={VERSION}\n')
     sdk('compile', f'{NOMSG_NAME}.txt', cwd=OUT_NOMSG)
     assert os.path.exists(os.path.join(OUT_NOMSG, f'{NOMSG_NAME}.qb.xen')), 'compile failed (no messages)'
     print('built', OUT_NOMSG)
@@ -461,7 +461,7 @@ def build_dark_metal(work):
     open(os.path.join(OUT_DARK, f'{DARK_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT_DARK, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: dark highway metal\n'
         'Description=Darker highway borders, fret bars and strikeline rings, like GH5. Works with every HUD theme.\n'
-        f'Author=Guilherme Almeida\nVersion={VERSION}\n')
+        f'Author=WitchDoctoR\nVersion={VERSION}\n')
     sdk('compile', f'{DARK_NAME}.txt', cwd=OUT_DARK)
     assert os.path.exists(os.path.join(OUT_DARK, f'{DARK_NAME}.qb.xen')), 'compile failed (dark metal)'
     print('built', OUT_DARK, '|', len(all_found), 'materials')

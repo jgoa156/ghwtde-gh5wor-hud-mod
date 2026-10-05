@@ -843,3 +843,4 @@
   is one of ours; WoR mapping x1 pink / x2 orange / x3 green / x4 purple / SP blue with the game's mark maths.
   7 byte-checked sites + the 0.5 constant; inert on mismatch. Log: <game>\wor_hud_fixes.log.
 - To install: dinput8.dll + wor_hud_fixes.asi into the game folder, python build.py --install.
+- v0.37 INSTALLED (game closed): STAR_NUM_K 0.78 -> 0.77 (user); dinput8.dll (ASI loader) + wor_hud_fixes.asi copied to the game folder. Not yet tested in game.

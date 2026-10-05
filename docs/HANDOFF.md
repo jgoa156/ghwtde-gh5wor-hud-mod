@@ -6,6 +6,9 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Where things stand
 
+- **Dev folders (moved 2026-10-05):** everything lives under `E:\Dev\ghwt`: this repo, `ghwt-bg-shader`, `tools`
+  (Guitar Hero SDK, NodeROQ), `ghwor-extract`, `ghwt-extract`, `reference-video` (GH5 footage). Defaults in `tools/paths.py`.
+
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini`
   (`HUDTheme=ghwor_nomsg`, `GemTheme=ghwor`, 2560x1080, `Preferred{Guitarist,Bassist}Highway=GH5_Highway` for testing).

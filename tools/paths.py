@@ -13,10 +13,10 @@ import os
 _DEFAULTS = {
     'GAME': r'D:\Games\Guitar Hero World Tour',
     'GAME_CONFIG': r'C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition',
-    'GH_TOOLS': r'C:\Users\rockb\mods\tools',
-    'WOR_EXTRACT': r'C:\Users\rockb\ghwor-extract',
-    'DE_EXTRACT': r'C:\Users\rockb\ghwt-extract',
-    'GH5_VIDEO': r'C:\Users\rockb\OneDrive\Videos\GH5',
+    'GH_TOOLS': r'E:\Dev\ghwt\tools',
+    'WOR_EXTRACT': r'E:\Dev\ghwt\ghwor-extract',
+    'DE_EXTRACT': r'E:\Dev\ghwt\ghwt-extract',
+    'GH5_VIDEO': r'E:\Dev\ghwt\reference-video',
 }
 GAME, GAME_CONFIG, GH_TOOLS, WOR_EXTRACT, DE_EXTRACT, GH5_VIDEO = (os.environ.get(k, v) for k, v in _DEFAULTS.items())
 

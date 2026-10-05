@@ -8,9 +8,11 @@ exit code: 0 all checks passed, 1 a check failed, 2 the harness itself failed
 """
 import argparse, csv, glob, json, os, re, shutil, subprocess, sys, time
 
-GAME = r'D:\Games\Guitar Hero World Tour'
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tools'))
+import paths  # noqa: E402
+GAME = paths.GAME
 EXE = os.path.join(GAME, 'GHWT_Definitive.exe')
-CFG_DIR = os.path.expandvars(r'%USERPROFILE%\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition')
+CFG_DIR = paths.GAME_CONFIG
 INI = os.path.join(CFG_DIR, 'GHWTDE.ini')
 LOG = os.path.join(CFG_DIR, 'Logs', 'debug.txt')
 DUMPS = os.path.join(GAME, 'ghwt_bgfx_dumps')

@@ -11,7 +11,9 @@ usage: python wor_font.py <src.fnt.xen> <out.fnt.xen>
 import os, struct, subprocess, sys, tempfile
 from PIL import Image
 
-TOOLS = r'C:\Users\rockb\mods\tools'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402
+TOOLS = paths.GH_TOOLS
 sys.path.insert(0, TOOLS)
 import x360img  # noqa: E402
 

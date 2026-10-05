@@ -14,10 +14,9 @@ import hashlib, json, os, re, shutil, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 MOD = os.path.normpath(os.path.join(HERE, '..', 'build', 'WoR_HUD'))
 SRC = os.path.join(MOD, 'WoR_HUD.txt')
-TOOLS = r'C:\Users\rockb\mods\tools'
-SDK = os.path.join(TOOLS, 'guitar-hero-sdk', 'sdk.js')
-GAME = r'D:\Games\Guitar Hero World Tour'
-WOR = r'E:\Guitar Hero - Warriors of Rock\data\compressed'
+sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
+import paths  # noqa: E402
+TOOLS, SDK, GAME = paths.GH_TOOLS, paths.SDK, paths.GAME
 GOLDEN = os.path.join(HERE, 'golden_textures.json')
 
 sys.path.insert(0, TOOLS)
@@ -236,7 +235,7 @@ def integrity_restyled_desc_keeps_de_interface():
     import desc_tree
     s = src_text()
     mod = section(s, 'SectionStruct uidesc_solo_play_rock_meter_ghwor')
-    ref = open(r'C:\Users\rockb\ghwt-extract\wtplus_qb\0x4dcc2f5b.txt', encoding='utf-8', errors='replace').read()
+    ref = open(paths.de('wtplus_qb', '0x4dcc2f5b.txt'), encoding='utf-8', errors='replace').read()
     assert desc_tree.props_interface(mod) == desc_tree.props_interface(ref), 'props table differs from the WT+ original'
     for local_id in re.findall(r'validatelocalid = (\S+)', ref):
         assert re.search(rf'StructQBKey local_id = {re.escape(local_id)}\s', mod), f'element {local_id} (used by a prop path) is gone'
@@ -286,8 +285,8 @@ def integrity_every_desc_path_resolves():
     assert not bad, f'unresolved paths: {bad[:5]}'
 
 
-VH = r'C:\Users\rockb\ghwt-extract\hud_vh_qb'
-WTP = r'C:\Users\rockb\ghwt-extract\wtplus_qb'
+VH = paths.de('hud_vh_qb')
+WTP = paths.de('wtplus_qb')
 
 
 @test
@@ -428,7 +427,7 @@ def decoder_golden():
     import x360img
     golden = json.load(open(GOLDEN))
     for rel, want in golden.items():
-        img, kind, fb = x360img.decode(os.path.join(r'C:\Users\rockb\ghwor-extract', rel))
+        img, kind, fb = x360img.decode(paths.wor(rel))
         got = hashlib.sha256(img.tobytes()).hexdigest()
         assert got == want, f'{rel}: decode changed'
 

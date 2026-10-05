@@ -193,13 +193,8 @@ def hud_roots(game=False):
     return out
 
 
-def main():
-    game = '--game' in sys.argv
-    argv = [a for a in sys.argv if a != '--game']
-    src, out = argv[1], argv[2]
-    health = float(argv[3]) if len(argv) > 3 else 1.6
-    sp = float(argv[4]) if len(argv) > 4 else 0.6
-    mult = int(argv[5]) if len(argv) > 5 else 4
+def render(src, out, health=1.6, sp=0.6, mult=4, game=False):
+    """Draw the generated HUD on src (a screenshot, or '-' for a blank frame) and save it to out."""
     if src == '-':
         img = Image.new('RGBA', (1280, 720), (40, 40, 48, 255))
     else:
@@ -217,6 +212,13 @@ def main():
         img.alpha_composite(layer.resize(img.size, Image.LANCZOS))
     img.convert('RGB').save(out)
     print('wrote', out)
+
+
+def main():
+    game = '--game' in sys.argv
+    argv = [a for a in sys.argv if a != '--game']
+    render(argv[1], argv[2], float(argv[3]) if len(argv) > 3 else 1.6, float(argv[4]) if len(argv) > 4 else 0.6,
+           int(argv[5]) if len(argv) > 5 else 4, game)
 
 
 if __name__ == '__main__':

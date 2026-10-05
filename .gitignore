@@ -6,3 +6,6 @@ verify/
 tests/results/
 __pycache__/
 *.pyc
+# add-on: third-party SDKs (ReShade include/, Dear ImGui; see addon/README.md) and its build output
+addon/deps/
+addon/build/

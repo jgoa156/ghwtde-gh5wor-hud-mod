@@ -5,11 +5,13 @@ formula. DOFBlur is the DE's own blur, so the extra blur is approximated with a 
 the setting (calibrated so 2.0 -> 3.0 -> 4.5 steps are visible, not measured against the engine).
 usage: python shader_mock.py <out.png> [toe_now toe_new dof_now dof_new]
 """
-import sys
+import os, sys
 import cv2
 import numpy as np
 
-VID = r'C:\Users\rockb\OneDrive\Videos\GH5'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402
+VID = paths.GH5_VIDEO
 FRAMES = (200, 560, 900)           # modded frame indices; GH5 original = +18
 BASE_DOF = 2.0                     # DOFBlur of modded.mp4
 

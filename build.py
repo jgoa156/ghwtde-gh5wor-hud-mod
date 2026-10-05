@@ -1,31 +1,28 @@
-"""Builds the WoR_HUD mod (DATA\\MODS\\WoR_HUD) from sources. Never launches the game.
+"""Builds the GH5 / WoR HUD mods from sources. Never launches the game.
 
-Inputs (read fresh every build, so the mod always matches the installed DE):
-  - DE theme table 0x8ef7f1be and HUD menu choices 0x1f644846 (from tb.pak.xen)
-  - World Tour+ theme pak (hud_ghwt_withtime.pak.xen): its uidesc descs are the template for the WoR descs,
-    because the DE's HUD scripts already drive their aliases/props correctly
-  - WoR textures decoded from the user's own WoR copy (x360img PNGs)
+Inputs (read fresh every build, so the mod always matches the installed DE; locations in tools/paths.py):
+  - DE theme table 0x8ef7f1be and HUD menu choices 0x1f644846 (tb.pak.xen)
+  - World Tour+ theme pak (hud_ghwt_withtime.pak.xen): its descs are the template for the other player configs
+  - WoR / GH3:WoR textures and the WoR numeral font, extracted from the user's own copies
 
-Output: build/WoR_HUD/{Mod.ini, WoR_HUD.txt, WoR_HUD.qb.xen, IMAGES/*.img.xen}
-usage: python build.py [--install]
+Output (build/):
+  WoR_HUD/             Mod.ini, WoR_HUD.qb.xen, hud_ghwor.pak.xen (theme pak), gems_ghwor_hud.pak.xen (border)
+  WoR_HUD_NoMessages/  companion theme without in-play messages
+  WoR_HUD_DarkMetal/   darker highway metal (any theme)
+usage: python build.py [--install] [--package]
 """
 import json, os, re, shutil, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit  # noqa: E402
-import wor_1g, wor_art, wor_font  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font  # noqa: E402
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-TOOLS = r'C:\Users\rockb\mods\tools'
-SDK = os.path.join(TOOLS, 'guitar-hero-sdk', 'sdk.js')
-GAME = r'D:\Games\Guitar Hero World Tour'
-WOR_PNG = r'C:\Users\rockb\ghwor-extract\z_in_game_png2'
-WOR_UI_PNG = r'C:\Users\rockb\ghwor-extract\ui_shared_png2'
+ROOT = paths.REPO
+TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
 VERSION = '0.35'
-BGFX_ADDON = r'C:\Users\rockb\mods\ghwt-bg-shader\build\ghwt_bgfx.addon32'   # option 2 (ReShade add-on)
-GH5_GRADE = r'C:\Users\rockb\mods\ghwt-bg-shader\shaders\GH5_Grade.fx'
+BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
+GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
 
 # Player configurations a theme maps to layouts; WT+ provides descs for all of these except hud_2v.
@@ -184,8 +181,8 @@ def main():
     extra = '\t\t\t\tStructInt d38da2b2 = 1\n\t\t\t\tStructInt d5045305 = 1\n'
     # 882f22a1: the DE's danger blinker (flashes the side meter's red light below 1/3 rock)
     extra += '\t\t\t\tStructInt 0x882f22a1 = 1\n'
-    # thicker highway borders (DE highway sidebar sprite width x this; the stock VH theme uses 1.5), nudged out
-    sx_, off_ = (wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET) if wor_1g.WOR_BORDER else (2.0, 2.0)
+    # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
+    sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'
               f'\t\t\t\tStructFloatX2 0x3dacb46b\n\t\t\t\t{{\n\t\t\t\t\tFloats [{-off_:.5f}, 0.00000]\n\t\t\t\t}}\n'
               f'\t\t\t\tStructFloatX2 0x4dd26977\n\t\t\t\t{{\n\t\t\t\t\tFloats [{off_:.5f}, 0.00000]\n\t\t\t\t}}\n')
@@ -195,9 +192,7 @@ def main():
     wor, n = re.subn(r'StructQBKey bf72b22c = \S+', f'StructQBKey bf72b22c = {wor_1g.MSG_FONT}', wor)
     if not n:
         extra += f'\t\t\t\tStructQBKey bf72b22c = {wor_1g.MSG_FONT}\n'
-    border_tex = wor_1g.BORDER_TEX_NAME if wor_1g.WOR_BORDER else wor_1g.SIDEBAR_TEX
-    if border_tex:
-        extra += f'\t\t\t\tStructQBKey 0x18f90ff6 = {border_tex}\n'   # theme border texture
+    extra += f'\t\t\t\tStructQBKey 0x18f90ff6 = {wor_1g.BORDER_TEX_NAME}\n'   # theme border texture
     assert 'd5927557' not in wor
     extra += f'\t\t\t\tStructQBKey d5927557 = {wor_1g.MSG_FONT}\n'
     for key, lst in (('f8885a0f', wor_1g.MULT_NORMAL), ('d99b7552', wor_1g.MULT_SP)):
@@ -250,47 +245,21 @@ def main():
         ship(new_id, p if os.path.exists(p) else os.path.join(WOR_UI_PNG, src + '.png'))
     # multiplier: GH3:WoR's images, one copy cropped out of each 2048x256 strip
     for new_id, src in wor_1g.MULT_NORMAL + wor_1g.MULT_SP:
-        ship(new_id, os.path.join(wor_1g.GH3WOR_PNG, src + '.png'), (1, 1, 155, 138), wor_1g.BADGE_TEX)
+        ship(new_id, os.path.join(paths.GH3WOR_PNG, src + '.png'), (1, 1, 155, 138), wor_1g.BADGE_TEX)
     # WoR's numeral font, converted from the Xbox format (same layout, PC texture), shipped in the theme pak
     for font_id, src in wor_1g.FONT_SRC.items():
         wor_font.convert(src, os.path.join(pak_src, font_id + '.fnt.xen'))
         sources[font_id] = {'src': src, 'box': None}
     # note-streak counter: GH3:WoR's light images, same names as the DE's (state 0 off, 1 half, 2 lit)
     for name in wor_1g.STREAK_LIGHTS:
-        ship(name, os.path.join(wor_1g.GH3WOR_PNG, name + '.png'))
-    # star-power fill: WoR's SP_Fill01 as extracted, under the DE's tube-glow names (charging / active); the
-    # colour comes from the segment elements' rgba, as in WoR's own star power meter. Flipped: the star power tube
-    # is mirrored (like WoR's) but the DE overwrites the segments' scale, so the mirror is baked into the texture
+        ship(name, os.path.join(paths.GH3WOR_PNG, name + '.png'))
+    # star-power fill: WoR's SP_Fill01 under the DE's tube-glow names (charging / active), cut into the slanted
+    # parallelogram the segments expect; the colour comes from the segments' rgba, as in WoR. Flipped: the star power
+    # tube is mirrored but the DE overwrites the segments' scale, so the mirror is baked into the texture.
+    seg_h, seg_w = wor_1g.seg_canvas_size()
     for name in ('hud_rock_tube_glow_full', 'hud_rock_tube_glow_full_b'):
         ship(name, os.path.join(WOR_PNG, 'SP_Fill01.png'), wor_1g.SP_FILL_BAND, (64, 16), flip=wor_1g.SP_FILL_FLIP)
-        if wor_1g.SP_SLANT_DEG is not None:
-            wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS,
-                               wor_1g.SEG_H_CANVAS, wor_1g.SEG_W_CANVAS)
-    # star-power frame (v0.21 experiment, off): SP_Base with the glass interior cut out, drawn over the fill
-    if wor_1g.SP_FRAME:
-        p = os.path.join(work, 'WoR_HUD_sp_frame.png')
-        wor_art.cut_glass(os.path.join(WOR_PNG, 'SP_Base.png'), p, wor_1g.SP_FRAME_ROWS, wor_1g.SP_FRAME_RIM)
-        pngs.append(p)
-        sources['WoR_HUD_sp_frame'] = {'src': os.path.join(WOR_PNG, 'SP_Base.png'), 'box': None, 'flip': False,
-                                       'cut_glass': [list(wor_1g.SP_FRAME_ROWS), list(wor_1g.SP_FRAME_RIM)]}
-    # star-power shaped segments: SP_Base's glass interior per segment rows, filled with SP_Fill01's colour profile
-    if wor_1g.SP_SHAPED:
-        for i, rows in enumerate(wor_1g.sp_segment_rows()):
-            name = f'WoR_HUD_sp_seg{i}'
-            p = os.path.join(work, name + '.png')
-            band = (wor_1g.SP_FILL_BAND[0], wor_1g.SP_FILL_BAND[1], wor_1g.SP_FILL_BAND[2], wor_1g.SP_FILL_BAND[3])
-            wor_art.tube_segment(os.path.join(WOR_PNG, 'SP_Base.png'), os.path.join(WOR_PNG, 'SP_Fill01.png'), band,
-                                 rows, int(wor_1g.SP_RIM), p, wor_1g.SP_SEG_TEX, flip=wor_1g.SP_FILL_FLIP)
-            pngs.append(p)
-            sources[name] = {'src': os.path.join(WOR_PNG, 'SP_Fill01.png'), 'box': list(band), 'flip': wor_1g.SP_FILL_FLIP,
-                             'shape': os.path.join(WOR_PNG, 'SP_Base.png'), 'rows': list(rows)}
-    # highway side borders for this theme only (theme key 18f90ff6, read by the DE's material setup at song
-    # start): the DE's own sidebar01 (gems_ghwt.pak, tex\models\Highway\sidebar01.dds), darkened like GH5's
-    if wor_1g.SIDEBAR_SRC:
-        p = os.path.join(work, wor_1g.SIDEBAR_TEX + '.png')
-        wor_art.tint(wor_1g.SIDEBAR_SRC, p, wor_1g.SIDEBAR_K)
-        pngs.append(p)
-        sources[wor_1g.SIDEBAR_TEX] = {'src': wor_1g.SIDEBAR_SRC, 'box': None, 'flip': False, 'tint': wor_1g.SIDEBAR_K}
+        wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS, seg_h, seg_w)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)
@@ -304,8 +273,7 @@ def main():
         run(['node', os.path.join(TOOLS, 'png2img.js'), pak_src, *pngs], TOOLS)
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
-    if wor_1g.WOR_BORDER:
-        build_border_gempak(work)
+    build_border_gempak(work)
 
     # Register the pak with the HUD pak-links table through the DE's own AddToGlobalStruct helper (0x325bc724),
     # exactly how the DE registers highway-mod paks (script 0x7c73dda7).
@@ -316,10 +284,9 @@ def main():
             f'\t:i $WoR_HUD_link$ = :s{{$name$ = %s("{PAK_NAME}"):s}}\n'
             f'\t:i $[325bc724]$$id$ = $[cbcd0af1]$$field$ = ${PAK_NAME}$$element$ = %GLOBAL%$WoR_HUD_link$\n'
             '\t:i $printf$%s("WoR_HUD: theme pak registered with the HUD pak links")\n'
-            + (f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{wor_1g.BORDER_GEM_PAK}"):s}}\n'
-               '\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[8a5ce489]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
-               '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n'
-               if wor_1g.WOR_BORDER else '') +
+            + f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{wor_1g.BORDER_GEM_PAK}"):s}}\n'
+            '\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[8a5ce489]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
+            '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n' +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
@@ -351,12 +318,10 @@ def main():
         if os.path.exists(dst):
             shutil.rmtree(dst)
         shutil.copytree(OUT, dst, ignore=shutil.ignore_patterns('*.txt', '*.pak.xen'))
-        # Experiment v0.4: the theme pak goes where the stock theme paks live. Moving it into the mod folder
-        # (DE path redirect) is a separate step once loading is proven.
+        # the theme pak and the border gem pak go where the stock paks live
         shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK', f'{PAK_NAME}.pak.xen'))
-        if wor_1g.WOR_BORDER:
-            shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
-            print('installed DATA\\PAK\\' + wor_1g.BORDER_GEM_PAK + '.pak.xen')
+        shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
+        print('installed DATA\\PAK\\' + wor_1g.BORDER_GEM_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
         dst2 = os.path.join(GAME, 'DATA', 'MODS', NOMSG_NAME)
         if os.path.exists(dst2):
@@ -496,8 +461,6 @@ def build_border_gempak(work):
     AFTER the gem theme's pak, so the texture rides in the gem pak, which the mod repoints (pak links af130dc4) to
     this copy. Every original record and DDS stays byte-identical (tools/texdict.py round-trips the original)."""
     import struct
-    sys.path.insert(0, os.path.join(ROOT, 'tools'))
-    import texdict
     d = open(os.path.join(GAME, 'DATA', 'PAK', 'gems_ghwor.pak.xen'), 'rb').read()
     typ, off, size = struct.unpack('>III', d[0:12])
     assert typ == 0x8bfa5e8e and off == 0x1000, 'unexpected gems_ghwor layout'
@@ -540,8 +503,7 @@ def package():
     shutil.copytree(OUT, os.path.join(main, 'DATA', 'MODS', MOD_NAME), ignore=shutil.ignore_patterns('*.txt', '*.pak.xen'))
     os.makedirs(os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    if wor_1g.WOR_BORDER:
-        shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
+    shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(ROOT, 'extras', 'README_main.txt'), os.path.join(main, 'README - GH5-WoR HUD.txt'))
     # optional file: no in-play messages (companion mod, needs the main file)
     nm = os.path.join(dist, f'GH5-WoR_HUD_No_messages_{VERSION}')

@@ -4,13 +4,14 @@ Every INTERVAL s: grab the game window into <out>/shots/. When the game exits: c
 and any new CrashDumps files into <out>. Usage: python collect_session.py <out_dir>
 """
 import ctypes, glob, os, shutil, subprocess, sys, time
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tools'))
+import paths  # noqa: E402
 from ctypes import wintypes
 from PIL import ImageGrab
 
 OUT = sys.argv[1]
 INTERVAL = 10
-CFG = r'C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition'
-GAME = r'D:\Games\Guitar Hero World Tour'
+CFG, GAME = paths.GAME_CONFIG, paths.GAME
 CRASH = os.path.expandvars(r'%LOCALAPPDATA%\CrashDumps')
 os.makedirs(os.path.join(OUT, 'shots'), exist_ok=True)
 user32 = ctypes.windll.user32

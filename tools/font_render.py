@@ -6,7 +6,9 @@ usage: python font_render.py <font.fnt.xen> <text> <out.png>
 import io, struct, subprocess, sys, os, tempfile
 from PIL import Image
 
-TOOLS = r'C:\Users\rockb\mods\tools'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402
+TOOLS = paths.GH_TOOLS
 
 
 def load(path):

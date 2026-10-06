@@ -322,11 +322,15 @@ SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (ca
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spglow_cap_w', 'WoR_HUD_spglow_cap_c')   # SB_Tubeglow01, own names
-SP_GLOW_SPRITES = (('sp_glow_bottom', 0.6, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
+SP_GLOW_BOTTOM_LEVEL = 0.045                 # inside the fill's rounded bottom (0.02 hung past it)
+SP_GLOW_SPRITES = (('sp_glow_bottom', 0.5, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', 0.42, 0.0, (255, 255, 255, 255), 1.0),            #  alpha when shown)
                    ('sp_cap_c', 0.55, 0.0, (90, 240, 230, 255), 0.5))
 SP_FEATHER_H = 9.0                           # soft fill top: canvas units above the level faded in bands
 SP_FEATHER_ALPHA = (0.72, 0.58, 0.44, 0.31, 0.19, 0.08)     # band alphas, nearest the level first (each band its own clip window)
+SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
+                                             # changes (whammy, drain: the DE updates ~10 times a second) glide
+RAW_TEXTURES = r'^WoR_HUD_sp(plasma_\d+|full|full_b)\.png$'   # shipped as raw PNG (see build.py)
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
 
 
@@ -410,9 +414,8 @@ def sp_level_point(level):
 def sp_effect_sprites():
     """Bottom glow, fill-top cap and burst sprites (hidden; the plugin places and shows them)."""
     out = []
-    bottom = sp_level_point(0.02)
     for (lid, k, rot_off, rgba, _), tex in zip(SP_GLOW_SPRITES, SP_GLOW_NAMES):
-        pos = bottom if lid == 'sp_glow_bottom' else sp_level_point(0.5)
+        pos = sp_level_point(SP_GLOW_BOTTOM_LEVEL) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
         out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=(k, k), rot=RIGHT.angle + rot_off, z=3.06,
                      alpha=0.0, rgba=rgba, texture=tex, blend='Add'))
     for i, (off, k) in enumerate(SP_BURST):

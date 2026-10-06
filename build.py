@@ -314,7 +314,8 @@ def main():
     for p in pngs:
         shutil.copy(p, preview)
     if pngs:
-        run(['node', os.path.join(TOOLS, 'png2img.js'), pak_src, *pngs], TOOLS)
+        # the star power fill and its plasma loop stay raw PNG (no DXT5 4x4 blocks on the fine noise)
+        run(['node', os.path.join(TOOLS, 'png2img.js'), '--raw=' + wor_1g.RAW_TEXTURES, pak_src, *pngs], TOOLS)
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
     build_border_gempak(work)

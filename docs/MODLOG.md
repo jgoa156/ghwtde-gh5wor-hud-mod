@@ -933,3 +933,17 @@
   alpha ramp over a footprint of WoR's score meter art, bilinear) along the top edge plus the solid mask below it.
 - Tube fill: alpha blurred (sigma 1.4 texture px) so the rim and cut corners are smooth; feather bands 4 -> 6 over 9
   canvas units. Plasma whiter (base 165,240,236). Bottom glow alpha 1.0, scale 0.6.
+
+## Plugin 1.8 + HUD: per-frame glide, raw PNG plasma, bottom glow (2026-10-06)
+
+- User clip 2026-10-06 19-44-57 (60 fps): the bar moved only ~10 times a second while whammying and draining
+  (the DE updates the value every ~6-7 frames, steps of ~1% = ~2 px at 1080p).
+- Plugin 1.8: the displayed level glides from its current value to each new DE value over the time since the
+  previous update (1/60..0.25 s), every frame; jumps > SP_SNAP (0.04: phrase gains) still snap, as in GH5. The clip
+  window and fill are now placed per frame from the displayed level.
+- Pixelated plasma: png2img DXT5 blocks (4x4) on the fine noise. png2img.js --raw=<regex> stores matching PNGs as raw
+  PNG inside the .img (compression 0, 32 bpp; same header layout as the DE's own 52 uncompressed images). Applied to
+  WoR_HUD_spfull/_b and the 120 plasma frames (pak 3.2 -> 4.3 MB).
+- Bottom glow moved up into the fill's rounded bottom (level 0.045, scale 0.5).
+- Drums: DE gems_ghwor has 31 textures (gem sheets + 512x64 kick bars incl. SP teal); not yet checked against WoR
+  drum footage. Band/multiplayer/vocal layouts: not ported (1-guitar layout only).

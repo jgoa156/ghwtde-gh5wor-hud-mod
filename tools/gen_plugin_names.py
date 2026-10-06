@@ -39,6 +39,7 @@ def main():
     out += ['']
     out += ['// GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)',
             f'static const float kPlasmaFps = {wor_1g.SP_PLASMA_FPS:.1f}f;',
+            f'static const float kSnap = {wor_1g.SP_SNAP:.3f}f;',
             f'static const float kFeatherH = {wor_1g.SP_FEATHER_H:.2f}f;', f'static const int kFeathers = {len(wor_1g.SP_FEATHER_ALPHA)};',
             f'static const float kBallFps = {wor_1g.SP_BALL_FPS:.1f}f;',
             f'static const float kBurstHold = {wor_1g.SP_BURST_TIME[0]:.3f}f, kBurstEnd = {wor_1g.SP_BURST_TIME[1]:.3f}f;',

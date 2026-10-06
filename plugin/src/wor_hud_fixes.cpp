@@ -331,7 +331,10 @@ namespace
 		void *feather[kFeathers] = {};   // soft fill top: clip windows above the level, each with a faded fill copy
 		int feathers = 0;
 		bool effects = false;  // effect sprites found and the alpha field checked
-		float level = 0.0f;
+		float level = 0.0f;    // displayed level (glides between the DE's updates)
+		float target = 0.0f;   // the DE's latest level
+		float from = 0.0f;     // glide start
+		double glide_t0 = 0.0, glide_dur = 0.0, last_update = 0.0;
 		bool ready = false, seen = false;
 		double burst_t0 = -1.0;
 	} g_sp;
@@ -419,6 +422,18 @@ namespace
 		}
 	}
 
+	// the clip window's top edge is the displayed level (none at 0, unclipped at 100%); it keeps its bottom
+	void place_fill()
+	{
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
+		const float level = g_sp.level, bottom = kClipY + kClipH;
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
+		set_dims(g_sp.clip, nullptr, kClipW, bottom - top, 0);
+		set_pos(g_sp.clip, nullptr, kClipX, top, 1);
+		set_pos(g_sp.fill, nullptr, kFillX - kClipX, kFillY - top, 1);
+	}
+
 	// every frame (from the clip window's own update, game thread)
 	void sp_frame()
 	{
@@ -429,6 +444,14 @@ namespace
 			return;
 		}
 		const double t = now();
+		if (g_sp.glide_dur > 0.0)
+		{
+			const double u = (t - g_sp.glide_t0) / g_sp.glide_dur;
+			g_sp.level = u >= 1.0 ? g_sp.target : g_sp.from + (g_sp.target - g_sp.from) * static_cast<float>(u);
+			if (u >= 1.0)
+				g_sp.glide_dur = 0.0;
+		}
+		place_fill();
 		const bool shown = g_sp.level > 0.001f;
 		if (g_sp.ready && shown)
 			set_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
@@ -493,11 +516,26 @@ namespace
 		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
 		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
 			g_sp.burst_t0 = now();
+		// GH5 jumps on phrase gains; small changes (whammy, drain: the DE updates ~10 times a second) glide over the
+		// time since the previous update, so the bar moves every frame
+		const double t = now();
+		if (!g_sp.seen || (level > g_sp.level ? level - g_sp.level : g_sp.level - level) > kSnap)
+		{
+			g_sp.level = g_sp.from = level;
+			g_sp.glide_dur = 0.0;
+		}
+		else
+		{
+			const double gap = t - g_sp.last_update;
+			g_sp.from = g_sp.level;
+			g_sp.glide_t0 = t;
+			g_sp.glide_dur = gap < 1.0 / 60.0 ? 1.0 / 60.0 : gap > 0.25 ? 0.25 : gap;
+		}
+		g_sp.target = level;
+		g_sp.last_update = t;
 		g_sp.seen = true;
 		g_sp.ready = charged;
-		g_sp.level = level;
 
-		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		reinterpret_cast<SetTextureFn>(kSetTexture)(fill, nullptr, charged ? kSpFullB : kSpFull);   // plasma next frame
@@ -507,13 +545,7 @@ namespace
 		// SetPos only moves the element now with a non-zero flag (0 = tween target)
 		set_scale(fill, nullptr, kFillSX, kFillSY, 0, 0);
 		set_dims(fill, nullptr, 64.0f, 256.0f, 0);
-		// the window keeps its bottom; its top edge is the charge level (none at 0, unclipped at 100%)
-		const float bottom = kClipY + kClipH;
-		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
-		set_dims(clip, nullptr, kClipW, bottom - top, 0);
-		set_pos(clip, nullptr, kClipX, top, 1);
-		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 1);
-		sp_frame();   // texture, cap and glow right away
+		sp_frame();   // window, texture, cap and glow right away
 		if (!g_tube_logged)
 		{
 			g_tube_logged = true;
@@ -562,7 +594,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.7 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.8 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

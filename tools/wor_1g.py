@@ -330,7 +330,6 @@ SP_FEATHER_H = 9.0                           # soft fill top: canvas units above
 SP_FEATHER_ALPHA = (0.72, 0.58, 0.44, 0.31, 0.19, 0.08)     # band alphas, nearest the level first (each band its own clip window)
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
-RAW_TEXTURES = r'^WoR_HUD_sp(plasma_\d+|full|full_b)\.png$'   # shipped as raw PNG (see build.py)
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
 
 
@@ -471,31 +470,26 @@ def sp_marker_pos():
     return RIGHT.at((lo + hi) / 2)
 
 
-STAR_BAR_WEDGE = 0.4    # GH5's star-progress bar is a wedge: flat bottom, top rising from 40% of the slot height at
+STAR_BAR_WEDGE = 0.4    # GH5's star-progress bar is a wedge (texture WoR_HUD_star_wedge): flat bottom, top rising from 40% of the slot height at
                         # the left to the full height at the right, revealed as it grows (clip of 2026-10-06, 6-60 s)
 
 
 SCORE_SLOT_ROWS = (75, 81)  # rows of the star-progress slot hole in the score box texture (512x128, alpha < 60)
 
 
-def star_bar_wedge(filler_l):
-    """The slot-coloured mask that turns the (DE-scaled) rectangular star_filler into GH5's wedge inside the slot hole:
-    its bottom edge runs from (left, slot bottom - STAR_BAR_WEDGE * slot height) up to (right, slot top), drawn over
-    the filler and under the box art (which hides the rest of the mask)."""
-    w = 306 * K0 * SCORE_X_K
-    top, bottom = (SCORE_C[1] + (r - 64) * SCORE_K for r in SCORE_SLOT_ROWS)
-    left = (filler_l[0], bottom - STAR_BAR_WEDGE * (bottom - top))
-    ang = math.atan2(top - left[1], w)
-    ext = 6.0                                   # start a little left of the bar so its left end is covered too
-    start = (left[0] - ext * math.cos(ang), left[1] - ext * math.sin(ang))
-    strip_h = 3.0                               # canvas units of soft edge (bilinear texture, no pixel stairs)
-    c, s = math.cos(ang), math.sin(ang)
-    below = (start[0] - s * strip_h, start[1] + c * strip_h)   # the solid mask starts where the strip ends
-    return E('star_bar_wedge', 'ContainerElement', dims=(4, 4), just=(-1, -1), z=4.05, children=[
-        E('star_bar_wedge_soft', 'SpriteElement', pos=start, dims=(w + 2 * ext, strip_h), just=(-1, 1), rot=math.degrees(ang),
-          z=4.05, texture='WoR_HUD_edge_strip'),
-        E('star_bar_wedge_solid', 'SpriteElement', pos=below, dims=(w + 2 * ext, 20.0), just=(-1, 1), rot=math.degrees(ang),
-          z=4.05, rgba=(0, 0, 0, 255))])
+def star_slot_rows():
+    """Canvas y of the star-progress slot hole's top and bottom (score box texture rows SCORE_SLOT_ROWS)."""
+    return tuple(SCORE_C[1] + (r - 64) * SCORE_K for r in SCORE_SLOT_ROWS)
+
+
+def star_slot_centre():
+    top, bottom = star_slot_rows()
+    return (top + bottom) / 2
+
+
+def star_slot_height():
+    top, bottom = star_slot_rows()
+    return bottom - top
 
 
 def band_meter():
@@ -522,9 +516,10 @@ def band_meter():
     star_k = SCORE_K * STAR_K
     root = E('meter_container', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
         # score box: star-progress fill behind the box art, black slot behind both, glass front over the score
-        E('star_filler', 'SpriteElement', pos=filler_l, dims=(306 * K0 / 0.7 * SCORE_X_K, 25 * K0), just=(-1, 0),
-          scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255)),
-        star_bar_wedge(filler_l),
+        # GH5's wedge-shaped bar: an anti-aliased wedge texture fitted to the slot hole, stretched by the DE's scale
+        E('star_filler', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(306 * K0 / 0.7 * SCORE_X_K,
+          star_slot_height() * 16 / 14), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255),
+          texture='WoR_HUD_star_wedge'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),
         E('Score', 'TextBlockElement',

@@ -295,12 +295,12 @@ def main():
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
     for i, name in enumerate(wor_1g.SP_BALL_NAMES):
         ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
-    # soft edge strip for the star bar's wedge mask: alpha ramp over a footprint cut from WoR's score meter art
-    strip_src = os.path.join(WOR_PNG, 'band_HUD_star_score_meter.png')
-    strip = os.path.join(work, 'WoR_HUD_edge_strip.png')
-    wor_art.edge_strip(strip_src, (0, 0, 128, 64), strip)
-    pngs.append(strip)
-    sources['WoR_HUD_edge_strip'] = {'src': strip_src, 'box': [0, 0, 128, 64], 'flip': False, 'edge_strip': True}
+    # GH5's wedge-shaped star-progress bar (anti-aliased), shape cut from WoR's score meter slot footprint
+    wedge_src = os.path.join(WOR_PNG, 'band_HUD_star_score_meter.png')
+    wedge = os.path.join(work, 'WoR_HUD_star_wedge.png')
+    wor_art.wedge_strip(wedge_src, (0, 0, 512, 128), wedge, left=wor_1g.STAR_BAR_WEDGE)
+    pngs.append(wedge)
+    sources['WoR_HUD_star_wedge'] = {'src': wedge_src, 'box': [0, 0, 512, 128], 'flip': False, 'wedge': wor_1g.STAR_BAR_WEDGE}
     # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
     for name in wor_1g.SP_GLOW_NAMES:
         ship(name, os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))
@@ -314,8 +314,8 @@ def main():
     for p in pngs:
         shutil.copy(p, preview)
     if pngs:
-        # the star power fill and its plasma loop stay raw PNG (no DXT5 4x4 blocks on the fine noise)
-        run(['node', os.path.join(TOOLS, 'png2img.js'), '--raw=' + wor_1g.RAW_TEXTURES, pak_src, *pngs], TOOLS)
+        # all DXT5: raw PNG inside the theme pak made the DE fall back to the stock HUD pak (no textures at all)
+        run(['node', os.path.join(TOOLS, 'png2img.js'), pak_src, *pngs], TOOLS)
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
     build_border_gempak(work)

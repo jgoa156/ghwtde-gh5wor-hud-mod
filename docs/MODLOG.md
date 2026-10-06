@@ -947,3 +947,18 @@
 - Bottom glow moved up into the fill's rounded bottom (level 0.045, scale 0.5).
 - Drums: DE gems_ghwor has 31 textures (gem sheets + 512x64 kick bars incl. SP teal); not yet checked against WoR
   drum footage. Band/multiplayer/vocal layouts: not ported (1-guitar layout only).
+
+## Raw PNG reverted, wedge texture, drums notes (2026-10-06)
+
+- User run with the 1.8 build: every HUD texture missing ("MISSING TEXTURE"). DE log: setup_hud's
+  hudtheme_load_paks loaded hud_ghwt_withtime instead of hud_ghwor, although HUDTheme=ghwor_nomsg and both theme
+  rows (decompiled from the installed qbs) carry pak = hud_ghwor. The only pak change was 122 raw-PNG images
+  (4.3 MB pak). Two small raw-PNG images (from World Tour Plus) have been in the pak since v0.35, so raw PNG alone
+  isn't fatal; size / count / decode memory unknown. Reverted to all DXT5 (3.18 MB, same as the working 1.7 build).
+  png2img.js keeps its --raw option, unused.
+- Plasma noise smoothed instead (noise scale halved, blur 1.2 px; alpha kept) so DXT5 blocks stay invisible.
+- Star bar: the 1.7 masks were wrong (solid mask shifted down over the bar; a 1 px soft strip can't anti-alias).
+  Now the filler itself is an anti-aliased wedge texture (WoR_HUD_star_wedge, 256x16, 8x supersampled) fitted to
+  the slot hole, stretched by the DE's star_filler_scale; masks removed. tools/wedge_check.py renders the slot at
+  1080p pixel scale.
+- WoR drums clip analysed: docs/WOR_DRUMS_REFERENCE.md.

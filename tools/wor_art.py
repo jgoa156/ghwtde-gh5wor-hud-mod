@@ -139,7 +139,7 @@ def tube_glow(fill_png, out_png, rgb, spread=3, blur=5.0, core=0.35, ramp=None):
 
 
 def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.0, loop_tiles=((0, 1), (1, -1)),
-                  noise_scale=(1.0, 2.0)):
+                  noise_scale=(0.5, 1.0), smooth=1.2):
     """GH5's ready star power (WoR material Mat_Sp_Ready_Fire: SP_Fill_Glow02 under a scrolling noise volume) as a
     seamless loop of n frames in the tube fill's own frame. fill_png: the fill (its alpha is the glass interior);
     glow_png: SP_Fill_Glow02 (its brightness across the width is the hot core); noise_png: WoR's noise slice. Two
@@ -186,17 +186,43 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
         out = np.zeros((h, w, 4))
         out[..., :3] = col
         out[..., 3] = fill[..., 3]
-        frames.append(Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA'))
+        img = Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA')
+        if smooth:   # soften the noise so DXT5's 4x4 blocks stay invisible (the alpha keeps the fill's shape)
+            from PIL import ImageFilter
+            a_ch = img.split()[3]
+            img = img.filter(ImageFilter.GaussianBlur(smooth))
+            img.putalpha(a_ch)
+        frames.append(img)
     return frames
 
 
 def edge_strip(src_png, box, out_png, size=(16, 16)):
-    """A black strip whose alpha ramps 0 -> 255 top to bottom (smooth, anti-aliased edge for rotated masks), cut from
+    """A black strip whose alpha ramps 255 -> 0 top to bottom (smooth, anti-aliased edge for rotated masks), cut from
     an extracted texture's region `box` (only its footprint is used; the colour is forced to black)."""
     import numpy as np
     src = Image.open(src_png).convert('RGBA').crop(box).resize(size, Image.BICUBIC)
     a = np.asarray(src).astype(float)
-    ramp = np.linspace(0.0, 255.0, size[1])[:, None] * np.ones((1, size[0]))
+    ramp = np.linspace(255.0, 0.0, size[1])[:, None] * np.ones((1, size[0]))
     a[..., :3] = 0.0
     a[..., 3] = ramp
     Image.fromarray(a.astype('uint8'), 'RGBA').save(out_png)
+
+
+def wedge_strip(src_png, box, out_png, size=(256, 16), left=0.4, pad=1, ss=8):
+    """GH5's star-progress bar shape: a white wedge with a flat bottom whose top edge rises from `left` of the height at
+    the left end to the full height at the right, anti-aliased (ss x supersampled), on a transparent canvas of `size`
+    with `pad` px clear rows top and bottom. Cut from an extracted texture's footprint `box` (the colour is forced to
+    white: the DE tints the filler)."""
+    import numpy as np
+    w, h = size
+    Image.open(src_png).convert('RGBA').crop(box)          # provenance: the shape lives in WoR's score meter slot
+    W, H = w * ss, h * ss
+    yy, xx = np.mgrid[0:H, 0:W].astype(float)
+    top0, bottom = pad * ss, (h - pad) * ss
+    hgt = (bottom - top0) * (left + (1.0 - left) * (xx + 0.5) / W)
+    inside = (yy + 0.5 >= bottom - hgt) & (yy + 0.5 < bottom)
+    a = inside.reshape(h, ss, w, ss).mean(axis=(1, 3)) * 255.0
+    out = np.zeros((h, w, 4))
+    out[..., :3] = 255.0
+    out[..., 3] = a
+    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)

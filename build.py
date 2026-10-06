@@ -273,17 +273,31 @@ def main():
         ship(name, os.path.join(WOR_PNG, 'SP_Fill01.png'), wor_1g.SP_FILL_BAND, (64, 16), flip=wor_1g.SP_FILL_FLIP)
         wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS, seg_h, seg_w)
         wor_art.tint_rgb(os.path.join(work, name + '.png'), wor_1g.SP_FILL_RGBA)     # colour baked in (sprites are white)
-    # full-length fill for the plugin's smooth meter (normal / charged with WoR's crackle wires)
-    for name, bolts in zip(wor_1g.SP_FULL_NAMES, ((), wor_1g.SP_CHARGED_BOLTS)):
+    # full-length fill for the plugin's smooth meter: the charging look (GH5's darker teal)
+    full = os.path.join(work, wor_1g.SP_FULL_NAMES[0] + '.png')
+    wor_art.tube_fill(os.path.join(WOR_PNG, 'SP_Base.png'), os.path.join(WOR_PNG, 'SP_Fill01.png'),
+                      (wor_1g.SP_FILL_BAND[1], wor_1g.SP_FILL_BAND[3]), (35, 63), wor_1g.SP_FILL_ROWS,
+                      int(wor_1g.SP_RIM), wor_1g.SP_CHARGING_RGBA, full, center=wor_1g.TEX_CENTER)
+    pngs.append(full)
+    sources[wor_1g.SP_FULL_NAMES[0]] = {'src': os.path.join(WOR_PNG, 'SP_Fill01.png'),
+                                        'shape': os.path.join(WOR_PNG, 'SP_Base.png'), 'box': None, 'flip': False}
+    # ready look: WoR's Mat_Sp_Ready_Fire (SP_Fill_Glow02 under WoR's noise) as a seamless 60 fps loop; the _b fill
+    # (what the DE picks when charged) is its first frame
+    glow02 = paths.wor('basic_gems_png', 'a1c363bd.png')
+    noise = paths.wor('ui_shared_png2', 'noise_32x32x32.png')
+    frames = wor_art.plasma_frames(full, glow02, noise, wor_1g.SP_PLASMA_FRAMES, **wor_1g.SP_PLASMA_COLOURS)
+    for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')
-        wor_art.tube_fill(os.path.join(WOR_PNG, 'SP_Base.png'), os.path.join(WOR_PNG, 'SP_Fill01.png'),
-                          (wor_1g.SP_FILL_BAND[1], wor_1g.SP_FILL_BAND[3]), (35, 63), wor_1g.SP_FILL_ROWS,
-                          int(wor_1g.SP_RIM), wor_1g.SP_FILL_RGBA, out, bolts=bolts,
-                          bolt_png=paths.wor('basic_gems_png', '0c30522c.png'), bolt_k=wor_1g.SP_CHARGED_BOLT_K,
-                          center=wor_1g.TEX_CENTER)
+        im.save(out)
         pngs.append(out)
-        sources[name] = {'src': os.path.join(WOR_PNG, 'SP_Fill01.png'), 'shape': os.path.join(WOR_PNG, 'SP_Base.png'),
-                         'box': None, 'flip': False, 'bolts': [list(b) for b in bolts]}
+        sources[name] = {'src': glow02, 'noise': noise, 'shape': full, 'box': None, 'flip': False}
+    # ready burst: WoR's Ball_lightning01 (4x4 cells of 32 px)
+    ball = paths.wor('basic_gems_png', '249c3fc1.png')
+    for i, name in enumerate(wor_1g.SP_BALL_NAMES):
+        ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
+    # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
+    for name in wor_1g.SP_GLOW_NAMES:
+        ship(name, os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)

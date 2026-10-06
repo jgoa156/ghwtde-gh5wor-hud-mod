@@ -39,3 +39,55 @@ static const float kFillSY = 0.7000f;
 static const float kLevel0 = 607.6238f;
 static const float kLevel50 = 528.0000f;
 static const float kLevel100 = 471.1043f;
+
+// GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)
+static const float kPlasmaFps = 60.0f;
+static const float kBallFps = 20.0f;
+static const float kBurstHold = 0.400f, kBurstEnd = 0.800f;
+static const uint32_t kPlasma[120] = {
+	0x0c1f132b, 0x7b1823bd, 0xe2117207, 0x95164291, 0x0b72d732, 0x7c75e7a4, 0xe57cb61e, 0x927b8688,
+	0x02c49b19, 0x75c3ab8f, 0x1504226a, 0x620312fc, 0xfb0a4346, 0x8c0d73d0, 0x1269e673, 0x656ed6e5,
+	0xfc67875f, 0x8b60b7c9, 0x1bdfaa58, 0x6cd89ace, 0x3e2971a9, 0x492e413f, 0xd0271085, 0xa7202013,
+	0x3944b5b0, 0x4e438526, 0xd74ad49c, 0xa04de40a, 0x30f2f99b, 0x47f5c90d, 0x273240e8, 0x5035707e,
+	0xc93c21c4, 0xbe3b1152, 0x205f84f1, 0x5758b467, 0xce51e5dd, 0xb956d54b, 0x29e9c8da, 0x5eeef84c,
+	0x6873d62f, 0x1f74e6b9, 0x867db703, 0xf17a8795, 0x6f1e1236, 0x181922a0, 0x8110731a, 0xf617438c,
+	0x66a85e1d, 0x11af6e8b, 0x7168e76e, 0x066fd7f8, 0x9f668642, 0xe861b6d4, 0x76052377, 0x010213e1,
+	0x980b425b, 0xef0c72cd, 0x7fb36f5c, 0x08b45fca, 0x5a45b4ad, 0x2d42843b, 0xb44bd581, 0xc34ce517,
+	0x5d2870b4, 0x2a2f4022, 0xb3261198, 0xc421210e, 0x549e3c9f, 0x23990c09, 0x435e85ec, 0x3459b57a,
+	0xad50e4c0, 0xda57d456, 0x443341f5, 0x33347163, 0xaa3d20d9, 0xdd3a104f, 0x4d850dde, 0x3a823d48,
+	0xc4c69923, 0xb3c1a9b5, 0x2ac8f80f, 0x5dcfc899, 0xc3ab5d3a, 0xb4ac6dac, 0x2da53c16, 0x5aa20c80,
+	0xca1d1111, 0xbd1a2187, 0xdddda862, 0xaada98f4, 0x33d3c94e, 0x44d4f9d8, 0xdab06c7b, 0xadb75ced,
+	0x34be0d57, 0x43b93dc1, 0xd3062050, 0xa40110c6, 0x0ddd791c, 0x7ada498a, 0xe3d31830, 0x94d428a6,
+	0x0ab0bd05, 0x7db78d93, 0xe4bedc29, 0x93b9ecbf, 0x0306f12e, 0x7401c1b8, 0x14c6485d, 0x63c178cb,
+	0xfac82971, 0x8dcf19e7, 0x13ab8c44, 0x64acbcd2, 0xfda5ed68, 0x8aa2ddfe, 0x1a1dc06f, 0x6d1af0f9,
+};
+static const uint32_t kBall[16] = {
+	0x5361d7af, 0x2466e739, 0xbd6fb683, 0xca688615, 0x540c13b6, 0x230b2320, 0xba02729a, 0xcd05420c,
+	0x5dba5f9d, 0x2abd6f0b, 0x4a7ae6ee, 0x3d7dd678, 0xa47487c2, 0xd373b754, 0x4d1722f7, 0x3a101261,
+};
+// bottom glow, cap (white), cap (colour): texture names and the alpha each shows at
+static const uint32_t kGlowTex[3] = { 0x12792a28, 0x7169eb54, 0x6bb33f29 };   // WoR_HUD_spglow_bottom, WoR_HUD_spglow_cap_w, WoR_HUD_spglow_cap_c
+static const float kGlowAlpha[3] = { 0.50f, 1.00f, 0.50f };
+// burst sprites: canvas offset from the fill top
+static const float kBurstOff[3][2] = { { 0.0f, 0.0f }, { -6.0f, -8.0f }, { 5.0f, -12.0f } };
+// fill-top point on the tube centre line (canvas) for level i / 64
+static const int kLevelSteps = 64;
+static const float kLevelPt[65][2] = {
+	{ 896.60f, 607.62f }, { 895.21f, 605.14f }, { 893.83f, 602.65f }, { 892.44f, 600.16f },
+	{ 891.06f, 597.67f }, { 889.68f, 595.18f }, { 888.29f, 592.69f }, { 886.91f, 590.21f },
+	{ 885.52f, 587.72f }, { 884.14f, 585.23f }, { 882.75f, 582.74f }, { 881.37f, 580.25f },
+	{ 879.99f, 577.76f }, { 878.60f, 575.28f }, { 877.22f, 572.79f }, { 875.83f, 570.30f },
+	{ 874.45f, 567.81f }, { 873.06f, 565.32f }, { 871.68f, 562.84f }, { 870.30f, 560.35f },
+	{ 868.91f, 557.86f }, { 867.53f, 555.37f }, { 866.14f, 552.88f }, { 864.76f, 550.39f },
+	{ 863.37f, 547.91f }, { 861.99f, 545.42f }, { 860.61f, 542.93f }, { 859.22f, 540.44f },
+	{ 857.84f, 537.95f }, { 856.45f, 535.46f }, { 855.07f, 532.98f }, { 853.68f, 530.49f },
+	{ 852.30f, 528.00f }, { 851.31f, 526.22f }, { 850.32f, 524.44f }, { 849.33f, 522.67f },
+	{ 848.34f, 520.89f }, { 847.35f, 519.11f }, { 846.36f, 517.33f }, { 845.38f, 515.55f },
+	{ 844.39f, 513.78f }, { 843.40f, 512.00f }, { 842.41f, 510.22f }, { 841.42f, 508.44f },
+	{ 840.43f, 506.66f }, { 839.44f, 504.89f }, { 838.45f, 503.11f }, { 837.46f, 501.33f },
+	{ 836.47f, 499.55f }, { 835.48f, 497.77f }, { 834.49f, 496.00f }, { 833.51f, 494.22f },
+	{ 832.52f, 492.44f }, { 831.53f, 490.66f }, { 830.54f, 488.88f }, { 829.55f, 487.11f },
+	{ 828.56f, 485.33f }, { 827.57f, 483.55f }, { 826.58f, 481.77f }, { 825.59f, 479.99f },
+	{ 824.60f, 478.22f }, { 823.61f, 476.44f }, { 822.62f, 474.66f }, { 821.64f, 472.88f },
+	{ 820.65f, 471.10f },
+};

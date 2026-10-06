@@ -22,6 +22,11 @@
 // of six stretched segments: segments 1-5 are scaled to 0, segment 0 becomes the full-length glass-shaped fill
 // (WoR_HUD_spfull, or _b with lightning when the game picked the charged texture, i.e. >= 50% or active) and its
 // parent clip window's top edge is moved to the charge level (0-50% bottom -> half divider, 50-100% -> top).
+//
+// Fix 5, GH5's star power lifecycle (docs/GH5_STAR_POWER_REFERENCE.md): the clip window's per-frame update
+// (element update 0x5a2dd0) drives the effect sprites: below 50% the charging fill + WoR's soft bottom glow; ready
+// (>= 50% or active) the WoR Mat_Sp_Ready_Fire look as a 60 fps loop (WoR_HUD_spplasma_*) + the white-hot cap at
+// the fill top; crossing into ready, a ball-lightning burst (16 frames at 20 fps) at the fill top.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -57,6 +62,10 @@ namespace
 	constexpr uintptr_t kSetDims = 0x5a1290;         // void __thiscall (element, w, h, int) (0x5a14e0 is SetJust)
 	constexpr size_t kElementParent = 0x64;
 	constexpr uint32_t kRefreshEvent = 0x8683400c;   // tube update event that only refreshes textures
+	constexpr uintptr_t kElementUpdate = 0x5a2dd0;   // void __thiscall (element): per-frame update, recurses into children
+	constexpr size_t kElementAlpha = 0x94;           // float alpha (tween target at +0x44 = 0xd8)
+	constexpr size_t kElementFirstChild = 0x70;
+	constexpr size_t kElementNextSibling = 0x7c;
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
 	const Site kSites[] = {
@@ -81,6 +90,9 @@ namespace
 		{ kSetPos, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xEC, 0x00, 0x00, 0x00 }, 11, "SetPos prologue" },
 		{ kSetScale, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0x04, 0x01, 0x00, 0x00 }, 11, "SetScale prologue" },
 		{ kSetDims, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xBC, 0x01, 0x00, 0x00 }, 11, "SetDims prologue" },
+		{ kElementUpdate, { 0x56, 0x8B, 0xF1, 0x8B, 0x46, 0x08, 0x83, 0x46, 0x54, 0x01 }, 10, "element update prologue" },
+		{ 0x5a2e6e, { 0x8B, 0x7E, 0x70 }, 3, "element update first child" },
+		{ 0x5a2e87, { 0x8B, 0x7F, 0x7C }, 3, "element update next sibling" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -270,30 +282,155 @@ namespace
 		return g_unload_font(font);
 	}
 
-	// ---- smooth star power fill
+	// ---- star power: smooth fill and GH5's lifecycle effects
 	using TubeUpdateFn = void(__fastcall *)(void *widget, void *edx, void *value, void *event);
+	using ElementUpdateFn = void(__fastcall *)(void *element, void *edx);
 	using SetPosFn = void(__fastcall *)(void *element, void *edx, float x, float y, int flag);
 	using SetScaleFn = void(__fastcall *)(void *element, void *edx, float x, float y, int a, int b);
 	using SetDimsFn = void(__fastcall *)(void *element, void *edx, float w, float h, int flag);
 	TubeUpdateFn g_tube_update = nullptr;
+	ElementUpdateFn g_element_update = nullptr;
 	bool g_tube_logged = false;
+
+	bool is_plasma(uint32_t t)
+	{
+		for (uint32_t p : kPlasma)
+			if (p == t)
+				return true;
+		return false;
+	}
 
 	bool is_tube_texture(uint32_t t)
 	{
-		return is_our_fill(t) || t == kSpFull || t == kSpFullB;
+		return is_our_fill(t) || t == kSpFull || t == kSpFullB || is_plasma(t);
 	}
 
-	// diagnostics: element state (pos, tween target, scale, dims, just, rot, flags, texture)
-	void log_element(const char *tag, void *e)
+	float &f32(void *e, size_t off) { return *reinterpret_cast<float *>(field(e, off)); }
+
+	// alpha: current 0x94, tween target 0xd8 (element tween 0x5a21d0); 0x400 = recompute on the next update
+	void set_alpha(void *e, float a)
 	{
-		auto f = [e](size_t o) { return *reinterpret_cast<float *>(field(e, o)); };
-		log("  %s %p parent %p: pos %.1f,%.1f target %.1f,%.1f scale %.3f,%.3f just %.2f,%.2f dims %.1f,%.1f rot %.2f "
-		    "flags %08x tex %08x", tag, e, *reinterpret_cast<void **>(field(e, kElementParent)), f(0xa8), f(0xac),
-		    f(0xec), f(0xf0), f(0xc0), f(0xc4), f(0x1a4), f(0x1a8), f(0x1bc), f(0x1c0), f(0xd0),
-		    *reinterpret_cast<uint32_t *>(field(e, 8)), texture_of(e));
+		if (f32(e, kElementAlpha) == a && f32(e, kElementAlpha + 0x44) == a)
+			return;
+		f32(e, kElementAlpha) = a;
+		f32(e, kElementAlpha + 0x44) = a;
+		*reinterpret_cast<uint32_t *>(field(e, 8)) |= 0x400;
 	}
-	int g_diag_bucket = -1;
-	int g_diag_count = 0;
+
+	void set_texture(void *e, uint32_t t)
+	{
+		if (texture_of(e) != t)
+			reinterpret_cast<SetTextureFn>(kSetTexture)(e, nullptr, t);
+	}
+
+	struct StarPower
+	{
+		void *clip = nullptr, *fill = nullptr, *parent = nullptr;
+		void *glow[3] = {};    // bottom glow, cap (white), cap (colour)
+		void *burst[3] = {};
+		bool effects = false;  // effect sprites found and the alpha field checked
+		float level = 0.0f;
+		bool ready = false, seen = false;
+		double burst_t0 = -1.0;
+	} g_sp;
+	LARGE_INTEGER g_qpf = {};
+
+	double now()
+	{
+		LARGE_INTEGER c;
+		QueryPerformanceCounter(&c);
+		return static_cast<double>(c.QuadPart) / static_cast<double>(g_qpf.QuadPart);
+	}
+
+	void level_point(float level, float &x, float &y)
+	{
+		const float f = level * kLevelSteps;
+		int i = static_cast<int>(f);
+		i = i < 0 ? 0 : i >= kLevelSteps ? kLevelSteps - 1 : i;
+		const float t = f - i;
+		x = kLevelPt[i][0] + (kLevelPt[i + 1][0] - kLevelPt[i][0]) * t;
+		y = kLevelPt[i][1] + (kLevelPt[i + 1][1] - kLevelPt[i][1]) * t;
+	}
+
+	// a new clip window (new song / HUD): find the effect sprites among its siblings by their texture names
+	void discover(void *clip, void *fill)
+	{
+		g_sp = StarPower();
+		g_sp.clip = clip;
+		g_sp.fill = fill;
+		g_sp.parent = *reinterpret_cast<void **>(field(clip, kElementParent));
+		if (!g_sp.parent)
+			return;
+		int bursts = 0;
+		for (void *e = *reinterpret_cast<void **>(field(g_sp.parent, kElementFirstChild)); e;
+		     e = *reinterpret_cast<void **>(field(e, kElementNextSibling)))
+		{
+			const uint32_t t = texture_of(e);
+			for (int k = 0; k < 3; ++k)
+				if (t == kGlowTex[k])
+					g_sp.glow[k] = e;
+			if (t == kBall[0] && bursts < 3)
+				g_sp.burst[bursts++] = e;
+		}
+		bool ok = bursts == 3;
+		for (void *g : g_sp.glow)
+			ok = ok && g && f32(g, kElementAlpha) == 0.0f;       // the desc starts them hidden
+		ok = ok && f32(g_sp.parent, kElementAlpha) == 1.0f;       // and their container visible
+		g_sp.effects = ok;
+		log("star power effects: %s (glows %p %p %p, bursts %d)", ok ? "found" : "not found, fill only",
+		    g_sp.glow[0], g_sp.glow[1], g_sp.glow[2], bursts);
+	}
+
+	// every frame (from the clip window's own update, game thread)
+	void sp_frame()
+	{
+		if (*reinterpret_cast<void **>(field(g_sp.clip, kElementFirstChild)) != g_sp.fill ||
+		    !is_tube_texture(texture_of(g_sp.fill)))
+		{
+			g_sp = StarPower();   // not our window any more
+			return;
+		}
+		const double t = now();
+		const bool shown = g_sp.level > 0.001f;
+		if (g_sp.ready && shown)
+			set_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
+		if (!g_sp.effects)
+			return;
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		float x, y;
+		level_point(g_sp.level, x, y);
+		set_alpha(g_sp.glow[0], shown ? kGlowAlpha[0] : 0.0f);
+		for (int k = 1; k < 3; ++k)
+		{
+			if (g_sp.ready && shown)
+				set_pos(g_sp.glow[k], nullptr, x, y, 1);
+			set_alpha(g_sp.glow[k], g_sp.ready && shown ? kGlowAlpha[k] : 0.0f);
+		}
+		if (g_sp.burst_t0 >= 0.0)
+		{
+			const double dt = t - g_sp.burst_t0;
+			const bool on = dt < kBurstEnd;
+			const float fade = dt <= kBurstHold ? 1.0f : static_cast<float>(1.0 - (dt - kBurstHold) / (kBurstEnd - kBurstHold));
+			for (int k = 0; k < 3; ++k)
+			{
+				if (on)
+				{
+					set_texture(g_sp.burst[k], kBall[(static_cast<int>(dt * kBallFps) + k * 5) % 16]);
+					set_pos(g_sp.burst[k], nullptr, x + kBurstOff[k][0], y + kBurstOff[k][1], 1);
+				}
+				set_alpha(g_sp.burst[k], on ? fade : 0.0f);
+			}
+			if (!on)
+				g_sp.burst_t0 = -1.0;
+		}
+	}
+
+	void __fastcall element_update_hook(void *element, void *edx)
+	{
+		if (element && element == g_sp.clip)
+			sp_frame();
+		g_element_update(element, edx);
+	}
 
 	float level_y(float level)
 	{
@@ -316,28 +453,22 @@ namespace
 		const float lo = *reinterpret_cast<float *>(field(widget, 0xc)), hi = *reinterpret_cast<float *>(field(widget, 0x10));
 		if (*reinterpret_cast<uint32_t *>(field(event, 4)) == kRefreshEvent || hi <= lo)
 			return;   // texture refresh only: the last level stays
+		if (clip != g_sp.clip || fill != g_sp.fill)
+			discover(clip, fill);
 		float level = (**reinterpret_cast<float **>(value) - lo) / (hi - lo);
 		level = level < 0.0f ? 0.0f : level > 1.0f ? 1.0f : level;
 		const bool charged = texture_of(fill) == kSpFill[1][1];    // the game picked the _b texture (>= 50% or active)
+		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
+		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
+			g_sp.burst_t0 = now();
+		g_sp.seen = true;
+		g_sp.ready = charged;
+		g_sp.level = level;
 
-		const int bucket = static_cast<int>(level * 10.0f);
-		const bool diag = g_diag_count < 12 && bucket != g_diag_bucket;
-		if (diag)
-		{
-			g_diag_bucket = bucket;
-			++g_diag_count;
-			log("star power diag: level %.3f (raw %.2f of %.2f..%.2f) %s", level, **reinterpret_cast<float **>(value), lo, hi,
-			    charged ? "charged" : "charging");
-			log_element("fill before", fill);
-			log_element("clip before", clip);
-			for (void **p = first + 1; p < first + 6; ++p)
-				if (*p)
-					log_element("seg", *p);
-		}
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
-		reinterpret_cast<SetTextureFn>(kSetTexture)(fill, nullptr, charged ? kSpFullB : kSpFull);
+		reinterpret_cast<SetTextureFn>(kSetTexture)(fill, nullptr, charged ? kSpFullB : kSpFull);   // plasma next frame
 		for (void **p = first + 1; p < first + 6; ++p)
 			if (*p)
 				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
@@ -350,13 +481,7 @@ namespace
 		set_dims(clip, nullptr, kClipW, bottom - top, 0);
 		set_pos(clip, nullptr, kClipX, top, 1);
 		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 1);
-		if (diag)
-		{
-			log_element("fill after", fill);
-			log_element("clip after", clip);
-			if (void *gp = *reinterpret_cast<void **>(field(clip, kElementParent)))
-				log_element("clip parent", gp);
-		}
+		sp_frame();   // texture, cap and glow right away
 		if (!g_tube_logged)
 		{
 			g_tube_logged = true;
@@ -405,7 +530,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.5 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.6 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -419,6 +544,10 @@ namespace
 		// push ecx; push ebx; push esi; mov esi, ecx = 5 bytes of whole instructions
 		g_tube_update = reinterpret_cast<TubeUpdateFn>(install_jmp(kTubeUpdate, 5, reinterpret_cast<void *>(&tube_update_hook)));
 		log(g_tube_update ? "star power fill: smooth fill hooked" : "star power fill: smooth fill hook failed");
+		// push esi; mov esi, ecx; mov eax, [esi+8] = 6 bytes of whole instructions
+		QueryPerformanceFrequency(&g_qpf);
+		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
+		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
 		(void)self;
 	}
 }

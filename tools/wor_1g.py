@@ -90,6 +90,8 @@ RAIL_Z = {'rm_shadow': 3.01, 'sp_shadow': 3.01, 'rm_gap0': 3.012, 'rm_gap1': 3.0
           'needle_anchor': 3.09, 'side_meter_needle': 3.09, 'side_meter_red_ON': 3.06, 'nixie': 0.05}
 RAIL_Z.update({f'sp_seg{i}': 3.05 for i in range(6)})
 RAIL_Z['sp_clip'] = 3.05
+RAIL_Z.update({'sp_glow_bottom': 3.055, 'sp_cap_w': 3.06, 'sp_cap_c': 3.06, 'sp_burst0': 3.07, 'sp_burst1': 3.07,
+               'sp_burst2': 3.07})
 RAIL_Z.update({f'{t}_void{n}': 0.04 for t in ('rm', 'sp') for n in ('', '1', '2', '3')})
 
 
@@ -302,6 +304,27 @@ SP_MARKER_Y = 528.0             # GH5's half divider (canvas y); x = tube centre
 SP_MARKER_ROT = 37.0            # SB_TubeNeedle01 turned into GH5's level-ish arch
 SP_MARKER_K = 1.25              # GH5's divider spans the whole tube
 
+# GH5 star power lifecycle (docs/GH5_STAR_POWER_REFERENCE.md), driven by the HUD fixes plugin every frame:
+# charging (< 50%): flat darker teal + WoR's soft tube glow at the bottom end (WoR Fill_Fudge_hider);
+# ready (>= 50% or active): WoR's Mat_Sp_Ready_Fire look (SP_Fill_Glow02 under moving noise) as a seamless 60 fps
+# loop, plus the white-hot cap at the fill top (WoR needle_white 1.0 + needle_color 0.5, SB_Tubeglow01);
+# crossing 50%: a ball-lightning burst at the fill top (Ball_lightning01, 16 frames at 20 fps, WoR material rate).
+SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
+SP_PLASMA_FPS = 60
+SP_PLASMA_FRAMES = 120                        # 2 s loop
+SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
+SP_PLASMA_COLOURS = dict(base=(110, 225, 222), hot=(205, 250, 245), dark=(40, 150, 150))   # GH5 ready ~(127,231,228)
+SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
+SP_BALL_FPS = 20
+SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (canvas offset from the fill top, scale)
+SP_BURST_RGBA = (200, 255, 255, 255)
+SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
+SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spglow_cap_w', 'WoR_HUD_spglow_cap_c')   # SB_Tubeglow01, own names
+SP_GLOW_SPRITES = (('sp_glow_bottom', 0.42, 180.0, (90, 230, 220, 255), 0.5),     # (id, scale, rot vs tube, rgba,
+                   ('sp_cap_w', 0.42, 0.0, (255, 255, 255, 255), 1.0),            #  alpha when shown)
+                   ('sp_cap_c', 0.55, 0.0, (90, 240, 230, 255), 0.5))
+SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
+
 
 def sp_tube_width(y):
     """Width of SP_Base's tube at texture row y (alpha span: 22 px at row 20, 30 px at row 220)."""
@@ -361,6 +384,39 @@ def sp_level_points():
     return (RIGHT.at(256.0 - SP_FILL_ROWS[1])[1], SP_MARKER_Y, RIGHT.at(256.0 - SP_FILL_ROWS[0])[1])
 
 
+def sp_level_y(level):
+    """Canvas y of the fill top at a level (0..1), piecewise through the half divider (as the plugin's level_y)."""
+    l0, l50, l100 = sp_level_points()
+    return l0 + (l50 - l0) * level / 0.5 if level <= 0.5 else l50 + (l100 - l50) * (level - 0.5) / 0.5
+
+
+def sp_level_point(level):
+    """Point on the star power tube's centre line at the fill top for a level (0..1)."""
+    y = sp_level_y(level)
+    lo, hi = 0.0, 256.0
+    for _ in range(50):
+        mid = (lo + hi) / 2
+        if RIGHT.at(mid)[1] > y:
+            lo = mid
+        else:
+            hi = mid
+    return RIGHT.at((lo + hi) / 2)
+
+
+def sp_effect_sprites():
+    """Bottom glow, fill-top cap and burst sprites (hidden; the plugin places and shows them)."""
+    out = []
+    bottom = sp_level_point(0.02)
+    for (lid, k, rot_off, rgba, _), tex in zip(SP_GLOW_SPRITES, SP_GLOW_NAMES):
+        pos = bottom if lid == 'sp_glow_bottom' else sp_level_point(0.5)
+        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=(k, k), rot=RIGHT.angle + rot_off, z=3.06,
+                     alpha=0.0, rgba=rgba, texture=tex, blend='Add'))
+    for i, (off, k) in enumerate(SP_BURST):
+        out.append(E(f'sp_burst{i}', 'SpriteElement', pos=add(sp_level_point(0.5), off), dims=(32, 32), scale=(k, k),
+                     z=3.07, alpha=0.0, rgba=SP_BURST_RGBA, texture=SP_BALL_NAMES[0], blend='Add'))
+    return out
+
+
 def plugin_geometry():
     """Values the HUD fixes plugin needs (written into plugin/src/names.h by tools/gen_plugin_names.py)."""
     x, y, w, h = sp_clip_rect()
@@ -404,6 +460,27 @@ def sp_marker_pos():
     return RIGHT.at((lo + hi) / 2)
 
 
+STAR_BAR_WEDGE = 0.4    # GH5's star-progress bar is a wedge: flat bottom, top rising from 40% of the slot height at
+                        # the left to the full height at the right, revealed as it grows (clip of 2026-10-06, 6-60 s)
+
+
+SCORE_SLOT_ROWS = (75, 81)  # rows of the star-progress slot hole in the score box texture (512x128, alpha < 60)
+
+
+def star_bar_wedge(filler_l):
+    """The slot-coloured mask that turns the (DE-scaled) rectangular star_filler into GH5's wedge inside the slot hole:
+    its bottom edge runs from (left, slot bottom - STAR_BAR_WEDGE * slot height) up to (right, slot top), drawn over
+    the filler and under the box art (which hides the rest of the mask)."""
+    w = 306 * K0 * SCORE_X_K
+    top, bottom = (SCORE_C[1] + (r - 64) * SCORE_K for r in SCORE_SLOT_ROWS)
+    left = (filler_l[0], bottom - STAR_BAR_WEDGE * (bottom - top))
+    ang = math.atan2(top - left[1], w)
+    ext = 6.0                                   # start a little left of the bar so its left end is covered too
+    start = (left[0] - ext * math.cos(ang), left[1] - ext * math.sin(ang))
+    return E('star_bar_wedge', 'SpriteElement', pos=start, dims=(w + 2 * ext, 20.0), just=(-1, 1),
+             rot=math.degrees(ang), z=4.05, rgba=(0, 0, 0, 255))
+
+
 def band_meter():
     # WoR star_meter: star_meter_container centre sc; star frame / overlay / number / filler relative to it
     sc = sm(2.733, 35.653)
@@ -430,6 +507,7 @@ def band_meter():
         # score box: star-progress fill behind the box art, black slot behind both, glass front over the score
         E('star_filler', 'SpriteElement', pos=filler_l, dims=(306 * K0 / 0.7 * SCORE_X_K, 25 * K0), just=(-1, 0),
           scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255)),
+        star_bar_wedge(filler_l),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),
         E('Score', 'TextBlockElement',
@@ -455,7 +533,9 @@ def band_meter():
         streak,
         E('slot_bg', 'SpriteElement', pos=sx(add(sc, scale((-13.02, -8.03), K0))),
           dims=(309, 50), scale=(K0 * SCORE_X_K, K0), z=3.9, rgba=(0, 0, 0, 255)),
-        E('star_flame', 'ContainerElement', pos=star, dims=(4, 4), just=(-1, -1), z=13.0),   # DE star-earned sparks
+        E('star_flame', 'ContainerElement', pos=add(star, (-64.0, -64.0)), dims=(4, 4), just=(-1, -1), z=13.0),
+        # DE star-earned sparks: Star_Meter_Sparks01 centres them at (64,64) in this container (a 128 px star's
+        # top-left in the stock layout), so the container's top-left sits 64 up and left of our star's centre
         E('star_shine', 'SpriteElement', pos=overlay, dims=(128, 128), scale=(star_k * SOV, star_k * SOV), z=10.5,
           alpha=0.45, texture='WoR_HUD_star_overlay', blend='Add'),
         # tubes: drop shadow, black backing (+ gap fill) and the end balls under the art, then the art
@@ -475,6 +555,7 @@ def band_meter():
         LEFT.sprite('green_light', 'WoR_HUD_rm_green', z=2.5, blend='Add'),
         RIGHT.sprite('sp_base', 'WoR_HUD_sp_base', z=3.0, rgba=RAIL_TINT_R),
         *segs,
+        *sp_effect_sprites(),
         E('sp_marker', 'SpriteElement', pos=sp_marker_pos(), dims=(64, 64),     # GH5's half divider
           scale=(RAIL_SX * 1.1 * SP_MARKER_K, RAIL_SX * 1.1 * SP_MARKER_K), rot=SP_MARKER_ROT, z=3.9,
           texture='WoR_HUD_needle'),

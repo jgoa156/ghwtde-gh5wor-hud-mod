@@ -895,3 +895,22 @@
   (64,256) and the window's to (104,h): both thrown off screen. Positions written by SetPos(flag 1) were exact.
 - Fix: the real SetDims 0x5a1290 (w, h, int; found as the writer of 0x1bc next to the other setters). The diagnostic
   log stays, capped at 12 entries. Installed; awaiting in-game test.
+
+## Plugin 1.6 + HUD: GH5 star power lifecycle, star sparks, wedge star bar (2026-10-06)
+
+- 1.5 in game: the fill shows (SetDims fix confirmed). User: the lightning should animate, more neon, smoother.
+- Reference: user clip of GH5's full lifecycle + WoR's own meter desc/scripts/materials, written up in
+  docs/GH5_STAR_POWER_REFERENCE.md. GH5 jumps the fill (no tween); ready look = Mat_Sp_Ready_Fire (Fire2D:
+  SP_Fill_Glow02 under a scrolling noise volume); charging = flat teal + Fill_Fudge_hider bottom glow; ready cap =
+  needle_white/needle_color (SB_Tubeglow01); 50% = spark burst at the fill top.
+- Plugin 1.6: per-frame hook on the element update 0x5a2dd0 (fires for our clip window only, game thread). Plasma loop
+  WoR_HUD_spplasma_000..119 at 60 fps (user asked 60), bottom glow, cap following the level (level -> point table in
+  names.h), ball-lightning burst (Ball_lightning01, 16 frames at WoR's 20 fps) when the meter turns ready. Effect
+  sprites found by texture name under the clip's parent; alpha written at 0x94/0xd8 only after checking the desc's
+  starting values (0 for the sprites, 1 for the container).
+- Noise: WoR's noise_32x32x32 is an Xbox-tiled volume (only slice 0 decoded); the churn is two scrolling copies of
+  that slice, seamless over the 2 s loop.
+- Star sparks: DE Star_Meter_Sparks01 centres them at (64,64) in alias_star_flame (stock: a 128 px star's top-left);
+  star_flame moved 64 up/left so they centre on our star.
+- Star bar: GH5's is a wedge (flat bottom, top rising from 40% of the slot height to full), revealed as it grows; a
+  slot-black rotated mask over the DE-scaled filler, under the box art (slot hole rows 75-80 of the box texture).

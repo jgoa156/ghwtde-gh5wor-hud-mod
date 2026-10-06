@@ -111,3 +111,76 @@ def slant_band(png, geom, cols, h_canvas, w_canvas, out_h=32):
             if 0.0 <= v < 1.0:
                 op[x, y] = src[x, min(h - 1, int(v * h))]
     out.save(png)
+
+
+def tube_glow(fill_png, out_png, rgb, spread=3, blur=5.0, core=0.35, ramp=None):
+    """Glow for the star power fill: the fill's alpha grown by `spread` px and blurred, in `rgb`, plus a faint copy
+    of the fill's own shape (`core`) so the glass reads lit from inside. Drawn additively over the fill.
+    ramp (y0, y1): keep only the rows below y0, fading in up to y1 (GH5's charging bar glows at its bottom end)."""
+    import numpy as np
+    from PIL import ImageFilter
+    a = Image.open(fill_png).convert('RGBA').split()[3]
+    halo = a.filter(ImageFilter.MaxFilter(2 * spread + 1)).filter(ImageFilter.GaussianBlur(blur))
+    h = np.asarray(halo).astype(float) / 255.0
+    c = np.asarray(a).astype(float) / 255.0 * core
+    lum = np.clip(h * 0.85 + c, 0.0, 1.0)
+    if ramp:
+        y = np.arange(lum.shape[0], dtype=float)[:, None]
+        t = np.clip((y - ramp[0]) / (ramp[1] - ramp[0]), 0.0, 1.0)
+        lum = lum * (t * t * (3 - 2 * t))
+    out = np.zeros(lum.shape + (4,))
+    out[..., :3] = np.array(rgb[:3], float)
+    out[..., 3] = lum * 255.0
+    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
+def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.0, loop_tiles=((0, 1), (1, -1)),
+                  noise_scale=(1.0, 2.0)):
+    """GH5's ready star power (WoR material Mat_Sp_Ready_Fire: SP_Fill_Glow02 under a scrolling noise volume) as a
+    seamless loop of n frames in the tube fill's own frame. fill_png: the fill (its alpha is the glass interior);
+    glow_png: SP_Fill_Glow02 (its brightness across the width is the hot core); noise_png: WoR's noise slice. Two
+    copies of the noise scroll by whole tiles over the loop (loop_tiles, tiles per loop for each copy) so the pattern
+    churns in place and the last frame meets the first. base/hot/dark: RGB of the fill, its hot core and the blotches."""
+    import numpy as np
+    fill = np.asarray(Image.open(fill_png).convert('RGBA')).astype(float)
+    h, w = fill.shape[:2]
+    inside = fill[..., 3] / 255.0
+    glow = np.asarray(Image.open(glow_png).convert('L').resize((w, 1), Image.BICUBIC)).astype(float)[0] / 255.0
+    # the glow bar's profile across the fill: centre it on the fill's own columns per row
+    noise = np.asarray(Image.open(noise_png).convert('L')).astype(float) / 255.0
+    nh, nw = noise.shape
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    u0 = xx / w * nw * noise_scale[0]
+    v0 = yy / h * nh * noise_scale[1] * (h / w) / 4.0
+
+    def sample(u, v):
+        u %= nw
+        v %= nh
+        x0, y0 = np.floor(u).astype(int), np.floor(v).astype(int)
+        fx, fy = u - x0, v - y0
+        x1, y1 = (x0 + 1) % nw, (y0 + 1) % nh
+        a = noise[y0, x0] * (1 - fx) + noise[y0, x1] * fx
+        b = noise[y1, x0] * (1 - fx) + noise[y1, x1] * fx
+        return a * (1 - fy) + b * fy
+
+    # hot core across each row: the glow bar profile mapped onto the row's alpha span
+    core = np.zeros((h, w))
+    for y in range(h):
+        xs = np.where(inside[y] > 0.5)[0]
+        if len(xs) > 2:
+            t = np.clip((np.arange(w) - xs[0]) / max(1, xs[-1] - xs[0]), 0, 1)
+            core[y] = np.interp(t * (w - 1), np.arange(w), glow)
+    base, hot, dark = (np.array(c, float) for c in (base, hot, dark))
+    frames = []
+    for k in range(n):
+        t = k / n
+        a = sample(u0 + loop_tiles[0][0] * nw * t, v0 + loop_tiles[0][1] * nh * t)
+        b = sample(u0 * 1.7 + 7.3 + loop_tiles[1][0] * nw * t, v0 * 1.7 + 3.1 + loop_tiles[1][1] * nh * t)
+        m = np.clip(((a + b) - 1.0) * 3.0 * contrast + 0.5, 0, 1)      # 0 = blotch, 1 = bright
+        col = dark[None, None] + (base - dark)[None, None] * m[..., None]
+        col = col + (hot - col) * (core * (0.55 + 0.45 * m))[..., None]
+        out = np.zeros((h, w, 4))
+        out[..., :3] = col
+        out[..., 3] = fill[..., 3]
+        frames.append(Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA'))
+    return frames

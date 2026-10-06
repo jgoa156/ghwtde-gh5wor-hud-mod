@@ -37,6 +37,30 @@ def main():
             f'static const uint32_t kSpFullB = 0x{qbkey(wor_1g.SP_FULL_NAMES[1]):08x};  // {wor_1g.SP_FULL_NAMES[1]}']
     out += [f'static const float {k} = {v:.4f}f;' for k, v in wor_1g.plugin_geometry().items()]
     out += ['']
+    out += ['// GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)',
+            f'static const float kPlasmaFps = {wor_1g.SP_PLASMA_FPS:.1f}f;',
+            f'static const float kBallFps = {wor_1g.SP_BALL_FPS:.1f}f;',
+            f'static const float kBurstHold = {wor_1g.SP_BURST_TIME[0]:.3f}f, kBurstEnd = {wor_1g.SP_BURST_TIME[1]:.3f}f;',
+            f'static const uint32_t kPlasma[{len(wor_1g.SP_PLASMA_NAMES)}] = {{']
+    for i in range(0, len(wor_1g.SP_PLASMA_NAMES), 8):
+        out.append('	' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_PLASMA_NAMES[i:i + 8]) + ',')
+    out += ['};', f'static const uint32_t kBall[{len(wor_1g.SP_BALL_NAMES)}] = {{']
+    for i in range(0, len(wor_1g.SP_BALL_NAMES), 8):
+        out.append('	' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_BALL_NAMES[i:i + 8]) + ',')
+    out += ['};', '// bottom glow, cap (white), cap (colour): texture names and the alpha each shows at']
+    out += [f'static const uint32_t kGlowTex[3] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_GLOW_NAMES)
+            + ' };   // ' + ', '.join(wor_1g.SP_GLOW_NAMES)]
+    out += ['static const float kGlowAlpha[3] = { ' + ', '.join(f'{g[4]:.2f}f' for g in wor_1g.SP_GLOW_SPRITES) + ' };']
+    out += ['// burst sprites: canvas offset from the fill top']
+    out += ['static const float kBurstOff[3][2] = { ' + ', '.join(f'{{ {o[0]:.1f}f, {o[1]:.1f}f }}' for o, _ in wor_1g.SP_BURST)
+            + ' };']
+    n = wor_1g.SP_LEVEL_STEPS
+    out += [f'// fill-top point on the tube centre line (canvas) for level i / {n}', f'static const int kLevelSteps = {n};',
+            f'static const float kLevelPt[{n + 1}][2] = {{']
+    pts = [wor_1g.sp_level_point(i / n) for i in range(n + 1)]
+    for i in range(0, n + 1, 4):
+        out.append('	' + ' '.join(f'{{ {x:.2f}f, {y:.2f}f }},' for x, y in pts[i:i + 4]))
+    out += ['};', '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))
     print('wrote', p)

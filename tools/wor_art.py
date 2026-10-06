@@ -27,7 +27,7 @@ def tint_luma(src_png, out_png, rgb):
 
 
 def tube_fill(tube_png, fill_png, band_rows, fill_cols, rows, rim, tint, out_png, bolts=(), bolt_png=None,
-              bolt_k=0.8, center=(51.86, -0.040), frames=16):
+              bolt_k=0.8, center=(51.86, -0.040), frames=16, soften=1.4):
     """A fill in the tube texture's own frame (64x256): every row of the glass interior (the tube's alpha span minus
     `rim`) between `rows` gets the fill band's colour profile across its width, times `tint`. bolts: (frame, x offset)
     crackle wires from bolt_png (16 horizontal frames, white on black) added along the tube centre line."""
@@ -59,7 +59,11 @@ def tube_fill(tube_png, fill_png, band_rows, fill_cols, rows, rim, tint, out_png
                     x = cx - 7 + j
                     if 0 <= x < w and out[y, x, 3] > 0:
                         out[y, x, :3] = np.minimum(255.0, out[y, x, :3] + wire[k, j] * bolt_k * 255.0)
-    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+    img = Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA')
+    if soften:   # blur the alpha so the rim and the cut corners are smooth, not pixel-hard
+        from PIL import ImageFilter
+        img.putalpha(img.split()[3].filter(ImageFilter.GaussianBlur(soften)))
+    img.save(out_png)
 
 
 def tint_rgb(png, rgb):
@@ -184,3 +188,15 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
         out[..., 3] = fill[..., 3]
         frames.append(Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA'))
     return frames
+
+
+def edge_strip(src_png, box, out_png, size=(16, 16)):
+    """A black strip whose alpha ramps 0 -> 255 top to bottom (smooth, anti-aliased edge for rotated masks), cut from
+    an extracted texture's region `box` (only its footprint is used; the colour is forced to black)."""
+    import numpy as np
+    src = Image.open(src_png).convert('RGBA').crop(box).resize(size, Image.BICUBIC)
+    a = np.asarray(src).astype(float)
+    ramp = np.linspace(0.0, 255.0, size[1])[:, None] * np.ones((1, size[0]))
+    a[..., :3] = 0.0
+    a[..., 3] = ramp
+    Image.fromarray(a.astype('uint8'), 'RGBA').save(out_png)

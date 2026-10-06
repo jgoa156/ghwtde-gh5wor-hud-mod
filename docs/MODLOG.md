@@ -924,3 +924,12 @@
   stacked above the level, kFeatherH = 5 canvas units in total, each showing the fill's current texture at alpha
   0.6 / 0.38 / 0.2 / 0.08; placed every frame.
 - Star count: mocks +2/+4/+6 px (1080p) sent for the user's pick.
+
+## HUD v0.39 soft edges (2026-10-06)
+
+- User (1.7 test): bottom glow could glow more; star bar wedge showed ~5 stair steps; tube fill corners looked square;
+  noise should be whiter.
+- Wedge: the rotated hard-edged mask rasterised as pixel stairs. Now an anti-aliased strip (WoR_HUD_edge_strip: black
+  alpha ramp over a footprint of WoR's score meter art, bilinear) along the top edge plus the solid mask below it.
+- Tube fill: alpha blurred (sigma 1.4 texture px) so the rim and cut corners are smooth; feather bands 4 -> 6 over 9
+  canvas units. Plasma whiter (base 165,240,236). Bottom glow alpha 1.0, scale 0.6.

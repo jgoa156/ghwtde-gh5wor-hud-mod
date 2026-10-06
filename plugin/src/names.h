@@ -42,8 +42,8 @@ static const float kLevel100 = 471.1043f;
 
 // GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)
 static const float kPlasmaFps = 60.0f;
-static const float kFeatherH = 5.00f;
-static const int kFeathers = 4;
+static const float kFeatherH = 9.00f;
+static const int kFeathers = 6;
 static const float kBallFps = 20.0f;
 static const float kBurstHold = 0.400f, kBurstEnd = 0.800f;
 static const uint32_t kPlasma[120] = {
@@ -69,7 +69,7 @@ static const uint32_t kBall[16] = {
 };
 // bottom glow, cap (white), cap (colour): texture names and the alpha each shows at
 static const uint32_t kGlowTex[3] = { 0x12792a28, 0x7169eb54, 0x6bb33f29 };   // WoR_HUD_spglow_bottom, WoR_HUD_spglow_cap_w, WoR_HUD_spglow_cap_c
-static const float kGlowAlpha[3] = { 0.50f, 1.00f, 0.50f };
+static const float kGlowAlpha[3] = { 1.00f, 1.00f, 0.50f };
 // burst sprites: canvas offset from the fill top
 static const float kBurstOff[3][2] = { { 0.0f, 0.0f }, { -6.0f, -8.0f }, { 5.0f, -12.0f } };
 // fill-top point on the tube centre line (canvas) for level i / 64

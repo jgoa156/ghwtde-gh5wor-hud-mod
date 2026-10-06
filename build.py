@@ -295,6 +295,12 @@ def main():
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
     for i, name in enumerate(wor_1g.SP_BALL_NAMES):
         ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
+    # soft edge strip for the star bar's wedge mask: alpha ramp over a footprint cut from WoR's score meter art
+    strip_src = os.path.join(WOR_PNG, 'band_HUD_star_score_meter.png')
+    strip = os.path.join(work, 'WoR_HUD_edge_strip.png')
+    wor_art.edge_strip(strip_src, (0, 0, 128, 64), strip)
+    pngs.append(strip)
+    sources['WoR_HUD_edge_strip'] = {'src': strip_src, 'box': [0, 0, 128, 64], 'flip': False, 'edge_strip': True}
     # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
     for name in wor_1g.SP_GLOW_NAMES:
         ship(name, os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))

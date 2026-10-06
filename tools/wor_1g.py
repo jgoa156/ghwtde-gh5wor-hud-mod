@@ -90,8 +90,8 @@ RAIL_Z = {'rm_shadow': 3.01, 'sp_shadow': 3.01, 'rm_gap0': 3.012, 'rm_gap1': 3.0
           'needle_anchor': 3.09, 'side_meter_needle': 3.09, 'side_meter_red_ON': 3.06, 'nixie': 0.05}
 RAIL_Z.update({f'sp_seg{i}': 3.05 for i in range(6)})
 RAIL_Z['sp_clip'] = 3.05
-RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(4)})
-RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(4)})
+RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(6)})
+RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(6)})
 RAIL_Z.update({'sp_glow_bottom': 3.055, 'sp_cap_w': 3.06, 'sp_cap_c': 3.06, 'sp_burst0': 3.07, 'sp_burst1': 3.07,
                'sp_burst2': 3.07})
 RAIL_Z.update({f'{t}_void{n}': 0.04 for t in ('rm', 'sp') for n in ('', '1', '2', '3')})
@@ -315,18 +315,18 @@ SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) o
 SP_PLASMA_FPS = 60
 SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
-SP_PLASMA_COLOURS = dict(base=(110, 225, 222), hot=(205, 250, 245), dark=(40, 150, 150))   # GH5 ready ~(127,231,228)
+SP_PLASMA_COLOURS = dict(base=(165, 240, 236), hot=(240, 255, 252), dark=(75, 185, 182))   # whiter than GH5's ~(127,231,228)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
 SP_BALL_FPS = 20
 SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (canvas offset from the fill top, scale)
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spglow_cap_w', 'WoR_HUD_spglow_cap_c')   # SB_Tubeglow01, own names
-SP_GLOW_SPRITES = (('sp_glow_bottom', 0.42, 180.0, (90, 230, 220, 255), 0.5),     # (id, scale, rot vs tube, rgba,
+SP_GLOW_SPRITES = (('sp_glow_bottom', 0.6, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', 0.42, 0.0, (255, 255, 255, 255), 1.0),            #  alpha when shown)
                    ('sp_cap_c', 0.55, 0.0, (90, 240, 230, 255), 0.5))
-SP_FEATHER_H = 5.0                           # soft fill top: canvas units above the level faded in bands
-SP_FEATHER_ALPHA = (0.6, 0.38, 0.2, 0.08)     # band alphas, nearest the level first (each band its own clip window)
+SP_FEATHER_H = 9.0                           # soft fill top: canvas units above the level faded in bands
+SP_FEATHER_ALPHA = (0.72, 0.58, 0.44, 0.31, 0.19, 0.08)     # band alphas, nearest the level first (each band its own clip window)
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
 
 
@@ -485,8 +485,14 @@ def star_bar_wedge(filler_l):
     ang = math.atan2(top - left[1], w)
     ext = 6.0                                   # start a little left of the bar so its left end is covered too
     start = (left[0] - ext * math.cos(ang), left[1] - ext * math.sin(ang))
-    return E('star_bar_wedge', 'SpriteElement', pos=start, dims=(w + 2 * ext, 20.0), just=(-1, 1),
-             rot=math.degrees(ang), z=4.05, rgba=(0, 0, 0, 255))
+    strip_h = 3.0                               # canvas units of soft edge (bilinear texture, no pixel stairs)
+    c, s = math.cos(ang), math.sin(ang)
+    below = (start[0] - s * strip_h, start[1] + c * strip_h)   # the solid mask starts where the strip ends
+    return E('star_bar_wedge', 'ContainerElement', dims=(4, 4), just=(-1, -1), z=4.05, children=[
+        E('star_bar_wedge_soft', 'SpriteElement', pos=start, dims=(w + 2 * ext, strip_h), just=(-1, 1), rot=math.degrees(ang),
+          z=4.05, texture='WoR_HUD_edge_strip'),
+        E('star_bar_wedge_solid', 'SpriteElement', pos=below, dims=(w + 2 * ext, 20.0), just=(-1, 1), rot=math.degrees(ang),
+          z=4.05, rgba=(0, 0, 0, 255))])
 
 
 def band_meter():

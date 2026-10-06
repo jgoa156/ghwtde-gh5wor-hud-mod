@@ -879,3 +879,11 @@
 - Plugin 1.3: after each tube update (WoR tubes only) segments 1-5 -> scale 0, segment 0 -> spfull(_b) with the tube
   transform, clip window top = charge level (piecewise through the half divider). Geometry generated into names.h.
 - Docs: HANDOFF, PLUGIN_NOTES (rewritten as the plugin reference), plugin/README, README updated.
+
+## Plugin 1.4 (2026-10-06)
+
+- In-game test of 1.3 (1920x1080): no star power fill at all at half charge; log showed the smooth fill active.
+- Cause (disassembly): SetPos's third argument is "immediate"; 0 only sets the tween target (0xec/0xf0), so the clip
+  window and the fill never moved. SetDims also shifts the position by just * scale * size change * 0.5 and dims live
+  at 0x1a4/0x1a8 (PLUGIN_NOTES corrected).
+- Fix: SetScale/SetDims first, then SetPos with flag 1 for the window and the fill. Installed; awaiting in-game test.

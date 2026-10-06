@@ -13,7 +13,7 @@ image base 0x400000, PE timestamp 0x562b029a). `plugin/src/names.h` is generated
 | 1 | Streak lights: WoR colours (x1 pink) + own texture names (no stock lights on song 2) | 1.0 | works |
 | 2 | Star power fill under own texture names (no stock fill on song 2) | 1.1 | works |
 | 3 | Theme switch crash (DE font unload bug) | 1.2 | not yet tested |
-| 4 | Smooth star power fill (one clipped glass-shaped fill, continuous lightning when charged) | 1.3 | not yet tested |
+| 4 | Smooth star power fill (one clipped glass-shaped fill, continuous lightning when charged) | 1.3 | 1.3: fill invisible in game (SetPos flag 0 = tween target only); fixed in 1.4, not yet tested |
 
 Open: animate the charged lightning (cycle crackle frames; the tube update only runs when the value changes, so it
 needs a per-frame hook), score thousands commas (native `seinttostring`), star power activation burst and lightning
@@ -25,9 +25,10 @@ into hit gems (see "Star power look" below).
   GetProperties 0x59df10). **SetTexture 0x59e6d0** (thiscall, checksum) stores it and looks the texture up by name
   (0x4fad90 on [0xd4e3c8]): the most recently loaded texture with that name wins, which is why the stock
   `z_in_game` textures (reloaded every song) shadow ours from the 2nd song on. Fix pattern: our own unique names.
-- **Element fields** (CScreenElement): pos 0xa8/0xac, scale 0xc0/0xc4, dims 0x1bc/0x1c0, z 0x1c8, parent 0x64.
-  Setters (thiscall, callee cleans): **SetPos 0x5a0fd0** (x, y, int), **SetScale 0x5a17e0** (x, y, int, int),
-  **SetDims 0x5a14e0** (w, h). Children of a container / window are placed relative to its top-left corner.
+- **Element fields** (CScreenElement): pos 0xa8/0xac (tween target 0xec/0xf0), scale 0xc0/0xc4, dims 0x1a4/0x1a8,
+  just 0x1bc/0x1c0, rot 0xd0, z 0x1c8, parent 0x64. Setters (thiscall, callee cleans): **SetPos 0x5a0fd0** (x, y,
+  int immediate: 0 only sets the tween target, non-zero also writes 0xa8/0xac), **SetScale 0x5a17e0** (x, y, int,
+  int), **SetDims 0x5a14e0** (w, h; also shifts pos by just * scale * size change * 0.5, so call it before SetPos). Children of a container / window are placed relative to its top-left corner.
 - **Element lookup** 0x5f6160 (child by id, weak-ref out params) is hooked by the DE (its prologue jumps into the
   DE): avoided; the plugin reaches our clip window through a segment's parent pointer instead.
 - **Pak residency**: theme and gem paks stay on their pak-manager maps between songs ("already loaded. Adding

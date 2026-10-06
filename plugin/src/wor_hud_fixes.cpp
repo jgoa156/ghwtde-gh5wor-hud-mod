@@ -315,14 +315,16 @@ namespace
 		for (void **p = first + 1; p < first + 6; ++p)
 			if (*p)
 				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
-		set_dims(fill, nullptr, 64.0f, 256.0f);
+		// SetDims shifts the position by just * scale * (size change) / 2, and SetPos only moves the element now with
+		// a non-zero flag (0 = tween target): so size first, then place immediately
 		set_scale(fill, nullptr, kFillSX, kFillSY, 0, 0);
+		set_dims(fill, nullptr, 64.0f, 256.0f);
 		// the window keeps its bottom; its top edge is the charge level (none at 0, unclipped at 100%)
 		const float bottom = kClipY + kClipH;
 		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
-		set_pos(clip, nullptr, kClipX, top, 0);
 		set_dims(clip, nullptr, kClipW, bottom - top);
-		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 0);
+		set_pos(clip, nullptr, kClipX, top, 1);
+		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 1);
 		if (!g_tube_logged)
 		{
 			g_tube_logged = true;
@@ -371,7 +373,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.3 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.4 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

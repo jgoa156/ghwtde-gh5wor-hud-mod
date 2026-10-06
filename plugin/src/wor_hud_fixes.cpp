@@ -54,7 +54,7 @@ namespace
 	constexpr uintptr_t kTubeUpdate = 0x478630;      // void __thiscall (widget, value*, event*)
 	constexpr uintptr_t kSetPos = 0x5a0fd0;          // void __thiscall (element, x, y, int)
 	constexpr uintptr_t kSetScale = 0x5a17e0;        // void __thiscall (element, x, y, int, int)
-	constexpr uintptr_t kSetDims = 0x5a14e0;         // void __thiscall (element, w, h)
+	constexpr uintptr_t kSetDims = 0x5a1290;         // void __thiscall (element, w, h, int) (0x5a14e0 is SetJust)
 	constexpr size_t kElementParent = 0x64;
 	constexpr uint32_t kRefreshEvent = 0x8683400c;   // tube update event that only refreshes textures
 
@@ -80,7 +80,7 @@ namespace
 		{ 0x4786ff, { 0x8B, 0x4E, 0x1C }, 3, "SP tube segment vector" },
 		{ kSetPos, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xEC, 0x00, 0x00, 0x00 }, 11, "SetPos prologue" },
 		{ kSetScale, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0x04, 0x01, 0x00, 0x00 }, 11, "SetScale prologue" },
-		{ kSetDims, { 0xF3, 0x0F, 0x10, 0x54, 0x24, 0x04, 0xF3, 0x0F, 0x10, 0x64, 0x24, 0x08 }, 12, "SetDims prologue" },
+		{ kSetDims, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xBC, 0x01, 0x00, 0x00 }, 11, "SetDims prologue" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -274,7 +274,7 @@ namespace
 	using TubeUpdateFn = void(__fastcall *)(void *widget, void *edx, void *value, void *event);
 	using SetPosFn = void(__fastcall *)(void *element, void *edx, float x, float y, int flag);
 	using SetScaleFn = void(__fastcall *)(void *element, void *edx, float x, float y, int a, int b);
-	using SetDimsFn = void(__fastcall *)(void *element, void *edx, float w, float h);
+	using SetDimsFn = void(__fastcall *)(void *element, void *edx, float w, float h, int flag);
 	TubeUpdateFn g_tube_update = nullptr;
 	bool g_tube_logged = false;
 
@@ -282,6 +282,18 @@ namespace
 	{
 		return is_our_fill(t) || t == kSpFull || t == kSpFullB;
 	}
+
+	// diagnostics: element state (pos, tween target, scale, dims, just, rot, flags, texture)
+	void log_element(const char *tag, void *e)
+	{
+		auto f = [e](size_t o) { return *reinterpret_cast<float *>(field(e, o)); };
+		log("  %s %p parent %p: pos %.1f,%.1f target %.1f,%.1f scale %.3f,%.3f just %.2f,%.2f dims %.1f,%.1f rot %.2f "
+		    "flags %08x tex %08x", tag, e, *reinterpret_cast<void **>(field(e, kElementParent)), f(0xa8), f(0xac),
+		    f(0xec), f(0xf0), f(0xc0), f(0xc4), f(0x1a4), f(0x1a8), f(0x1bc), f(0x1c0), f(0xd0),
+		    *reinterpret_cast<uint32_t *>(field(e, 8)), texture_of(e));
+	}
+	int g_diag_bucket = -1;
+	int g_diag_count = 0;
 
 	float level_y(float level)
 	{
@@ -308,6 +320,20 @@ namespace
 		level = level < 0.0f ? 0.0f : level > 1.0f ? 1.0f : level;
 		const bool charged = texture_of(fill) == kSpFill[1][1];    // the game picked the _b texture (>= 50% or active)
 
+		const int bucket = static_cast<int>(level * 10.0f);
+		const bool diag = g_diag_count < 12 && bucket != g_diag_bucket;
+		if (diag)
+		{
+			g_diag_bucket = bucket;
+			++g_diag_count;
+			log("star power diag: level %.3f (raw %.2f of %.2f..%.2f) %s", level, **reinterpret_cast<float **>(value), lo, hi,
+			    charged ? "charged" : "charging");
+			log_element("fill before", fill);
+			log_element("clip before", clip);
+			for (void **p = first + 1; p < first + 6; ++p)
+				if (*p)
+					log_element("seg", *p);
+		}
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
@@ -315,16 +341,22 @@ namespace
 		for (void **p = first + 1; p < first + 6; ++p)
 			if (*p)
 				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
-		// SetDims shifts the position by just * scale * (size change) / 2, and SetPos only moves the element now with
-		// a non-zero flag (0 = tween target): so size first, then place immediately
+		// SetPos only moves the element now with a non-zero flag (0 = tween target)
 		set_scale(fill, nullptr, kFillSX, kFillSY, 0, 0);
-		set_dims(fill, nullptr, 64.0f, 256.0f);
+		set_dims(fill, nullptr, 64.0f, 256.0f, 0);
 		// the window keeps its bottom; its top edge is the charge level (none at 0, unclipped at 100%)
 		const float bottom = kClipY + kClipH;
 		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
-		set_dims(clip, nullptr, kClipW, bottom - top);
+		set_dims(clip, nullptr, kClipW, bottom - top, 0);
 		set_pos(clip, nullptr, kClipX, top, 1);
 		set_pos(fill, nullptr, kFillX - kClipX, kFillY - top, 1);
+		if (diag)
+		{
+			log_element("fill after", fill);
+			log_element("clip after", clip);
+			if (void *gp = *reinterpret_cast<void **>(field(clip, kElementParent)))
+				log_element("clip parent", gp);
+		}
 		if (!g_tube_logged)
 		{
 			g_tube_logged = true;
@@ -373,7 +405,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.4 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.5 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

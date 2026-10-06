@@ -12,10 +12,10 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini`
   (`HUDTheme=ghwor_nomsg`, `GemTheme=ghwor`, 2560x1080, `Preferred{Guitarist,Bassist}Highway=GH5_Highway` for testing).
-- **Installed:** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.4, all in the game
+- **Installed:** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.5, all in the game
   folder / `DATA`. Verified in game up to plugin 1.1 / v0.38 (streak lights incl. pink x1 and song 2; star power fill
-  on song 2). **Not yet tested:** plugin 1.2 theme-switch fix, plugin 1.4 + v0.39 smooth star power fill (1.3's fill was invisible in
-  game: SetPos flag 0 only sets a tween target; 1.4 sizes first, then places with flag 1).
+  on song 2). **Not yet tested:** plugin 1.2 theme-switch fix, plugin 1.5 + v0.39 smooth star power fill (1.3's fill was invisible in
+  game: SetPos flag 0 only sets a tween target; 1.4 was still invisible: 0x5a14e0 is SetJust; 1.5 calls the real SetDims 0x5a1290).
 - **Layout:** approved and stable (meters, border, score, star count 0.77, outer shadows B x0.2, tube end balls).
 - **Shaders (user: "perfect"):** `GHWoR.ini` follows the original WoR preset (SSDO full res + ssdonoise.png,
   Bloom, SurfaceBlur, vort_MotionBlur, AdaptiveTonemapper, Curves, GH5_Grade, Vibrance); F5/F6/F7 toggle SSDO /
@@ -23,7 +23,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Next steps
 
-1. **Test v0.39 / plugin 1.4** (ask before launching; collector only on request, detached):
+1. **Test v0.39 / plugin 1.5** (ask before launching; collector only on request, detached):
    - star power fill: smooth cut at 25/50/75%, 50% on the needle, lightning once charged, song 2 still fine;
    - theme switch to another HUD theme and back: no crash; send `wor_hud_fixes.log` (font table bounds lines).
    If the clip window doesn't clip the rotated fill (or the fill sits off), the HUD falls back to six segments by

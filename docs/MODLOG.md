@@ -887,3 +887,11 @@
   window and the fill never moved. SetDims also shifts the position by just * scale * size change * 0.5 and dims live
   at 0x1a4/0x1a8 (PLUGIN_NOTES corrected).
 - Fix: SetScale/SetDims first, then SetPos with flag 1 for the window and the fill. Installed; awaiting in-game test.
+
+## Plugin 1.5 (2026-10-06)
+
+- 1.4 still showed no fill. A diagnostic build (1.4d) logged the elements' state: 0x1a4/0x1a8 hold just (segments
+  0,1; window -1,-1) and 0x1bc/0x1c0 the dims (desc values), so 0x5a14e0 is SetJust. 1.3/1.4 set the fill's just to
+  (64,256) and the window's to (104,h): both thrown off screen. Positions written by SetPos(flag 1) were exact.
+- Fix: the real SetDims 0x5a1290 (w, h, int; found as the writer of 0x1bc next to the other setters). The diagnostic
+  log stays, capped at 12 entries. Installed; awaiting in-game test.

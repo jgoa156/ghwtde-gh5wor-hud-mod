@@ -12,9 +12,9 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini`
   (`HUDTheme=ghwor_nomsg`, `GemTheme=ghwor`, 2560x1080, `Preferred{Guitarist,Bassist}Highway=GH5_Highway` for testing).
-- **Installed:** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.6, all in the game
+- **Installed:** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.7, all in the game
   folder / `DATA`. Verified in game up to plugin 1.1 / v0.38 (streak lights incl. pink x1 and song 2; star power fill
-  on song 2). **Not yet tested:** plugin 1.2 theme-switch fix; plugin 1.6 GH5 star power lifecycle (charging bottom glow, 60 fps
+  on song 2). **Not yet tested:** plugin 1.2 theme-switch fix; plugin 1.7 GH5 star power lifecycle + soft fill top (charging bottom glow, 60 fps
   ready plasma + white cap, 50% ball-lightning burst), star spark centring, wedge star bar; earlier: plugin 1.5 smooth fill (1.3's fill was invisible in
   game: SetPos flag 0 only sets a tween target; 1.4 was still invisible: 0x5a14e0 is SetJust; 1.5 calls the real SetDims 0x5a1290).
 - **Layout:** approved and stable (meters, border, score, star count 0.77, outer shadows B x0.2, tube end balls).

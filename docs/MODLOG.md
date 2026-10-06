@@ -914,3 +914,13 @@
   star_flame moved 64 up/left so they centre on our star.
 - Star bar: GH5's is a wedge (flat bottom, top rising from 40% of the slot height to full), revealed as it grows; a
   slot-black rotated mask over the DE-scaled filler, under the box art (slot hole rows 75-80 of the box texture).
+
+## Plugin 1.7: plasma texture swap fix, soft fill top (2026-10-06)
+
+- 1.6 in game: effects found; once the bar showed the plasma, the DE's next SetTexture(stock name) wasn't swapped
+  (the swap only knew the old fill names), the tube hook stopped recognising the fill and the DE's six segments came
+  back, offset by our moved clip window. Fix: the plasma frames count as ours in the SetTexture swap.
+- Soft fill top (user: smoother, blurrier, sub-pixel while whammying): four feather clip windows (sp_feather0-3)
+  stacked above the level, kFeatherH = 5 canvas units in total, each showing the fill's current texture at alpha
+  0.6 / 0.38 / 0.2 / 0.08; placed every frame.
+- Star count: mocks +2/+4/+6 px (1080p) sent for the user's pick.

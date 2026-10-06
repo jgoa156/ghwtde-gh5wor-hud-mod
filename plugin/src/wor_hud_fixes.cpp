@@ -137,11 +137,19 @@ namespace
 		return false;
 	}
 
+	bool is_plasma(uint32_t t)
+	{
+		for (uint32_t p : kPlasma)
+			if (p == t)
+				return true;
+		return false;
+	}
+
 	// replaces the two SP tube SetTexture calls: same calling convention (thiscall, one stack argument)
 	void __fastcall sp_set_texture_hook(void *element, void *edx, uint32_t texture)
 	{
 		const uint32_t current = element ? texture_of(element) : 0;
-		if (element && (is_our_fill(current) || current == kSpFull || current == kSpFullB))
+		if (element && (is_our_fill(current) || current == kSpFull || current == kSpFullB || is_plasma(current)))
 		{
 			for (const auto &p : kSpFill)
 			{
@@ -292,14 +300,6 @@ namespace
 	ElementUpdateFn g_element_update = nullptr;
 	bool g_tube_logged = false;
 
-	bool is_plasma(uint32_t t)
-	{
-		for (uint32_t p : kPlasma)
-			if (p == t)
-				return true;
-		return false;
-	}
-
 	bool is_tube_texture(uint32_t t)
 	{
 		return is_our_fill(t) || t == kSpFull || t == kSpFullB || is_plasma(t);
@@ -328,6 +328,8 @@ namespace
 		void *clip = nullptr, *fill = nullptr, *parent = nullptr;
 		void *glow[3] = {};    // bottom glow, cap (white), cap (colour)
 		void *burst[3] = {};
+		void *feather[kFeathers] = {};   // soft fill top: clip windows above the level, each with a faded fill copy
+		int feathers = 0;
 		bool effects = false;  // effect sprites found and the alpha field checked
 		float level = 0.0f;
 		bool ready = false, seen = false;
@@ -371,14 +373,50 @@ namespace
 					g_sp.glow[k] = e;
 			if (t == kBall[0] && bursts < 3)
 				g_sp.burst[bursts++] = e;
+			void *child = *reinterpret_cast<void **>(field(e, kElementFirstChild));
+			if (e != clip && child && texture_of(child) == kSpFull && g_sp.feathers < kFeathers)
+				g_sp.feather[g_sp.feathers++] = e;
 		}
 		bool ok = bursts == 3;
 		for (void *g : g_sp.glow)
 			ok = ok && g && f32(g, kElementAlpha) == 0.0f;       // the desc starts them hidden
 		ok = ok && f32(g_sp.parent, kElementAlpha) == 1.0f;       // and their container visible
 		g_sp.effects = ok;
-		log("star power effects: %s (glows %p %p %p, bursts %d)", ok ? "found" : "not found, fill only",
-		    g_sp.glow[0], g_sp.glow[1], g_sp.glow[2], bursts);
+		log("star power effects: %s (glows %p %p %p, bursts %d, feathers %d)", ok ? "found" : "not found, fill only",
+		    g_sp.glow[0], g_sp.glow[1], g_sp.glow[2], bursts, g_sp.feathers);
+	}
+
+	float level_y(float level)
+	{
+		if (level <= 0.5f)
+			return kLevel0 + (kLevel50 - kLevel0) * (level / 0.5f);
+		return kLevel50 + (kLevel100 - kLevel50) * ((level - 0.5f) / 0.5f);
+	}
+
+	// the feather windows: bands of kFeatherH / kFeathers above the level, each showing the fill's texture faded (the
+	// desc gives each band's fill its alpha), so the fill's top edge is a soft gradient instead of a pixel-hard cut
+	void place_feathers()
+	{
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
+		const bool hidden = g_sp.level <= 0.001f || g_sp.level >= 0.999f;
+		const float top = hidden ? 0.0f : level_y(g_sp.level), band = kFeatherH / kFeathers;
+		for (int k = 0; k < g_sp.feathers; ++k)
+		{
+			void *win = g_sp.feather[k];
+			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
+			const float hi = top - (k + 1) * band, lo = top - k * band;
+			const float t = hi < kClipY ? kClipY : hi;
+			if (hidden || !fill || lo - t <= 0.0f)
+			{
+				set_dims(win, nullptr, kClipW, 0.0f, 0);
+				continue;
+			}
+			set_texture(fill, texture_of(g_sp.fill));
+			set_dims(win, nullptr, kClipW, lo - t, 0);
+			set_pos(win, nullptr, kClipX, t, 1);
+			set_pos(fill, nullptr, kFillX - kClipX, kFillY - t, 1);
+		}
 	}
 
 	// every frame (from the clip window's own update, game thread)
@@ -394,6 +432,7 @@ namespace
 		const bool shown = g_sp.level > 0.001f;
 		if (g_sp.ready && shown)
 			set_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
+		place_feathers();
 		if (!g_sp.effects)
 			return;
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
@@ -430,13 +469,6 @@ namespace
 		if (element && element == g_sp.clip)
 			sp_frame();
 		g_element_update(element, edx);
-	}
-
-	float level_y(float level)
-	{
-		if (level <= 0.5f)
-			return kLevel0 + (kLevel50 - kLevel0) * (level / 0.5f);
-		return kLevel50 + (kLevel100 - kLevel50) * ((level - 0.5f) / 0.5f);
 	}
 
 	void __fastcall tube_update_hook(void *widget, void *edx, void *value, void *event)
@@ -530,7 +562,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.6 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.7 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

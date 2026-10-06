@@ -42,6 +42,8 @@ static const float kLevel100 = 471.1043f;
 
 // GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)
 static const float kPlasmaFps = 60.0f;
+static const float kFeatherH = 5.00f;
+static const int kFeathers = 4;
 static const float kBallFps = 20.0f;
 static const float kBurstHold = 0.400f, kBurstEnd = 0.800f;
 static const uint32_t kPlasma[120] = {

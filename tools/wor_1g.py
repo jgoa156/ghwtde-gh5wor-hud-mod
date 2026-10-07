@@ -496,7 +496,7 @@ PROG_H = 4.5                               # line height (score box texture rows
 PROG_BACK_H = 16.0                         # dark track sprite height (rows); its art is the middle of a 256 x 16 texture
 PROG_RGBA = (104, 138, 180, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
 STAR_FIRE_K = 1.28                         # glow size: WoR's halo bleeds well past the outline
-STAR_SHINE_A = (0.7, 0.4)                 # additive copies of the gold outline (WoR's solid, hot edge): alpha, 2nd copy
+STAR_SHINE_A = (0.45, 0.0)  # user 2026-10-07: back to the v0.40 star (was (0.7, 0.4) + fire glow)               # additive copies of the gold outline (WoR's solid, hot edge): alpha, 2nd copy
 STAR_FIRE_FRAMES = 24                      # WoR FC_GLOW: band_HUD_gold_star_glow under Fire_2D noise, looped
 STAR_FIRE_FPS = 20.0   # WoR's UI fire loops run at 20 fps
 STAR_FIRE_NAMES = [f'WoR_HUD_starfire_{i:02d}' for i in range(STAR_FIRE_FRAMES)]
@@ -591,9 +591,7 @@ def band_meter():
           rgba=STAR_BG_RGBA, texture='WoR_HUD_star_bg'),
         E('band_hud_star_overlay', 'SpriteElement', pos=overlay, dims=(128, 128), scale=(star_k * SOV, star_k * SOV),
           z=10.0, texture='WoR_HUD_star_overlay'),
-        E('star_fire', 'SpriteElement', pos=add(overlay, scale((1.065, 1.123), SCORE_K)), dims=(128, 128),   # 64 px art
-          scale=(SCORE_K * 0.8 * STAR_K * SOV * STAR_FIRE_K, SCORE_K * 0.8 * STAR_K * SOV * STAR_FIRE_K), z=10.8,
-          alpha=STAR_FIRE_ALPHA[0], texture=STAR_FIRE_NAMES[0], blend='Add'),
+        # (v0.41's animated fire glow 'star_fire' removed 2026-10-07: back to the v0.40 star)
         E('band_HUD_gold_star_glow', 'SpriteElement', pos=add(overlay, scale((1.065, 1.123), SCORE_K)),
           dims=(128, 128), scale=(SCORE_K * 0.8 * STAR_K * SOV, SCORE_K * 0.8 * STAR_K * SOV), z=11.0, alpha=0.0,
           texture='WoR_HUD_star_glow', blend='Add'),

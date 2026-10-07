@@ -1027,3 +1027,7 @@
   number with commas into buf; if it would not fit the 10 wchar buffer (8+ digits) or the HUD is not ours, the game's call runs.
   WoR's font has the ',' glyph (map 0x2c -> 10). Log line: "score text: thousands separators hooked".
 - gem strike arc (04e3be8): confirmed working in game by the user.
+
+### v0.43 (2026-10-07): star back to the v0.40 look (user)
+- One additive outline copy at 0.45, no second copy, no animated fire glow (star_fire removed; the plugin skips it when absent).
+- Plugin names.h regenerated (ball offset used the stale 0.8 head / 1.5 scale; seen in Video Project 13). Commas confirmed in game.

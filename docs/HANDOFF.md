@@ -41,7 +41,11 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
    skins. Textures convert with the existing x360tex tooling; the Xbox 360 `.skin.xen` format (big-endian) has no converter in
    the SDK, so the skins need reverse engineering to the DE's PC skin format first. Also needs the crowd animation data
    (`guitar_crowd*.qb`) checked against the DE's.
-5. Packaging: `build.py --package` doesn't include the plugin + loader yet (Nexus option 3, "HUD fixes").
+5. (Extremely optional) Drummer animations from WoR (and GH5, user can extract it later): WoR's are extracted raw
+   in `ghwor-extract/all/x/compressed_PAK_perm_anims` (~460 drum `.ska.xen`: Drum_*_Hit_L/R, DrumDroid_*). Xbox
+   360 format, no SDK converter; first step is comparing one DE drum animation with its WoR counterpart
+   (skeleton/bone ids) before any converter work.
+6. Packaging: `build.py --package` doesn't include the plugin + loader yet (Nexus option 3, "HUD fixes").
 
 ## How to work on it
 

@@ -975,3 +975,16 @@
   WoR_HUD_Load (mpm_object_load_pak, owner WoR_HUD_font_owner, never unloaded). No theme loads/unloads a font now.
 - Feathers: 8 nested windows (each from the level up through its band, alpha increments) over 12 units: no inner
   seams. Fallback if the boot load fails: a DE font for the digits (mock first).
+- 21:00 test: "All maps in 0xcbcd0af1 are in use, pak 0xf49b1d0b cannot be loaded" at boot: the pak links table
+  has a fixed number of maps; a 4th resident pak doesn't fit. Reverted (font back in the theme pak, build.py and
+  README as before).
+- Plugin 1.10 instead: the font object IS its pak file data (0x6b66d0 -> 0x6b78b0 byte-swaps/relocates in place,
+  D3DX texture from it, linked into 0xfc1090), so it can't outlive the pak. Hook font load 0x640930 (cdecl:
+  checksum, data, 0, size, ...): for WoR_HUD_num_a1 (0xd2324e44) the game gets a private VirtualAlloc copy of the
+  raw file data (copied before the in-place fixups); its unload 0x6403b0 is then skipped. The next theme load finds
+  the font registered (0x640930 looks it up first). Log lines "score font: ...". If the size/data args turn out
+  swapped the hook logs "unexpected load arguments" and leaves it to the game.
+- Other ways considered for the font: (1) own resident pak: no free map (above); (2) gem pak gems_ghwor_hud:
+  loads before the HUD but is unloaded on gem theme switches and only exists with GemTheme=ghwor; (3) replacing a
+  stock always-loaded pak: invasive, breaks with DE updates and other mods; (4) a DE font for the digits: safe,
+  loses the WoR look (fallback, mock first).

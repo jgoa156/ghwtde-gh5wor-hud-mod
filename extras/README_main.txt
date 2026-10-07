@@ -7,10 +7,9 @@ multiplier, score box, star meter and fonts, laid out from GH5 gameplay.
 
 Install: extract this archive into the game folder (the one with GHWT_Definitive.exe). It adds:
   DATA\MODS\WoR_HUD\          the HUD theme mod
-  DATA\PAK\hud_ghwor.pak.xen  its textures
-  DATA\PAK\hud_ghwor_font.pak.xen  the WoR score font (loaded once at startup)
+  DATA\PAK\hud_ghwor.pak.xen  its textures and fonts
 Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock".
-Uninstall: delete those three items.
+Uninstall: delete those two items.
 
 Optional files (separate downloads):
   Background-only shaders     keeps ReShade effects off the HUD and highway (needs ReShade).

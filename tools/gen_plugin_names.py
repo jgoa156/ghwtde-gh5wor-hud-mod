@@ -34,7 +34,8 @@ def main():
     out += ['};', '']
     out += ['// smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc',
             f'static const uint32_t kSpFull = 0x{qbkey(wor_1g.SP_FULL_NAMES[0]):08x};   // {wor_1g.SP_FULL_NAMES[0]}',
-            f'static const uint32_t kSpFullB = 0x{qbkey(wor_1g.SP_FULL_NAMES[1]):08x};  // {wor_1g.SP_FULL_NAMES[1]}']
+            f'static const uint32_t kSpFullB = 0x{qbkey(wor_1g.SP_FULL_NAMES[1]):08x};  // {wor_1g.SP_FULL_NAMES[1]}',
+            f'static const uint32_t kScoreFont = 0x{qbkey(wor_1g.SCORE_FONT):08x};  // {wor_1g.SCORE_FONT}, kept resident']
     out += [f'static const float {k} = {v:.4f}f;' for k, v in wor_1g.plugin_geometry().items()]
     out += ['']
     out += ['// GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)',

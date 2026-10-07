@@ -18,6 +18,14 @@
 // font that isn't in the first 32 slots (the WoR numeral font, shipped in our theme pak) runs off into unmapped
 // memory. On its first call the unload loop is given the same bounds as the DE-patched font-add loop (0x640720).
 //
+// Fix 3b, theme switch crash (2026-10-06): with the bounds fixed, the unload went through, and the game then crashed
+// drawing (ReShade d3d9 under DrawPrimitiveUP) after our font was freed with the theme pak. A font is not copied out
+// of its pak: the font object IS the pak's file data (byte-swapped and relocated in place by 0x6b78b0, linked into
+// the font list 0xfc1090), so the font can't outlive the pak. Our numeral font is therefore made resident: when the
+// game loads it (0x640930, cdecl: checksum, data, 0, size, ...) the plugin hands it a private copy of the file data
+// that is never freed, and its unload (0x6403b0) is skipped. The next load of the theme finds it already registered
+// (0x640930 returns the existing font first). Stock themes ship no fonts, so nothing else changes.
+//
 // Fix 4, smooth star power fill: after the SP tube update (0x478630) runs, WoR tubes get one continuous fill instead
 // of six stretched segments: segments 1-5 are scaled to 0, segment 0 becomes the full-length glass-shaped fill
 // (WoR_HUD_spfull, or _b with lightning when the game picked the charged texture, i.e. >= 50% or active) and its
@@ -50,6 +58,7 @@ namespace
 	constexpr uintptr_t kSpCall2 = 0x47877f;
 	constexpr size_t kElementTexture = 0x214;        // sprite element: texture checksum
 	constexpr uintptr_t kUnloadFont = 0x6403b0;      // cdecl (font checksum)
+	constexpr uintptr_t kLoadFont = 0x640930;        // cdecl (checksum, data, 0, size, flags, b, b) -> font
 	constexpr uintptr_t kAddLoopStart = 0x64072f;    // imm32 of mov eax, <table start> in the font-add loop
 	constexpr uintptr_t kAddLoopEnd = 0x640743;      // imm32 of cmp eax, <table end>
 	constexpr uintptr_t kUnloadStarts[] = { 0x6403c9, 0x640417, 0x64041e };   // table start in the unload function
@@ -79,6 +88,7 @@ namespace
 		{ kSpCall1, { 0xE8 }, 1, "SP tube SetTexture call (1)" },
 		{ kSpCall2, { 0xE8 }, 1, "SP tube SetTexture call (2)" },
 		{ kUnloadFont, { 0x51, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x6A, 0x00, 0x57, 0xE8 }, 10, "font unload prologue" },
+		{ kLoadFont, { 0x57, 0x8B, 0x7C, 0x24, 0x08, 0x6A, 0x00, 0x57, 0xE8 }, 9, "font load prologue" },
 		{ kAddLoopStart - 1, { 0xB8 }, 1, "font add loop start" },
 		{ kAddLoopEnd - 1, { 0x3D }, 1, "font add loop end" },
 		{ 0x6403c8, { 0xB9 }, 1, "font unload loop start" },
@@ -280,12 +290,47 @@ namespace
 	UnloadFontFn g_unload_font = nullptr;
 	bool g_font_fixed = false;
 
+	using LoadFontFn = void *(__cdecl *)(uint32_t font, void *data, uint32_t zero, uint32_t size, uint32_t flags,
+	                                     uint32_t b1, uint32_t b2);
+	LoadFontFn g_load_font = nullptr;
+	void *g_font_copy = nullptr;     // our font's file data, private and never freed (the font object lives in it)
+
+	void *__cdecl load_font_hook(uint32_t font, void *data, uint32_t zero, uint32_t size, uint32_t flags, uint32_t b1,
+	                             uint32_t b2)
+	{
+		if (font == kScoreFont && !g_font_copy && data && size > 0x20000 && size < 0x1000000 && readable(
+		        reinterpret_cast<uintptr_t>(data), size))
+		{
+			void *copy = VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			if (copy)
+			{
+				memcpy(copy, data, size);
+				void *f = g_load_font(font, copy, zero, size, flags, b1, b2);
+				if (f)
+					g_font_copy = copy;
+				else
+					VirtualFree(copy, 0, MEM_RELEASE);
+				log("score font: %s (%u bytes, font %p)", f ? "loaded from a resident copy" : "copy load failed", size, f);
+				if (f)
+					return f;
+			}
+		}
+		else if (font == kScoreFont && !g_font_copy)
+			log("score font: unexpected load arguments (data %p, size %u), left to the game", data, size);
+		return g_load_font(font, data, zero, size, flags, b1, b2);
+	}
+
 	uint32_t __cdecl unload_font_hook(uint32_t font)
 	{
 		if (!g_font_fixed)
 		{
 			g_font_fixed = true;
 			fix_font_bounds();
+		}
+		if (font == kScoreFont && g_font_copy)
+		{
+			log("score font: unload skipped (resident)");
+			return 0;
 		}
 		return g_unload_font(font);
 	}
@@ -594,7 +639,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.9 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.10 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -604,6 +649,8 @@ namespace
 		log(sp ? "star power fill: patched (own texture names)" : "star power fill: patch failed (VirtualProtect)");
 		// push ecx; push edi; mov edi, [esp+0xc] = 6 bytes of whole instructions
 		g_unload_font = reinterpret_cast<UnloadFontFn>(install_jmp(kUnloadFont, 6, reinterpret_cast<void *>(&unload_font_hook)));
+		g_load_font = reinterpret_cast<LoadFontFn>(install_jmp(kLoadFont, 5, reinterpret_cast<void *>(&load_font_hook)));
+		log(g_load_font ? "score font: load hooked (kept resident)" : "score font: load hook failed");
 		log(g_unload_font ? "font unload: hooked (bounds fixed on first use)" : "font unload: hook failed");
 		// push ecx; push ebx; push esi; mov esi, ecx = 5 bytes of whole instructions
 		g_tube_update = reinterpret_cast<TubeUpdateFn>(install_jmp(kTubeUpdate, 5, reinterpret_cast<void *>(&tube_update_hook)));

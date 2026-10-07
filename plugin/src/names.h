@@ -28,6 +28,7 @@ static const uint32_t kSpFill[][2] = {
 // smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc
 static const uint32_t kSpFull = 0xe735c742;   // WoR_HUD_spfull
 static const uint32_t kSpFullB = 0x59d0dc4e;  // WoR_HUD_spfull_b
+static const uint32_t kScoreFont = 0xd2324e44;  // WoR_HUD_num_a1, kept resident
 static const float kClipX = 807.8485f;
 static const float kClipY = 461.6706f;
 static const float kClipW = 104.3341f;

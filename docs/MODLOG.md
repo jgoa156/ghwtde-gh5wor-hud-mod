@@ -1037,3 +1037,10 @@
   (f5ae1214: WoR Star03 sliver shrunk to 16/64 at half alpha, = 0.125 x 128 px) under the DE keys. Both materials are only used
   by GuitarEvent_StarSequenceBonus. The cyan Spark01 layer is left (its texture is shared with gem explosions).
 - Known minor: the DE star power highway glow leaks above/below the highway (user: minor, left as is).
+
+### Plugin 1.13 (2026-10-07, installed, NOT yet tested): star power burst particles at WoR size
+- The gem-pak texture swap for lil_star / lil_star2 did not take (Video Project 14): the DE keeps them in z_in_game, which
+  reloads every song and shadows ours; a script override is ignored too (see safety_no_script_redefinitions). Swaps removed.
+- Plugin: mid-function hook in Create2DParticleSystem (0x4aaae0) at 0x4aad13, after start/end scale are stored in the config
+  slot (esi: +0x10 start_scale, +0x20 end_scale, +0x44 material, +0x5c start_color bytes r g b a). With the WoR HUD up:
+  Star01 0.55 -> 0.25; Star02 0.5 -> 0.125, end 0.15, half alpha; Spark01 only at 1.5 (the burst) -> 0.5. Textures stay the DE ones.

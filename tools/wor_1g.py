@@ -805,10 +805,5 @@ BORDER_GEM_PAK = 'gems_ghwor_hud'
 # material needs no change; the sprite is already 6 x 3 like WoR's.
 BOLT_KEY = 0x9d12571c                # checksum of tex\models\highway\big_lighning01.dds
 BOLT_SRC = paths.wor('basic_gems_png', '0c30522c.png')
-# star power burst (GuitarEvent_StarSequenceBonus) particles at WoR's size: the DE draws Star01 (lil_star) at 0.55 and
-# Star02 (lil_star2) at 0.5, WoR Star01 at 0.25 and Mat_Star03 (128 px) at 0.125 with alpha 128. Both DE materials are only
-# used by that burst. (key, WoR source, canvas, content px, alpha)
-BURST_SWAPS = ((0x45c726d2, paths.wor('basic_gems_png', '45c726d2.png'), 64, 29, 1.0),    # lil_star: 64 * 0.25 / 0.55
-               (0xf5ae1214, paths.wor('basic_gems_png', '42235207.png'), 64, 16, 0.5))    # lil_star2 <- Star03: 128 * 0.125 / 0.5
 BORDER_X_SCALE = 2.6
 BORDER_OFFSET = 17.4

@@ -62,6 +62,7 @@ namespace
 	constexpr uintptr_t kScoreFmtPush = 0x476505;    // push L"%d" (seinttostring widget update, 0x4764c0)
 	constexpr uintptr_t kScoreFmtCall = 0x476511;    // call _snwprintf(buf, 10, L"%d", value) (0x4e5a80)
 	constexpr uintptr_t kSnwprintf = 0x4e5a80;
+	constexpr uintptr_t kParticleRead = 0x4aad13;    // Create2DParticleSystem (0x4aaae0): start/end scale just stored
 	constexpr uintptr_t kLoadFont = 0x640930;        // cdecl (checksum, data, 0, size, flags, b, b) -> font
 	constexpr uintptr_t kAddLoopStart = 0x64072f;    // imm32 of mov eax, <table start> in the font-add loop
 	constexpr uintptr_t kAddLoopEnd = 0x640743;      // imm32 of cmp eax, <table end>
@@ -96,6 +97,8 @@ namespace
 		{ kSpCall2, { 0xE8 }, 1, "SP tube SetTexture call (2)" },
 		{ kUnloadFont, { 0x51, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x6A, 0x00, 0x57, 0xE8 }, 10, "font unload prologue" },
 		{ kLoadFont, { 0x57, 0x8B, 0x7C, 0x24, 0x08, 0x6A, 0x00, 0x57, 0xE8 }, 9, "font load prologue" },
+		{ kParticleRead, { 0x8D, 0x56, 0x74, 0xB8, 0x9B, 0x05, 0x1B, 0x16 }, 8, "2D particle config (after scales)" },
+		{ 0x4aad3c, { 0xB8, 0x2D, 0xC9, 0x43, 0xE2 }, 5, "2D particle config (emit params)" },
 		{ kScoreFmtPush, { 0x68, 0x24, 0x0B, 0xA1, 0x00 }, 5, "score text format push" },
 		{ kScoreFmtCall, { 0xE8 }, 1, "score text snwprintf call" },
 		{ kAddLoopStart - 1, { 0xB8 }, 1, "font add loop start" },
@@ -710,6 +713,44 @@ namespace
 		return o;
 	}
 
+	// Create2DParticleSystem config slot (esi): +0x10/+0x14 start_scale, +0x20/+0x24 end_scale, +0x44 material,
+	// +0x5c start_color (r, g, b, a bytes). With the WoR HUD up, the star power phrase burst (GuitarEvent_StarSequenceBonus)
+	// gets WoR's particle sizes: Star01 0.55 -> 0.25, Star02 0.5 -> 0.125 at half alpha, its cyan Spark01 1.5 -> 0.5
+	// (only that one: the gem explosions use Spark01 at other sizes). A mod cannot redefine the script itself.
+	void *g_particle_tramp = nullptr;
+
+	void __cdecl particle_fix(uint8_t *cfg)
+	{
+		if (!g_sp.star_bar || !cfg)
+			return;
+		float *ss = reinterpret_cast<float *>(cfg + 0x10), *es = reinterpret_cast<float *>(cfg + 0x20);
+		const uint32_t mat = *reinterpret_cast<uint32_t *>(cfg + 0x44);
+		if (mat == 0xab62af58 && ss[0] > 0.54f && ss[0] < 0.56f)            // sys_Particle_Star01
+			ss[0] = ss[1] = 0.25f;
+		else if (mat == 0x49757c01 && ss[0] > 0.49f && ss[0] < 0.51f)       // sys_Particle_Star02
+		{
+			ss[0] = ss[1] = 0.125f;
+			es[0] = es[1] = 0.15f;
+			cfg[0x5f] = static_cast<uint8_t>(cfg[0x5f] / 2);
+		}
+		else if (mat == 0xc5c51fee && ss[0] > 1.49f && ss[0] < 1.51f)       // sys_Particle_Spark01 (burst only)
+			ss[0] = ss[1] = 0.5f;
+	}
+
+	__declspec(naked) void particle_hook()
+	{
+		__asm {
+			pushad
+			pushfd
+			push esi
+			call particle_fix
+			add esp, 4
+			popfd
+			popad
+			jmp dword ptr [g_particle_tramp]
+		}
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -717,7 +758,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.12 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.13 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -737,6 +778,8 @@ namespace
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
+		g_particle_tramp = install_jmp(kParticleRead, 8, reinterpret_cast<void *>(&particle_hook));
+		log(g_particle_tramp ? "star power burst: particle sizes hooked (WoR sizes)" : "star power burst: hook failed");
 		{
 			const uint8_t *call = reinterpret_cast<const uint8_t *>(kScoreFmtCall);
 			const uintptr_t target = kScoreFmtCall + 5 + *reinterpret_cast<const int32_t *>(call + 1);

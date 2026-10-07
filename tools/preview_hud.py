@@ -65,7 +65,11 @@ def state(health, sp, mult):
     col = {1: '', 2: '_green', 3: '_purple', 4: '_purple'}.get(mult, '')
     for i, st in enumerate((2, 2, 2, 1, 0)):
         v[f'light{i}'] = {'texture': f'HUD_score_light_{st}{col}'}
-    v['songtime_fg'] = {'scale': (150.0, 1.0)}
+    v['songtime_fg'] = {'dims': (wor_1g.prog_w() * 0.45, wor_1g.PROG_H * wor_1g.SCORE_K)}   # DE: bg width x completion
+    v['star_lead'] = {'alpha': 1.0}      # the plugin shows the tip dots and moves them to the tips (see walk)
+    v['prog_lead'] = {'alpha': 1.0}
+    if os.environ.get('MOCK_PLASMA'):    # the plugin's ready fill: a plasma frame on the full-length tube fill
+        v['sp_feather_fill0'] = {'texture': os.environ['MOCK_PLASMA'], 'alpha': 1.0}
     v['Score'] = {'text': '45625'}
     v['streak_number'] = {'text': '135'}
     v['star_meter_num'] = {'text': '3'}
@@ -84,6 +88,7 @@ def draw(img, root, origin, k, vals, additive=True):
         return font_cache[px]
 
     items = []
+    tips = {}     # the HUD fixes plugin's job: dots at the star bar's and the progress line's tips
 
     import math
 
@@ -97,6 +102,13 @@ def draw(img, root, origin, k, vals, additive=True):
         off = rotv((pos[0] * psc[0], pos[1] * psc[1]), prot)
         wp = (base[0] + off[0], base[1] + off[1])
         sc = st.get('scale', e.scale)
+        dm = st.get('dims', e.dims)
+        if e.local_id == 'star_filler':
+            tips['star_lead'] = (wp[0] + dm[0] * sc[0] * psc[0] - (wor_1g.COMET_HEAD - 0.5) * 64 * wor_1g.STAR_LEAD_S, wp[1])
+        if e.local_id == 'songtime_fg':
+            tips['prog_lead'] = (wp[0] + dm[0] * sc[0] * psc[0] - (wor_1g.COMET_HEAD - 0.5) * 64 * wor_1g.PROG_LEAD_S, wp[1] + dm[1] * sc[1] * psc[1] / 2)
+        if e.local_id in tips:
+            wp = tips[e.local_id]
         z = z0 + e.z
         if e.kind == 'SpriteElement' and not e.hidden:
             items.append((z, 'sprite', e, wp, (sc[0] * psc[0], sc[1] * psc[1]), dict(st, _rot=prot + e.rot)))
@@ -117,7 +129,8 @@ def draw(img, root, origin, k, vals, additive=True):
         if alpha <= 0:
             continue
         flip = sc[0] < 0
-        w, h = e.dims[0] * abs(sc[0]) * k, e.dims[1] * abs(sc[1]) * k
+        dm = st.get('dims', e.dims)
+        w, h = dm[0] * abs(sc[0]) * k, dm[1] * abs(sc[1]) * k
         cx, cy = origin[0] + wp[0] * k, origin[1] + wp[1] * k
         if kind == 'sprite':
             tex = st.get('texture', e.extra.get('texture'))

@@ -473,8 +473,34 @@ def sp_marker_pos():
     return RIGHT.at((lo + hi) / 2)
 
 
-STAR_BAR_WEDGE = 0.4    # GH5's star-progress bar is a wedge (texture WoR_HUD_star_wedge): flat bottom, top rising from 40% of the slot height at
-                        # the left to the full height at the right, revealed as it grows (clip of 2026-10-06, 6-60 s)
+STAR_BAR_WEDGE = 0.4    # (unused since 2026-10-07: the bar is straight, see STAR_BAR_NAME)
+
+# WoR's star-progress bar and song progress line (uidesc_star_meter, WoR drums clip 2026-10-07): a straight gold bar in
+# the score box slot with a white glowing dot at its tip (HUD_star_lead = hud_progression_bar_lead, Add), and above
+# the box a thin cyan line on a dark track (hud_song_progression_back) growing with the song, same dot at its tip.
+# The DE drives the bar's Scale (star_filler_scale) and the line's dims (songtime_fg = songtime_bg width x completion);
+# the HUD fixes plugin moves the two dots to the tips every frame and animates the star's fire glow.
+STAR_BAR_NAME = 'WoR_HUD_star_bar'        # soft-edged strip (hud_progression_bar_lead's vertical profile)
+STAR_BAR_H = 2.1                           # bar height / slot height
+STAR_LEAD_NAME = 'WoR_HUD_star_lead'
+COMET_HEAD = 0.8                           # where the dot sits in the comet texture (64 x 16: a tail trails to its left)
+STAR_LEAD_S = 1.5                          # comet sprite scale (canvas px per texel): the dot is ~10 px across
+PROG_LEAD_S = 1.35
+STAR_LEAD_RGB = (255, 225, 140)            # tail colours (clip: gold trail on the star bar, steel blue on the song line)
+PROG_LEAD_RGB = (110, 160, 205)
+PROG_FILL_NAME = 'WoR_HUD_prog_fill'
+PROG_BACK_NAME = 'WoR_HUD_prog_back'
+PROG_LEAD_NAME = 'WoR_HUD_prog_lead'
+PROG_ROW = 26.2                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
+PROG_H = 4.5                               # line height (score box texture rows)
+PROG_BACK_H = 16.0                         # dark track sprite height (rows); its art is the middle of a 256 x 16 texture
+PROG_RGBA = (104, 138, 180, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
+STAR_FIRE_K = 1.28                         # glow size: WoR's halo bleeds well past the outline
+STAR_SHINE_A = (0.7, 0.4)                 # additive copies of the gold outline (WoR's solid, hot edge): alpha, 2nd copy
+STAR_FIRE_FRAMES = 24                      # WoR FC_GLOW: band_HUD_gold_star_glow under Fire_2D noise, looped
+STAR_FIRE_FPS = 20.0   # WoR's UI fire loops run at 20 fps
+STAR_FIRE_NAMES = [f'WoR_HUD_starfire_{i:02d}' for i in range(STAR_FIRE_FRAMES)]
+STAR_FIRE_ALPHA = (0.95, 0.3, 1.1)        # base, pulse amplitude, pulse Hz (clip: ~1 Hz glow swell)
 
 
 SCORE_SLOT_ROWS = (75, 81)  # rows of the star-progress slot hole in the score box texture (512x128, alpha < 60)
@@ -493,6 +519,15 @@ def star_slot_centre():
 def star_slot_height():
     top, bottom = star_slot_rows()
     return bottom - top
+
+
+def prog_w():
+    """Full width of the song progress line (the star bar's full width: both end under the star)."""
+    return 306 * K0 * SCORE_X_K
+
+
+def prog_y():
+    return SCORE_C[1] + (PROG_ROW - 64) * SCORE_K
 
 
 def band_meter():
@@ -521,8 +556,19 @@ def band_meter():
         # score box: star-progress fill behind the box art, black slot behind both, glass front over the score
         # GH5's wedge-shaped bar: an anti-aliased wedge texture fitted to the slot hole, stretched by the DE's scale
         E('star_filler', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(306 * K0 / 0.7 * SCORE_X_K,
-          star_slot_height() * 16 / 14), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255),
-          texture='WoR_HUD_star_wedge'),
+          star_slot_height() * STAR_BAR_H), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255),
+          texture=STAR_BAR_NAME),
+        E('star_lead', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(64, 16),
+          scale=(STAR_LEAD_S, STAR_LEAD_S), z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
+        # song progress: the DE sets songtime_fg's dims to songtime_bg's width x completion (script dadb0cff)
+        E('prog_back', 'SpriteElement', pos=(filler_l[0] + prog_w() / 2, prog_y()), dims=(prog_w() / 0.9, PROG_BACK_H * SCORE_K),
+          z=4.0, texture=PROG_BACK_NAME),
+        E('songtime_bg', 'SpriteElement', pos=(filler_l[0], prog_y() - PROG_H * SCORE_K / 2), dims=(prog_w(), PROG_H * SCORE_K),
+          just=(-1, -1), z=4.05, texture=BLANK),
+        E('songtime_fg', 'SpriteElement', pos=(filler_l[0], prog_y() - PROG_H * SCORE_K / 2), dims=(0.0, PROG_H * SCORE_K),
+          just=(-1, -1), z=4.1, rgba=PROG_RGBA, texture=PROG_FILL_NAME, blend='Add'),
+        E('prog_lead', 'SpriteElement', pos=(filler_l[0], prog_y()), dims=(64, 16),
+          scale=(PROG_LEAD_S, PROG_LEAD_S), z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),
         E('Score', 'TextBlockElement',
@@ -538,6 +584,9 @@ def band_meter():
           rgba=STAR_BG_RGBA, texture='WoR_HUD_star_bg'),
         E('band_hud_star_overlay', 'SpriteElement', pos=overlay, dims=(128, 128), scale=(star_k * SOV, star_k * SOV),
           z=10.0, texture='WoR_HUD_star_overlay'),
+        E('star_fire', 'SpriteElement', pos=add(overlay, scale((1.065, 1.123), SCORE_K)), dims=(128, 128),   # 64 px art
+          scale=(SCORE_K * 0.8 * STAR_K * SOV * STAR_FIRE_K, SCORE_K * 0.8 * STAR_K * SOV * STAR_FIRE_K), z=10.8,
+          alpha=STAR_FIRE_ALPHA[0], texture=STAR_FIRE_NAMES[0], blend='Add'),
         E('band_HUD_gold_star_glow', 'SpriteElement', pos=add(overlay, scale((1.065, 1.123), SCORE_K)),
           dims=(128, 128), scale=(SCORE_K * 0.8 * STAR_K * SOV, SCORE_K * 0.8 * STAR_K * SOV), z=11.0, alpha=0.0,
           texture='WoR_HUD_star_glow', blend='Add'),
@@ -552,7 +601,9 @@ def band_meter():
         # DE star-earned sparks: Star_Meter_Sparks01 centres them at (64,64) in this container (a 128 px star's
         # top-left in the stock layout), so the container's top-left sits 64 up and left of our star's centre
         E('star_shine', 'SpriteElement', pos=overlay, dims=(128, 128), scale=(star_k * SOV, star_k * SOV), z=10.5,
-          alpha=0.45, texture='WoR_HUD_star_overlay', blend='Add'),
+          alpha=STAR_SHINE_A[0], texture='WoR_HUD_star_overlay', blend='Add'),
+        E('star_shine2', 'SpriteElement', pos=overlay, dims=(128, 128), scale=(star_k * SOV * 1.03, star_k * SOV * 1.03), z=10.55,
+          alpha=STAR_SHINE_A[1], texture='WoR_HUD_star_overlay', blend='Add'),
         # tubes: drop shadow, black backing (+ gap fill) and the end balls under the art, then the art
         LEFT.sprite('rm_shadow', 'WoR_HUD_rm_base', z=2.0, rgba=(0, 0, 0, 255), alpha=RAIL_SHADOW_A, offset=RAIL_SHADOW_OFF),
         RIGHT.sprite('sp_shadow', 'WoR_HUD_sp_base', z=2.0, rgba=(0, 0, 0, 255), alpha=RAIL_SHADOW_A, offset=RAIL_SHADOW_OFF),
@@ -575,7 +626,7 @@ def band_meter():
           scale=(RAIL_SX * 1.1 * SP_MARKER_K, RAIL_SX * 1.1 * SP_MARKER_K), rot=SP_MARKER_ROT, z=3.9,
           texture='WoR_HUD_needle'),
         graveyard('grave', [
-            dummy('Needle'), dummy('glow'), dummy('songtime_bg'), dummy('songtime_fg'),
+            dummy('Needle'), dummy('glow'),
             dummy('HUD_meter_green_bg'), dummy('HUD_meter_yellow_bg'), dummy('HUD_meter_red_bg'),
             dummy('secondary_bulbs', 'ContainerElement'), dummy('streak_anim_sink', 'ContainerElement')]),
     ])

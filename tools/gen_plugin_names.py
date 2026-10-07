@@ -51,6 +51,15 @@ def main():
     for i in range(0, len(wor_1g.SP_BALL_NAMES), 8):
         out.append('	' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_BALL_NAMES[i:i + 8]) + ',')
     out += ['};', '// bottom glow, cap (white), cap (colour): texture names and the alpha each shows at']
+    out += ['// star bar / song progress / star glow (tools/wor_1g.py)',
+            f'static const uint32_t kStarBar = 0x{qbkey(wor_1g.STAR_BAR_NAME):08x}, kStarLead = 0x{qbkey(wor_1g.STAR_LEAD_NAME):08x};',
+            f'static const uint32_t kProgFill = 0x{qbkey(wor_1g.PROG_FILL_NAME):08x}, kProgLead = 0x{qbkey(wor_1g.PROG_LEAD_NAME):08x};',
+            f'static const float kCometHead = {wor_1g.COMET_HEAD:.3f}f, kStarLeadS = {wor_1g.STAR_LEAD_S:.3f}f, kProgLeadS = {wor_1g.PROG_LEAD_S:.3f}f;',
+            f'static const float kFireFps = {wor_1g.STAR_FIRE_FPS:.1f}f, kFireBase = {wor_1g.STAR_FIRE_ALPHA[0]:.3f}f, kFireAmp = {wor_1g.STAR_FIRE_ALPHA[1]:.3f}f, kFireHz = {wor_1g.STAR_FIRE_ALPHA[2]:.3f}f;',
+            f'static const uint32_t kStarFire[{wor_1g.STAR_FIRE_FRAMES}] = {{']
+    for i in range(0, wor_1g.STAR_FIRE_FRAMES, 8):
+        out.append('	' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.STAR_FIRE_NAMES[i:i + 8]) + ',')
+    out += ['};', '']
     out += [f'static const uint32_t kGlowTex[3] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_GLOW_NAMES)
             + ' };   // ' + ', '.join(wor_1g.SP_GLOW_NAMES)]
     out += ['static const float kGlowAlpha[3] = { ' + ', '.join(f'{g[4]:.2f}f' for g in wor_1g.SP_GLOW_SPRITES) + ' };']

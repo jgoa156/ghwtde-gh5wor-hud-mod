@@ -139,7 +139,7 @@ def tube_glow(fill_png, out_png, rgb, spread=3, blur=5.0, core=0.35, ramp=None):
 
 
 def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.0, loop_tiles=((0, 1), (1, -1)),
-                  noise_scale=(0.5, 1.0), smooth=1.2):
+                  noise_scale=(0.5, 1.0), smooth=1.2, arc=None):
     """GH5's ready star power (WoR material Mat_Sp_Ready_Fire: SP_Fill_Glow02 under a scrolling noise volume) as a
     seamless loop of n frames in the tube fill's own frame. fill_png: the fill (its alpha is the glass interior);
     glow_png: SP_Fill_Glow02 (its brightness across the width is the hot core); noise_png: WoR's noise slice. Two
@@ -192,8 +192,99 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
             a_ch = img.split()[3]
             img = img.filter(ImageFilter.GaussianBlur(smooth))
             img.putalpha(a_ch)
+        if arc:
+            img = add_arc(img, k, **arc)
         frames.append(img)
     return frames
+
+
+def add_arc(img, k, png, rows, center, frames=16, every=3, width=0.8, strength=1.0, blur=0.7):
+    """WoR's ready tube lightning (Tesla needle, Mat_Lightning_Arc_Anim02: Lightining_arc_anim01, 16 frames at 20 fps)
+    drawn into plasma frame k: arc frame (k // every) % frames, turned to run along the tube's centre line
+    (texture x = center[0] + center[1] * y over rows), `width` of the fill's width, added in white inside the fill."""
+    import numpy as np
+    from PIL import ImageFilter
+    a = np.asarray(img).astype(float)
+    h, w = a.shape[:2]
+    sheet = Image.open(png).convert('L')
+    fh = sheet.size[1] // frames
+    f = (k // every) % frames
+    wire = sheet.crop((0, f * fh, sheet.size[0], (f + 1) * fh)).transpose(Image.ROTATE_90)
+    inside = a[..., 3] / 255.0
+    span = [int(rows[0]), int(rows[1])]
+    xs = np.where(inside[(span[0] + span[1]) // 2] > 0.5)[0]
+    ww = max(4, int(round((xs[-1] - xs[0] + 1) * width))) if len(xs) else 12
+    wire = wire.resize((ww, span[1] - span[0]), Image.BICUBIC).filter(ImageFilter.MaxFilter(3))   # keep the bolt's weight
+    wire = np.asarray(wire).astype(float) / 255.0
+    lum = np.zeros((h, w))
+    for i, y in enumerate(range(span[0], span[1])):
+        row = np.where(inside[y] > 0.5)[0]          # follow the fill's own centre (the art is slanted)
+        cx = (row[0] + row[-1] + 1) / 2 if len(row) else center[0] + center[1] * y
+        x0 = int(round(cx - ww / 2))
+        lo, hi = max(0, x0), min(w, x0 + ww)
+        if hi > lo:
+            lum[y, lo:hi] = wire[i, lo - x0:hi - x0]
+    if blur:   # a soft core plus a wider halo, like the arc's glow in WoR footage
+        src = Image.fromarray((np.clip(lum, 0, 1) * 255).astype('uint8'))
+        core = np.asarray(src.filter(ImageFilter.GaussianBlur(blur))).astype(float) / 255.0
+        halo = np.asarray(src.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(blur * 3))).astype(float) / 255.0
+        lum = np.clip(core * 1.3 + halo * 0.7, 0, 1)
+    a[..., :3] = a[..., :3] + (255.0 - a[..., :3]) * (lum * strength * inside)[..., None]
+    return Image.fromarray(np.clip(a + 0.5, 0, 255).astype('uint8'), 'RGBA')
+
+
+def soft_strip(src_png, out_png, size=(64, 16), rgb=(255, 255, 255), core=0.0):
+    """A horizontal bar texture with soft (anti-aliased) top and bottom edges: the vertical brightness profile of an
+    extracted glow sprite's centre column (WoR's hud_progression_bar_lead), stretched along the bar, in `rgb`;
+    core > 0 mixes white into the brightest rows."""
+    import numpy as np
+    src = Image.open(src_png).convert('RGBA')
+    col = np.asarray(src.resize((1, size[1]), Image.BICUBIC)).astype(float)[:, 0]
+    prof = np.maximum(col[:, 3], col[:, :3].max(axis=1)) / 255.0
+    prof = np.sqrt(prof / max(prof.max(), 1e-6))     # flatter: a bar, not a dot's falloff
+    out = np.zeros((size[1], size[0], 4))
+    rgbv = np.array(rgb, float)
+    out[..., :3] = rgbv + (255.0 - rgbv) * (core * prof ** 4)[:, None, None]
+    out[..., 3] = (prof * 255.0)[:, None]
+    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
+def fire_frames(glow_png, noise_png, n, strength=2.0, flick=0.4, scale=0.18, size=64):
+    """WoR's star glow (FC_GLOW / progression_head: Fire_2D over band_HUD_gold_star_glow with a scrolling noise
+    volume) as a seamless n-frame loop: the glow's pixels are displaced and its alpha modulated by WoR's noise
+    scrolling a whole tile per loop, so the outline's fiery halo licks and flickers in place."""
+    import numpy as np
+    g = np.asarray(Image.open(glow_png).convert('RGBA').resize((size, size), Image.LANCZOS)).astype(float)   # a glow: 64 px is plenty
+    h, w = g.shape[:2]
+    noise = np.asarray(Image.open(noise_png).convert('L')).astype(float) / 255.0
+    nh, nw = noise.shape
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+
+    def sample(arr, u, v):
+        H, W = arr.shape[:2]
+        u %= W
+        v %= H
+        x0, y0 = np.floor(u).astype(int), np.floor(v).astype(int)
+        fx, fy = u - x0, v - y0
+        x1, y1 = (x0 + 1) % W, (y0 + 1) % H
+        fx = fx[..., None] if arr.ndim == 3 else fx
+        fy = fy[..., None] if arr.ndim == 3 else fy
+        a = arr[y0, x0] * (1 - fx) + arr[y0, x1] * fx
+        b = arr[y1, x0] * (1 - fx) + arr[y1, x1] * fx
+        return a * (1 - fy) + b * fy
+
+    out = []
+    for k in range(n):
+        t = k / n
+        n1 = sample(noise, xx * scale * nw / w * 4, yy * scale * nh / h * 4 + nh * t)
+        n2 = sample(noise, xx * scale * nw / w * 6 + 11.0 + nw * t, yy * scale * nh / h * 6 + 5.0)
+        dx, dy = (n1 - 0.5) * strength, (n2 - 0.5) * strength - abs(n1 - 0.5) * strength   # licks upward
+        px = np.clip(xx + dx, 0, w - 1)
+        py = np.clip(yy + dy, 0, h - 1)
+        im = sample(g, px, py)
+        im[..., 3] *= np.clip(1.0 - flick + flick * 2.0 * (0.5 * (n1 + n2)), 0, 1.0)
+        out.append(Image.fromarray(np.clip(im + 0.5, 0, 255).astype('uint8'), 'RGBA'))
+    return out
 
 
 def edge_strip(src_png, box, out_png, size=(16, 16)):
@@ -225,4 +316,31 @@ def wedge_strip(src_png, box, out_png, size=(256, 16), left=0.4, pad=1, ss=8):
     out = np.zeros((h, w, 4))
     out[..., :3] = 255.0
     out[..., 3] = a
+    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
+def comet(lead_png, out_png, tail_rgb, size=(64, 16), head=0.8, tail_len=0.32, tail_a=0.9, head_r=3.2):
+    """The progress-bar dot with a tail (WoR's HUD_star_lead / hud_progression_bar_lead on both bars): the extracted lead
+    sprite's blob, white and glowing, at `head` of the width, plus a soft tail of `tail_rgb` trailing to its left (it
+    fades over `tail_len` of the width), the vertical profile taken from the same sprite so the edges stay soft."""
+    import numpy as np
+    src = Image.open(lead_png).convert('RGBA')
+    col = np.asarray(src.resize((1, size[1]), Image.BICUBIC)).astype(float)[:, 0]
+    prof = np.maximum(col[:, 3], col[:, :3].max(axis=1)) / 255.0
+    prof = prof / max(prof.max(), 1e-6)
+    w, h = size
+    x = np.arange(w, dtype=float)[None, :]
+    hx = head * w
+    dx = hx - x                                          # >0 = behind the head
+    tail = np.where(dx > 0, np.exp(-dx / (tail_len * w / 3.0)), 0.0) * tail_a
+    y = (np.arange(h, dtype=float)[:, None] - (h - 1) / 2.0) / (h / 2.0)
+    blob = np.exp(-(((x - hx) / head_r) ** 2 + (y * h / 2.0 / (head_r * 0.9)) ** 2))          # the bright dot
+    halo = np.exp(-(((x - hx) / (head_r * 2.2)) ** 2 + (y * h / 2.0 / (head_r * 1.8)) ** 2)) * 0.55
+    narrow = np.exp(-(y / 0.55) ** 2)                       # the tail hugs the bar: thinner than the halo
+    a = np.clip(np.maximum(tail * narrow, halo) * prof[:, None] ** 0.5 + blob, 0, 1)
+    white = np.clip(blob + halo * 0.7, 0, 1)[..., None]
+    rgb = np.array(tail_rgb, float)[None, None] * (1 - white) + 255.0 * white
+    out = np.zeros((h, w, 4))
+    out[..., :3] = rgb
+    out[..., 3] = a * 255.0
     Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)

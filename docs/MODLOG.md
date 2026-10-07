@@ -988,3 +988,19 @@
   loads before the HUD but is unloaded on gem theme switches and only exists with GemTheme=ghwor; (3) replacing a
   stock always-loaded pak: invasive, breaks with DE updates and other mods; (4) a DE font for the digits: safe,
   loses the WoR look (fallback, mock first).
+
+### v0.41 + plugin 1.11 (2026-10-07, installed, NOT yet tested): WoR score box effects (user: WoR drums clip Video Project 1)
+- Star bar: straight (wedge dropped), soft-edged strip from hud_progression_bar_lead's profile; WoR's dot with a tail
+  (HUD_star_lead = hud_progression_bar_lead, Add) = comet texture (extracted dot, white head, coloured tail: gold on the
+  star bar, steel blue (110,160,205) on the song line), placed by the plugin on the bar's tip each frame
+  (star_filler: pos + dims*scale; songtime_fg: pos + dims.x) - the DE drives scale/dims.
+- Song progress line above the score box (WoR progress_background/hud_song_progression_back track + the DE's songtime_fg
+  dims, steel blue (104,138,180) fill); songtime_bg/fg are now real elements instead of dummies.
+- Star: solid WoR look = two extra additive copies of the gold outline + a bigger, stronger fire glow loop (24 frames
+  of band_HUD_gold_star_glow under noise_32x32x32, 64 px, 20 fps, ~1 Hz swell), played by the plugin.
+- Ready tube: WoR's Tesla arc (Lightining_arc_anim01, 16 frames at 20 fps) baked into the 120 plasma frames.
+- Lightning "strike" investigation: GH5 clip 3.7 s = bolt from the top onto the strikeline gem + cyan splash + stars
+  (3D highway FX; the DE already has it, Video Project 7). WoR clip 20 s (first charge): white shards spray out of the
+  tube/badge area (~0.5 s), then the same highway bolt. HUD-level bolts exist only as p2p_lightning_create (battle/coop:
+  Mat_Lightning_Arc_Anim01/02 + ball_anim01/02 + spark particles, from goal_hud.qb) and lightning_strike_player_sp_meter
+  (arc to the SP meter's top and along it) - not called in single player. Waiting for the user to say which one they mean.

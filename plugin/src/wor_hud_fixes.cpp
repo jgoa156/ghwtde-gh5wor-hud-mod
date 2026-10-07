@@ -37,6 +37,7 @@
 // the fill top; crossing into ready, a ball-lightning burst (16 frames at 20 fps) at the fill top.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <cmath>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -72,6 +73,9 @@ namespace
 	constexpr size_t kElementParent = 0x64;
 	constexpr uint32_t kRefreshEvent = 0x8683400c;   // tube update event that only refreshes textures
 	constexpr uintptr_t kElementUpdate = 0x5a2dd0;   // void __thiscall (element): per-frame update, recurses into children
+	constexpr size_t kElementPos = 0xa8;             // float x, y (the position the desc gives, in the parent)
+	constexpr size_t kElementScale = 0xc0;           // float x, y
+	constexpr size_t kElementDims = 0x1bc;           // float w, h
 	constexpr size_t kElementAlpha = 0x94;           // float alpha (tween target at +0x44 = 0xd8)
 	constexpr size_t kElementFirstChild = 0x70;
 	constexpr size_t kElementNextSibling = 0x7c;
@@ -373,6 +377,7 @@ namespace
 		void *clip = nullptr, *fill = nullptr, *parent = nullptr;
 		void *glow[3] = {};    // bottom glow, cap (white), cap (colour)
 		void *burst[3] = {};
+		void *star_bar = nullptr, *star_lead = nullptr, *prog_fill = nullptr, *prog_lead = nullptr, *star_fire = nullptr;
 		void *feather[kFeathers] = {};   // soft fill top: clip windows above the level, each with a faded fill copy
 		int feathers = 0;
 		bool effects = false;  // effect sprites found and the alpha field checked
@@ -421,6 +426,16 @@ namespace
 					g_sp.glow[k] = e;
 			if (t == kBall[0] && bursts < 3)
 				g_sp.burst[bursts++] = e;
+			if (t == kStarBar)
+				g_sp.star_bar = e;
+			else if (t == kStarLead)
+				g_sp.star_lead = e;
+			else if (t == kProgFill)
+				g_sp.prog_fill = e;
+			else if (t == kProgLead)
+				g_sp.prog_lead = e;
+			else if (t == kStarFire[0])
+				g_sp.star_fire = e;
 			void *child = *reinterpret_cast<void **>(field(e, kElementFirstChild));
 			if (e != clip && child && texture_of(child) == kSpFull && g_sp.feathers < kFeathers)
 				g_sp.feather[g_sp.feathers++] = e;
@@ -432,6 +447,8 @@ namespace
 		g_sp.effects = ok;
 		log("star power effects: %s (glows %p %p %p, bursts %d, feathers %d)", ok ? "found" : "not found, fill only",
 		    g_sp.glow[0], g_sp.glow[1], g_sp.glow[2], bursts, g_sp.feathers);
+		log("score box effects: star bar %p lead %p, song line %p lead %p, star fire %p", g_sp.star_bar, g_sp.star_lead,
+		    g_sp.prog_fill, g_sp.prog_lead, g_sp.star_fire);
 	}
 
 	float level_y(float level)
@@ -479,6 +496,32 @@ namespace
 		set_pos(g_sp.fill, nullptr, kFillX - kClipX, kFillY - top, 1);
 	}
 
+	// the star bar's and the song line's dots (WoR's HUD_star_lead): comets with the dot at kCometHead of their width,
+	// placed on the tip of the bar the DE grows (scale / dims set by its own scripts); the star's fire glow loop + swell
+	void place_score_effects(double t)
+	{
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		if (g_sp.star_bar && g_sp.star_lead)
+		{
+			const float w = f32(g_sp.star_bar, kElementDims) * f32(g_sp.star_bar, kElementScale);
+			const float x = f32(g_sp.star_bar, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kStarLeadS;
+			set_pos(g_sp.star_lead, nullptr, x, f32(g_sp.star_bar, kElementPos + 4), 1);
+			set_alpha(g_sp.star_lead, w > 2.0f ? 1.0f : 0.0f);
+		}
+		if (g_sp.prog_fill && g_sp.prog_lead)
+		{
+			const float w = f32(g_sp.prog_fill, kElementDims);
+			const float x = f32(g_sp.prog_fill, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kProgLeadS;
+			set_pos(g_sp.prog_lead, nullptr, x, f32(g_sp.prog_fill, kElementPos + 4) + f32(g_sp.prog_fill, kElementDims + 4) * 0.5f, 1);
+			set_alpha(g_sp.prog_lead, w > 2.0f ? 1.0f : 0.0f);
+		}
+		if (g_sp.star_fire)
+		{
+			set_texture(g_sp.star_fire, kStarFire[static_cast<long long>(t * kFireFps) % (sizeof(kStarFire) / sizeof(kStarFire[0]))]);
+			set_alpha(g_sp.star_fire, kFireBase + kFireAmp * static_cast<float>(sin(t * 6.2831853 * kFireHz)));
+		}
+	}
+
 	// every frame (from the clip window's own update, game thread)
 	void sp_frame()
 	{
@@ -497,6 +540,7 @@ namespace
 				g_sp.glide_dur = 0.0;
 		}
 		place_fill();
+		place_score_effects(t);
 		const bool shown = g_sp.level > 0.001f;
 		if (g_sp.ready && shown)
 			set_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
@@ -639,7 +683,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.10 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.11 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

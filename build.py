@@ -286,22 +286,41 @@ def main():
     # (what the DE picks when charged) is its first frame
     glow02 = paths.wor('basic_gems_png', 'a1c363bd.png')
     noise = paths.wor('ui_shared_png2', 'noise_32x32x32.png')
-    frames = wor_art.plasma_frames(full, glow02, noise, wor_1g.SP_PLASMA_FRAMES, **wor_1g.SP_PLASMA_COLOURS)
+    # + WoR's tube lightning (Tesla needle: Lightining_arc_anim01, 16 frames at 20 fps) along the fill's centre
+    arc_src = paths.wor('basic_gems_png', '0c30522c.png')
+    frames = wor_art.plasma_frames(full, glow02, noise, wor_1g.SP_PLASMA_FRAMES, **wor_1g.SP_PLASMA_COLOURS,
+                                   arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
+                                            every=round(wor_1g.SP_PLASMA_FPS / 20)))
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')
         im.save(out)
         pngs.append(out)
-        sources[name] = {'src': glow02, 'noise': noise, 'shape': full, 'box': None, 'flip': False}
+        sources[name] = {'src': glow02, 'noise': noise, 'shape': full, 'arc': arc_src, 'box': None, 'flip': False}
     # ready burst: WoR's Ball_lightning01 (4x4 cells of 32 px)
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
     for i, name in enumerate(wor_1g.SP_BALL_NAMES):
         ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
-    # GH5's wedge-shaped star-progress bar (anti-aliased), shape cut from WoR's score meter slot footprint
-    wedge_src = os.path.join(WOR_PNG, 'band_HUD_star_score_meter.png')
-    wedge = os.path.join(work, 'WoR_HUD_star_wedge.png')
-    wor_art.wedge_strip(wedge_src, (0, 0, 512, 128), wedge, left=wor_1g.STAR_BAR_WEDGE)
-    pngs.append(wedge)
-    sources['WoR_HUD_star_wedge'] = {'src': wedge_src, 'box': [0, 0, 512, 128], 'flip': False, 'wedge': wor_1g.STAR_BAR_WEDGE}
+    # WoR's straight star-progress bar and song progress line: soft-edged strips from hud_progression_bar_lead's
+    # vertical profile (the DE tints the star bar), the same dot at both tips, WoR's dark progress track
+    lead = os.path.join(WOR_PNG, 'hud_progression_bar_lead.png')
+    for name, core in ((wor_1g.STAR_BAR_NAME, 0.0), (wor_1g.PROG_FILL_NAME, 0.0)):
+        out = os.path.join(work, name + '.png')
+        wor_art.soft_strip(lead, out, core=core)
+        pngs.append(out)
+        sources[name] = {'src': lead, 'box': None, 'flip': False, 'strip': core}
+    for name, rgb in ((wor_1g.STAR_LEAD_NAME, wor_1g.STAR_LEAD_RGB), (wor_1g.PROG_LEAD_NAME, wor_1g.PROG_LEAD_RGB)):
+        out = os.path.join(work, name + '.png')
+        wor_art.comet(lead, out, rgb, head=wor_1g.COMET_HEAD)      # the extracted dot, white-hot, with a coloured tail
+        pngs.append(out)
+        sources[name] = {'src': lead, 'box': None, 'flip': False, 'comet': list(rgb)}
+    ship(wor_1g.PROG_BACK_NAME, os.path.join(WOR_PNG, 'hud_song_progression_back.png'))
+    # the star's fire glow (WoR FC_GLOW: band_HUD_gold_star_glow under Fire_2D noise) as a loop the plugin plays
+    star_glow = os.path.join(WOR_PNG, 'band_HUD_gold_star_glow.png')
+    for name, im in zip(wor_1g.STAR_FIRE_NAMES, wor_art.fire_frames(star_glow, noise, wor_1g.STAR_FIRE_FRAMES)):
+        out = os.path.join(work, name + '.png')
+        im.save(out)
+        pngs.append(out)
+        sources[name] = {'src': star_glow, 'noise': noise, 'box': None, 'flip': False}
     # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
     for name in wor_1g.SP_GLOW_NAMES:
         ship(name, os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))

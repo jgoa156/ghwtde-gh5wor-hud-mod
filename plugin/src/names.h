@@ -70,6 +70,17 @@ static const uint32_t kBall[16] = {
 	0x5dba5f9d, 0x2abd6f0b, 0x4a7ae6ee, 0x3d7dd678, 0xa47487c2, 0xd373b754, 0x4d1722f7, 0x3a101261,
 };
 // bottom glow, cap (white), cap (colour): texture names and the alpha each shows at
+// star bar / song progress / star glow (tools/wor_1g.py)
+static const uint32_t kStarBar = 0xb6c865a9, kStarLead = 0x635ae815;
+static const uint32_t kProgFill = 0x424eda5d, kProgLead = 0x9f9c3522;
+static const float kCometHead = 0.800f, kStarLeadS = 1.500f, kProgLeadS = 1.350f;
+static const float kFireFps = 20.0f, kFireBase = 0.950f, kFireAmp = 0.300f, kFireHz = 1.100f;
+static const uint32_t kStarFire[24] = {
+	0x78514edd, 0x0f567e4b, 0x965f2ff1, 0xe1581f67, 0x7f3c8ac4, 0x083bba52, 0x9132ebe8, 0xe635db7e,
+	0x768ac6ef, 0x018df679, 0x614a7f9c, 0x164d4f0a, 0x8f441eb0, 0xf8432e26, 0x6627bb85, 0x11208b13,
+	0x8829daa9, 0xff2eea3f, 0x6f91f7ae, 0x1896c738, 0x4a672c5f, 0x3d601cc9, 0xa4694d73, 0xd36e7de5,
+};
+
 static const uint32_t kGlowTex[3] = { 0x12792a28, 0x7169eb54, 0x6bb33f29 };   // WoR_HUD_spglow_bottom, WoR_HUD_spglow_cap_w, WoR_HUD_spglow_cap_c
 static const float kGlowAlpha[3] = { 1.00f, 1.00f, 0.50f };
 // burst sprites: canvas offset from the fill top

@@ -1012,3 +1012,10 @@
 - Shards research: NewMale_RP_FX (guitar_hud) is only a blue spark flash on the SP needle (gain multiplier >= 2), not the
   shards. gp_starpower_teslasparks01 is a 3D highway particle (64 white JOW_Spark01 sparks, life 1-3 s, gravity); the
   teslafx scripts (create/do_starpower_teslafx, guitar_starpower/guitar_gems) are not in the decompiled text, still to read.
+
+### v0.42 (2026-10-07, installed, NOT yet tested): score box dots (user: Video Project 8 vs WOR.mp4)
+- Dots: the comet's tail is gone; both bars use the same white aura ball (soft, centred, COMET_HEAD 0.5, scale 1.5 -> 1.1).
+- Song line: runs from the score box's left edge (extended 15.6 px left, 8 px right) and sits 3.9 rows lower (PROG_ROW 30), glued
+  to the box like WoR's. Mock: verify/mock_score_v042_x4.png.
+- User saw "glitchy low-poly pixel" shards in the DE at star power activation: the DE already draws something there
+  (its own particles); WoR's version is smooth white leaf-shaped slivers. Not changed yet.

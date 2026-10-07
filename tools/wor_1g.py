@@ -483,15 +483,15 @@ STAR_BAR_WEDGE = 0.4    # (unused since 2026-10-07: the bar is straight, see STA
 STAR_BAR_NAME = 'WoR_HUD_star_bar'        # soft-edged strip (hud_progression_bar_lead's vertical profile)
 STAR_BAR_H = 2.1                           # bar height / slot height
 STAR_LEAD_NAME = 'WoR_HUD_star_lead'
-COMET_HEAD = 0.8                           # where the dot sits in the comet texture (64 x 16: a tail trails to its left)
-STAR_LEAD_S = 1.5                          # comet sprite scale (canvas px per texel): the dot is ~10 px across
-PROG_LEAD_S = 1.35
-STAR_LEAD_RGB = (255, 225, 140)            # tail colours (clip: gold trail on the star bar, steel blue on the song line)
-PROG_LEAD_RGB = (110, 160, 205)
+COMET_HEAD = 0.5                           # where the ball sits in its texture (64 x 16): centred, no tail (WoR's dot is an aura ball)
+STAR_LEAD_S = 1.1                          # ball sprite scale (canvas px per texel); user 2026-10-07: 1.5 was too big
+PROG_LEAD_S = 1.1
+STAR_LEAD_RGB = (255, 255, 255)            # tail colours (clip: gold trail on the star bar, steel blue on the song line)
+PROG_LEAD_RGB = (255, 255, 255)           # both bars use the same white ball
 PROG_FILL_NAME = 'WoR_HUD_prog_fill'
 PROG_BACK_NAME = 'WoR_HUD_prog_back'
 PROG_LEAD_NAME = 'WoR_HUD_prog_lead'
-PROG_ROW = 26.2                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
+PROG_ROW = 30.0                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
 PROG_H = 4.5                               # line height (score box texture rows)
 PROG_BACK_H = 16.0                         # dark track sprite height (rows); its art is the middle of a 256 x 16 texture
 PROG_RGBA = (104, 138, 180, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
@@ -521,9 +521,16 @@ def star_slot_height():
     return bottom - top
 
 
+PROG_LEFT_EXT, PROG_RIGHT_EXT = 15.6, 8.0   # the line runs from the score box's left edge (WoR clip) to under the star
+
+
 def prog_w():
-    """Full width of the song progress line (the star bar's full width: both end under the star)."""
-    return 306 * K0 * SCORE_X_K
+    """Full width of the song progress line (the box's width: both ends as in the WoR clip)."""
+    return 306 * K0 * SCORE_X_K + PROG_LEFT_EXT + PROG_RIGHT_EXT
+
+
+def prog_x():
+    return sx(add(sm(2.733, 35.653), scale((-171.40, -4.25), K0)))[0] - PROG_LEFT_EXT
 
 
 def prog_y():
@@ -561,13 +568,13 @@ def band_meter():
         E('star_lead', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(64, 16),
           scale=(STAR_LEAD_S, STAR_LEAD_S), z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
         # song progress: the DE sets songtime_fg's dims to songtime_bg's width x completion (script dadb0cff)
-        E('prog_back', 'SpriteElement', pos=(filler_l[0] + prog_w() / 2, prog_y()), dims=(prog_w() / 0.9, PROG_BACK_H * SCORE_K),
+        E('prog_back', 'SpriteElement', pos=(prog_x() + prog_w() / 2, prog_y()), dims=(prog_w() / 0.9, PROG_BACK_H * SCORE_K),
           z=4.0, texture=PROG_BACK_NAME),
-        E('songtime_bg', 'SpriteElement', pos=(filler_l[0], prog_y() - PROG_H * SCORE_K / 2), dims=(prog_w(), PROG_H * SCORE_K),
+        E('songtime_bg', 'SpriteElement', pos=(prog_x(), prog_y() - PROG_H * SCORE_K / 2), dims=(prog_w(), PROG_H * SCORE_K),
           just=(-1, -1), z=4.05, texture=BLANK),
-        E('songtime_fg', 'SpriteElement', pos=(filler_l[0], prog_y() - PROG_H * SCORE_K / 2), dims=(0.0, PROG_H * SCORE_K),
+        E('songtime_fg', 'SpriteElement', pos=(prog_x(), prog_y() - PROG_H * SCORE_K / 2), dims=(0.0, PROG_H * SCORE_K),
           just=(-1, -1), z=4.1, rgba=PROG_RGBA, texture=PROG_FILL_NAME, blend='Add'),
-        E('prog_lead', 'SpriteElement', pos=(filler_l[0], prog_y()), dims=(64, 16),
+        E('prog_lead', 'SpriteElement', pos=(prog_x(), prog_y()), dims=(64, 16),
           scale=(PROG_LEAD_S, PROG_LEAD_S), z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),

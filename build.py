@@ -310,7 +310,7 @@ def main():
         sources[name] = {'src': lead, 'box': None, 'flip': False, 'strip': core}
     for name, rgb in ((wor_1g.STAR_LEAD_NAME, wor_1g.STAR_LEAD_RGB), (wor_1g.PROG_LEAD_NAME, wor_1g.PROG_LEAD_RGB)):
         out = os.path.join(work, name + '.png')
-        wor_art.comet(lead, out, rgb, head=wor_1g.COMET_HEAD)      # the extracted dot, white-hot, with a coloured tail
+        wor_art.comet(lead, out, rgb, head=wor_1g.COMET_HEAD, tail_a=0.0)      # the extracted dot as a soft white aura ball, no tail
         pngs.append(out)
         sources[name] = {'src': lead, 'box': None, 'flip': False, 'comet': list(rgb)}
     ship(wor_1g.PROG_BACK_NAME, os.path.join(WOR_PNG, 'hud_song_progression_back.png'))

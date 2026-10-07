@@ -484,6 +484,15 @@ def build_border_gempak(work):
     bimg = open(os.path.join(tdir, 'WoR_HUD_bolt.img.xen'), 'rb').read()
     recs = [r for r in recs if r['checksum'] != wor_1g.BOLT_KEY]
     recs.append(texdict.record(wor_1g.BOLT_KEY, bimg[bimg.index(b'DDS '):]))
+    # the star power burst's particles at WoR's size (wor_1g.BURST_SWAPS)
+    for key, src, canvas, content, alpha in wor_1g.BURST_SWAPS:
+        name = 'WoR_HUD_burst_%08x' % key
+        png = os.path.join(tdir, name + '.png')
+        wor_art.shrink_into(src, png, canvas, content, alpha)
+        run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png], TOOLS)
+        img = open(os.path.join(tdir, name + '.img.xen'), 'rb').read()
+        recs = [r for r in recs if r['checksum'] != key]
+        recs.append(texdict.record(key, img[img.index(b'DDS '):]))
     tex = texdict.build(recs)
     short = int(qbkey(wor_1g.BORDER_GEM_PAK), 16)
     full = struct.unpack('>I', d[16:20])[0]

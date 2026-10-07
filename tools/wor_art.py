@@ -375,3 +375,14 @@ def bolt_sheet(arc_png, out_png, cells=8, cell=(128, 512)):
         fr = fr.resize(cell, Image.BICUBIC)
         out.alpha_composite(fr, (c * cell[0], 0))
     out.save(out_png)
+
+
+def shrink_into(src_png, out_png, canvas, content, alpha=1.0):
+    """The extracted sprite scaled to `content` px, centred on a transparent `canvas` px square (the game draws the
+    canvas at its own scale, so the art comes out content/canvas as big), alpha multiplied by `alpha`."""
+    im = Image.open(src_png).convert('RGBA').resize((content, content), Image.LANCZOS)
+    if alpha != 1.0:
+        im.putalpha(im.getchannel('A').point(lambda v: int(v * alpha + 0.5)))
+    out = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
+    out.alpha_composite(im, ((canvas - content) // 2, (canvas - content) // 2))
+    out.save(out_png)

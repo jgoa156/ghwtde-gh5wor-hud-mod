@@ -1031,3 +1031,9 @@
 ### v0.43 (2026-10-07): star back to the v0.40 look (user)
 - One additive outline copy at 0.45, no second copy, no animated fire glow (star_fire removed; the plugin skips it when absent).
 - Plugin names.h regenerated (ball offset used the stale 0.8 head / 1.5 scale; seen in Video Project 13). Commas confirmed in game.
+
+### v0.43 addendum (2026-10-07, installed, NOT yet tested): star power burst particles at WoR size
+- gems_ghwor_hud now also carries lil_star (45c726d2: WoR art shrunk to 29/64, = 0.25 vs the DE 0.55) and lil_star2
+  (f5ae1214: WoR Star03 sliver shrunk to 16/64 at half alpha, = 0.125 x 128 px) under the DE keys. Both materials are only used
+  by GuitarEvent_StarSequenceBonus. The cyan Spark01 layer is left (its texture is shared with gem explosions).
+- Known minor: the DE star power highway glow leaks above/below the highway (user: minor, left as is).

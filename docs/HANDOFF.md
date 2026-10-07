@@ -66,3 +66,21 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - The HUD draws above the highway. Prefer targeted fixes over rewrites.
 - Screenshot collector (`tests\collect_session.py`): only when asked, started detached (no task notifications).
 - Commit and push finished work to the repo.
+
+## IN PROGRESS (2026-10-06): merge everything into ONE zip / one mod (user request)
+Known issue to track: the game still crashes SOMETIMES even with the WoR mod (not only on theme switch); log it, no fix yet.
+Done so far: vendored the shaders the preset needs (21 files, MIT/CC-BY/SweetFX, incl. includes) into `extras/reshade/reshade-shaders`.
+TODO, in order:
+1. `extras/reshade`: add `ssdonoise.png` (Textures, from the game's reshade-shaders; PPFX_SSDO uses it, the include scan missed it), a cleaned
+   `GHWoR.ini` preset (only the 8 techniques' sections, drop KeyPCGI_One), a minimal `ReShade.ini` (EffectSearchPaths/TextureSearchPaths/PresetPath=.\GHWoR.ini),
+   THIRD_PARTY_LICENSES.txt (prod80 MIT, vort MIT, Euda/PPFX CC BY, CeeJay SweetFX, Ioxa SurfaceBlur, luluco250 FXShaders, ReShade BSD-3).
+2. Copy ReShade 6.8.0 `d3d9.dll` to `E:\Dev\ghwt\reshade-6.8.0\` (outside the repo, before it is moved out of the game folder) and add the path to tools/paths.py.
+   Use the tested addon binary `D:\Games\...\ghwt_bgfx.addon32` (md5 ef17ccc7...) -> addon/build/ (the repo's rebuild differs only by PE timestamp).
+3. Merge mods in build.py: `wor_1g.layout()` -> no_messages=True by default with desc name `hud_1g_ghwor` (drop `_nomsg`, drop build_no_messages and its install/package code);
+   move dark metal sections + `$change$` lines (build_dark_metal) into the main WoR_HUD.txt and its WoR_HUD_Load script; one mod folder WoR_HUD.
+4. `package()`: ONE zip with DATA\MODS\WoR_HUD, the 2 paks, wor_hud_fixes.asi, dinput8.dll (ASI loader), ReShade d3d9.dll + ReShade.ini + GHWoR.ini,
+   ghwt_bgfx.addon32, reshade-shaders, licenses, README (requirements: none beyond the game; note: existing ReShade/ASI loader -> don't overwrite).
+5. Revert the user's install (move, don't delete, to `E:\Dev\ghwt\game-backup-2026-10-06`): DATA\MODS\WoR_HUD*, DATA\PAK\hud_ghwor + gems_ghwor_hud,
+   wor_hud_fixes.asi/.log, dinput8.dll, ghwt_bgfx.addon32, d3d9.dll, ReShade.ini, ReShadePreset.ini, GHWoR.ini, reshade-shaders, ReShade.log.
+   Back up OneDrive `GHWTDE.ini`, then set `HUDTheme=ghwor` (the merged theme's id; `ghwor_nomsg` will not exist any more).
+6. docs/RELEASE_NOTES.md (current + planned features: see HANDOFF "Next steps"/items 3-5), README, run tests (24), commit + push, zip to the Desktop (use PowerShell: the path has an accent).

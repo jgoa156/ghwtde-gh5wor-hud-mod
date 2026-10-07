@@ -795,5 +795,10 @@ LIGHT_MARKER = 'WoR_HUD_light_0'     # the light elements' starting texture: the
 BORDER_SRC = paths.wor('basic_gems_png', '388dd606.png')
 BORDER_TEX_NAME = 'WoR_HUD_border'
 BORDER_GEM_PAK = 'gems_ghwor_hud'
+# the star power strike on the gem (phrase complete): WoR's Tesla arc in the DE's bolt texture layout (big_lighning01: 8 vertical
+# cells of 128 x 512, material sys_Big_Bolt01, 15 fps). It rides in the WoR gem pak under the stock texture's own key, so the
+# material needs no change; the sprite is already 6 x 3 like WoR's.
+BOLT_KEY = 0x9d12571c                # checksum of tex\models\highway\big_lighning01.dds
+BOLT_SRC = paths.wor('basic_gems_png', '0c30522c.png')
 BORDER_X_SCALE = 2.6
 BORDER_OFFSET = 17.4

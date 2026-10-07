@@ -1004,3 +1004,11 @@
   tube/badge area (~0.5 s), then the same highway bolt. HUD-level bolts exist only as p2p_lightning_create (battle/coop:
   Mat_Lightning_Arc_Anim01/02 + ball_anim01/02 + spark particles, from goal_hud.qb) and lightning_strike_player_sp_meter
   (arc to the SP meter's top and along it) - not called in single player. Waiting for the user to say which one they mean.
+
+### v0.41 addendum (2026-10-07, installed, NOT yet tested): WoR Tesla arc as the gem strike
+- The stock strike bolt is texture 9d12571c (1024x512, 8 cells of 128x512) in gems_ghwt; our gem pak gems_ghwor_hud had none.
+  build_border_gempak now adds WoR's arc (wor_art.bolt_sheet, 0c30522c) under that same key, so no material edit is needed.
+  Mock: verify/bolt_compare.png (user approved). Risk: whether our record wins over gems_ghwt's at load (same "most recent" rule).
+- Shards research: NewMale_RP_FX (guitar_hud) is only a blue spark flash on the SP needle (gain multiplier >= 2), not the
+  shards. gp_starpower_teslasparks01 is a 3D highway particle (64 white JOW_Spark01 sparks, life 1-3 s, gravity); the
+  teslafx scripts (create/do_starpower_teslafx, guitar_starpower/guitar_gems) are not in the decompiled text, still to read.

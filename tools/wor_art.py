@@ -344,3 +344,34 @@ def comet(lead_png, out_png, tail_rgb, size=(64, 16), head=0.8, tail_len=0.32, t
     out[..., :3] = rgb
     out[..., 3] = a * 255.0
     Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
+def bolt_sheet(arc_png, out_png, cells=8, cell=(128, 512)):
+    """The star power strike's art in the DE's own bolt layout (big_lighning01: `cells` vertical cells of `cell` px, thick
+    start on top, tip at the bottom = the gem) from WoR's Tesla arc sheet (Lightining_arc_anim01: 16 horizontal 256 x 64
+    frames, start ball on the left). Every second frame is used; each cell is WoR's two layers (GuitarEvent_StarSequenceBonus:
+    Mat_Lightning_Arc_Anim01 white-cyan, Anim02 cyan at half alpha, one frame later), turned 90 degrees clockwise so the
+    arc's tip points down, and enlarged 2x to the cell."""
+    import numpy as np
+    sheet = Image.open(arc_png).convert('RGBA')
+    n = sheet.size[1] // 64
+    fw, fh = sheet.size[0], 64
+    frames = [sheet.crop((0, i * fh, fw, (i + 1) * fh)) for i in range(n)]
+    out = Image.new('RGBA', (cell[0] * cells, cell[1]), (0, 0, 0, 0))
+    for c in range(cells):
+        f = (2 * c) % n
+        a = np.asarray(frames[f]).astype(float)
+        b = np.asarray(frames[(f + 1) % n]).astype(float)
+        lum_a = a[..., :3].max(axis=2) / 255.0       # the sheet is white on black (alpha is opaque): brightness is the shape
+        lum_b = b[..., :3].max(axis=2) / 255.0
+        alpha = np.clip(lum_a + lum_b * 0.5, 0, 1)
+        rgb = np.zeros(a.shape[:2] + (3,))
+        w = np.clip(lum_a / np.maximum(alpha, 1e-6), 0, 1)[..., None]
+        rgb[...] = np.array([200, 255, 255], float) * w + np.array([0, 255, 255], float) * (1 - w)
+        im = np.zeros(a.shape[:2] + (4,))
+        im[..., :3] = rgb
+        im[..., 3] = alpha * 255.0
+        fr = Image.fromarray(np.clip(im + 0.5, 0, 255).astype('uint8'), 'RGBA').rotate(-90, expand=True)
+        fr = fr.resize(cell, Image.BICUBIC)
+        out.alpha_composite(fr, (c * cell[0], 0))
+    out.save(out_png)

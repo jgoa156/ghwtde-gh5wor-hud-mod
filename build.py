@@ -477,6 +477,13 @@ def build_border_gempak(work):
     run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png], TOOLS)
     img = open(os.path.join(tdir, wor_1g.BORDER_TEX_NAME + '.img.xen'), 'rb').read()
     recs.append(texdict.record(int(qbkey(wor_1g.BORDER_TEX_NAME), 16), img[img.index(b'DDS '):]))
+    # the star power strike on the gems: WoR's Tesla arc under the stock bolt texture's key (see wor_1g.BOLT_KEY)
+    bolt = os.path.join(tdir, 'WoR_HUD_bolt.png')
+    wor_art.bolt_sheet(wor_1g.BOLT_SRC, bolt)
+    run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, bolt], TOOLS)
+    bimg = open(os.path.join(tdir, 'WoR_HUD_bolt.img.xen'), 'rb').read()
+    recs = [r for r in recs if r['checksum'] != wor_1g.BOLT_KEY]
+    recs.append(texdict.record(wor_1g.BOLT_KEY, bimg[bimg.index(b'DDS '):]))
     tex = texdict.build(recs)
     short = int(qbkey(wor_1g.BORDER_GEM_PAK), 16)
     full = struct.unpack('>I', d[16:20])[0]

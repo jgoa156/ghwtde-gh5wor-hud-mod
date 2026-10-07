@@ -72,9 +72,23 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   dark metal sections + `$change$` lines live in `WoR_HUD_Load`. `--package` makes one zip: mod + paks + plugin +
   ASI loader at the root, and `Optional - ReShade (WoR shaders)` (ReShade 6.8.0 d3d9.dll, ReShade.ini, GHWoR.ini,
   reshade-shaders, ghwt_bgfx.addon32). ReShade is listed as a requirement (for the shader look only) in the READMEs.
-- Vendored ReShade files: `extras/reshade`. ReShade dll: `E:\Dev\ghwteshade-6.8.0`, ASI loader:
+- Vendored ReShade files: `extras/reshade`. ReShade dll: `E:\Dev\ghwt
+eshade-6.8.0`, ASI loader:
   `E:\Dev\ghwtsi-loader-9.7.4` (paths.py `RESHADE`, `ASI_LOADER`). `addon/build/ghwt_bgfx.addon32` = the tested binary.
 - The user's game folder was reverted: old install moved to `E:\Dev\ghwt\game-backup-2026-10-06` (incl. GHWTDE.ini.bak);
   GHWTDE.ini now `HUDTheme=ghwor`. Next test = extract the Desktop zip into the game folder (+ the optional folder's
   contents) as a clean user would. Release notes: `docs/RELEASE_NOTES.md`.
 - Known issue: the game still crashes SOMETIMES (not only on theme switch); log it, no fix yet.
+
+## 2026-10-07 session notes (Sonnet) - open items
+- v0.42 installed, untested: white aura ball (no tail, scale 1.1) on both score bars, song line glued to the box
+  (see MODLOG). Gem strike = WoR Tesla arc under key 9d12571c in gems_ghwor_hud (04e3be8), untested.
+- **Score commas (user wants them in the next batch, inside the ASI plugin): not started.** The score text is NOT a script
+  FormatText: hud_widgets.qb attaches a native widget `seinttostring` (input player1_status.Score -> desc property
+  `score_text`; band: score_1_text / score_2_text). The comma must be added in the plugin by hooking that widget's int->text
+  step (find it from the checksum of "seinttostring" in the exe; see PLUGIN_NOTES for the method used for the streak lights
+  and star power widgets). WoR's font has the comma glyph (WoR clip shows "84,225"). Needs reverse engineering: use Opus.
+- Shards at star power activation: the user does see something in the DE but "glitchy low poly pixels" (probably the DE's own
+  particle draws); WoR's are smooth white leaf slivers drifting right of the highway (Video Project 1, 20.1-20.4 s).
+  NewMale_RP_FX / RP_Tesla_* are career rock-power effects (gain multiplier >= 2), gp_starpower_teslasparks01 is the 3D
+  stage fx on the band member. Source of the clip's shards still unidentified.

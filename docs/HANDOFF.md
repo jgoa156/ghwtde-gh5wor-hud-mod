@@ -12,7 +12,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `C:\Users\rockb\OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini`
   (`HUDTheme=ghwor_nomsg`, `GemTheme=ghwor`, 2560x1080, `Preferred{Guitarist,Bassist}Highway=GH5_Highway` for testing).
-- **Installed (before 2026-10-06 revert):** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.8, all in the game
+- **Installed (before 2026-10-06 revert):** HUD v0.39 + `dinput8.dll` (Ultimate ASI Loader v9.7.4) + `wor_hud_fixes.asi` 1.12, all in the game
   folder / `DATA`. Verified in game up to plugin 1.1 / v0.38 (streak lights incl. pink x1 and song 2; star power fill
   on song 2). **Not yet tested:** plugin 1.2 theme-switch fix; plugin 1.8 GH5 star power lifecycle + soft fill top + per-frame glide, raw PNG fill/plasma (charging bottom glow, 60 fps
   ready plasma + white cap, 50% ball-lightning burst), star spark centring, wedge star bar; earlier: plugin 1.5 smooth fill (1.3's fill was invisible in
@@ -83,7 +83,7 @@ eshade-6.8.0`, ASI loader:
 ## 2026-10-07 session notes (Sonnet) - open items
 - v0.42 installed, untested: white aura ball (no tail, scale 1.1) on both score bars, song line glued to the box
   (see MODLOG). Gem strike = WoR Tesla arc under key 9d12571c in gems_ghwor_hud (04e3be8), untested.
-- **Score commas (user wants them in the next batch, inside the ASI plugin): not started.** The score text is NOT a script
+- **Score commas: DONE in plugin 1.12 (see MODLOG), untested in game.** (old analysis follows) The score text is NOT a script
   FormatText: hud_widgets.qb attaches a native widget `seinttostring` (input player1_status.Score -> desc property
   `score_text`; band: score_1_text / score_2_text). The comma must be added in the plugin by hooking that widget's int->text
   step (find it from the checksum of "seinttostring" in the exe; see PLUGIN_NOTES for the method used for the streak lights

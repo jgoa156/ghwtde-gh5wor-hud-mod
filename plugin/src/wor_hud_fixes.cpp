@@ -59,6 +59,9 @@ namespace
 	constexpr uintptr_t kSpCall2 = 0x47877f;
 	constexpr size_t kElementTexture = 0x214;        // sprite element: texture checksum
 	constexpr uintptr_t kUnloadFont = 0x6403b0;      // cdecl (font checksum)
+	constexpr uintptr_t kScoreFmtPush = 0x476505;    // push L"%d" (seinttostring widget update, 0x4764c0)
+	constexpr uintptr_t kScoreFmtCall = 0x476511;    // call _snwprintf(buf, 10, L"%d", value) (0x4e5a80)
+	constexpr uintptr_t kSnwprintf = 0x4e5a80;
 	constexpr uintptr_t kLoadFont = 0x640930;        // cdecl (checksum, data, 0, size, flags, b, b) -> font
 	constexpr uintptr_t kAddLoopStart = 0x64072f;    // imm32 of mov eax, <table start> in the font-add loop
 	constexpr uintptr_t kAddLoopEnd = 0x640743;      // imm32 of cmp eax, <table end>
@@ -93,6 +96,8 @@ namespace
 		{ kSpCall2, { 0xE8 }, 1, "SP tube SetTexture call (2)" },
 		{ kUnloadFont, { 0x51, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x6A, 0x00, 0x57, 0xE8 }, 10, "font unload prologue" },
 		{ kLoadFont, { 0x57, 0x8B, 0x7C, 0x24, 0x08, 0x6A, 0x00, 0x57, 0xE8 }, 9, "font load prologue" },
+		{ kScoreFmtPush, { 0x68, 0x24, 0x0B, 0xA1, 0x00 }, 5, "score text format push" },
+		{ kScoreFmtCall, { 0xE8 }, 1, "score text snwprintf call" },
 		{ kAddLoopStart - 1, { 0xB8 }, 1, "font add loop start" },
 		{ kAddLoopEnd - 1, { 0x3D }, 1, "font add loop end" },
 		{ 0x6403c8, { 0xB9 }, 1, "font unload loop start" },
@@ -676,6 +681,35 @@ namespace
 		return true;
 	}
 
+	// the score widget formats its number with _snwprintf(buf, 10, L"%d", value); with the WoR HUD up the number gets
+	// thousands separators (WoR: "84,225"). Falls back to the game's own call when it would not fit the 10 wchar buffer.
+	int __cdecl score_text_hook(wchar_t *buf, size_t count, const wchar_t *fmt, int value)
+	{
+		const auto orig = reinterpret_cast<int(__cdecl *)(wchar_t *, size_t, const wchar_t *, int)>(kSnwprintf);
+		if (!g_sp.star_bar || value < 0 || count < 2)
+			return orig(buf, count, fmt, value);
+		wchar_t digits[12];
+		int n = 0;
+		for (unsigned v = static_cast<unsigned>(value); n < 11; v /= 10)
+		{
+			digits[n++] = static_cast<wchar_t>(L'0' + v % 10);
+			if (v < 10)
+				break;
+		}
+		const int len = n + (n - 1) / 3;
+		if (static_cast<size_t>(len) + 1 > count)
+			return orig(buf, count, fmt, value);
+		int o = 0;
+		for (int i = n - 1; i >= 0; --i)
+		{
+			buf[o++] = digits[i];
+			if (i > 0 && i % 3 == 0)
+				buf[o++] = L',';
+		}
+		buf[o] = 0;
+		return o;
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -683,7 +717,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.11 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.12 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -703,6 +737,12 @@ namespace
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
+		{
+			const uint8_t *call = reinterpret_cast<const uint8_t *>(kScoreFmtCall);
+			const uintptr_t target = kScoreFmtCall + 5 + *reinterpret_cast<const int32_t *>(call + 1);
+			const bool ok = target == kSnwprintf && install_call(kScoreFmtCall, reinterpret_cast<void *>(&score_text_hook));
+			log(ok ? "score text: thousands separators hooked" : "score text: hook failed (unexpected call target)");
+		}
 		(void)self;
 	}
 }

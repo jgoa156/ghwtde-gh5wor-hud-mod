@@ -1019,3 +1019,11 @@
   to the box like WoR's. Mock: verify/mock_score_v042_x4.png.
 - User saw "glitchy low-poly pixel" shards in the DE at star power activation: the DE already draws something there
   (its own particles); WoR's version is smooth white leaf-shaped slivers. Not changed yet.
+
+### Plugin 1.12 (2026-10-07, installed, NOT yet tested): thousands separators in the score
+- The score is drawn by the native widget seinttostring (vtable via 0x4764b0, update 0x4764c0): it does _snwprintf(buf, 10,
+  L"%d", value) (call at 0x476511, snwprintf 0x4e5a80) and passes buf to the property setter 0x5f94b0 (WoR clip: "84,225").
+- The plugin redirects that one call (target verified before patching): with the WoR HUD up (g_sp.star_bar set) it writes the
+  number with commas into buf; if it would not fit the 10 wchar buffer (8+ digits) or the HUD is not ours, the game's call runs.
+  WoR's font has the ',' glyph (map 0x2c -> 10). Log line: "score text: thousands separators hooked".
+- gem strike arc (04e3be8): confirmed working in game by the user.

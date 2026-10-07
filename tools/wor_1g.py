@@ -678,10 +678,10 @@ def side_meter():
 
 
 # ---------------------------------------------------------------- the 1-guitar layout
-def layout(no_messages=False):
+def layout(no_messages=True):
     """The 1-guitar layout. no_messages: GH5 shows no in-play text (Hot Start, note streaks) and no streak flame
     burst; the DE still creates them, inside 'message' / 'hud_message_fire', so those containers are drawn at alpha 0
-    (a container's alpha multiplies into its children). Used by the WoR_HUD_NoMessages companion mod."""
+    (a container's alpha multiplies into its children). The mod ships the no-messages look (merged 2026-10-06)."""
     hide = 0.0 if no_messages else 1.0
     off = (0.0, 0.0)   # content is authored g1-relative
     g1 = E('g1', 'ContainerElement', pos=G1, just=(-1, -1), z=2.0, children=[
@@ -699,7 +699,7 @@ def layout(no_messages=False):
     ])
     aliases = [('alias_g1', 'g1'), ('alias_band_meter', 'band_meter'),
                ('alias_hud_message_fire_p1', 'hud_message_fire'), ('alias_g1_side_meter', 'BAND_side_meter')]
-    return desc('hud_1g_ghwor_nomsg' if no_messages else 'hud_1g_ghwor', root, aliases=aliases)
+    return desc('hud_1g_ghwor', root, aliases=aliases)
 
 
 def all_descs():

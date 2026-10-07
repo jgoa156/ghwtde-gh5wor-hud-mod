@@ -6,6 +6,8 @@ GH_TOOLS     Guitar Hero SDK checkout (node: guitar-hero-sdk/sdk.js, png2img.js)
 WOR_EXTRACT  textures, fonts and descs extracted from your own Warriors of Rock copy (x360img PNGs).
 DE_EXTRACT   decompiled DE / World Tour+ / GH3:WoR material (scripts, GH3:WoR multiplier and light images).
 GH5_VIDEO    GH5 reference footage (original.mp4) used by the mocks.
+RESHADE      folder with ReShade 6.8.0's 32-bit d3d9.dll (shipped in the package).
+ASI_LOADER   Ultimate ASI Loader v9.7.4 x86 dinput8.dll (shipped in the package).
 
 Game assets are never committed: the build reads them from these folders and packs them into the mod."""
 import os
@@ -17,8 +19,10 @@ _DEFAULTS = {
     'WOR_EXTRACT': r'E:\Dev\ghwt\ghwor-extract',
     'DE_EXTRACT': r'E:\Dev\ghwt\ghwt-extract',
     'GH5_VIDEO': r'E:\Dev\ghwt\reference-video',
+    'RESHADE': r'E:\Dev\ghwt\reshade-6.8.0',
+    'ASI_LOADER': r'E:\Dev\ghwt\asi-loader-9.7.4\dinput8.dll',
 }
-GAME, GAME_CONFIG, GH_TOOLS, WOR_EXTRACT, DE_EXTRACT, GH5_VIDEO = (os.environ.get(k, v) for k, v in _DEFAULTS.items())
+GAME, GAME_CONFIG, GH_TOOLS, WOR_EXTRACT, DE_EXTRACT, GH5_VIDEO, RESHADE, ASI_LOADER = (os.environ.get(k, v) for k, v in _DEFAULTS.items())
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = os.path.join(GH_TOOLS, 'guitar-hero-sdk', 'sdk.js')

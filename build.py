@@ -6,9 +6,9 @@ Inputs (read fresh every build, so the mod always matches the installed DE; loca
   - WoR / GH3:WoR textures and the WoR numeral font, extracted from the user's own copies
 
 Output (build/):
-  WoR_HUD/             Mod.ini, WoR_HUD.qb.xen, hud_ghwor.pak.xen (theme pak), gems_ghwor_hud.pak.xen (border)
-  WoR_HUD_NoMessages/  companion theme without in-play messages
-  WoR_HUD_DarkMetal/   darker highway metal (any theme)
+  WoR_HUD/  Mod.ini, WoR_HUD.qb.xen (theme without in-play messages + darker highway metal), hud_ghwor.pak.xen
+            (theme pak), gems_ghwor_hud.pak.xen (border)
+--package: ONE drop-in zip (mod, paks, HUD fixes plugin + ASI loader, ReShade + GHWoR preset + background-only add-on)
 usage: python build.py [--install] [--package]
 """
 import json, os, re, shutil, subprocess, sys, tempfile
@@ -23,6 +23,7 @@ PAK_NAME = 'hud_ghwor'
 VERSION = '0.40'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
+RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
 
 # Player configurations a theme maps to layouts; WT+ provides descs for all of these except hud_2v.
@@ -319,6 +320,7 @@ def main():
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
     build_border_gempak(work)
+    dark_load, dark_secs = dark_metal_sections(work)
 
     # Register the pak with the HUD pak-links table through the DE's own AddToGlobalStruct helper (0x325bc724),
     # exactly how the DE registers highway-mod paks (script 0x7c73dda7).
@@ -332,13 +334,15 @@ def main():
             + f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{wor_1g.BORDER_GEM_PAK}"):s}}\n'
             '\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[8a5ce489]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
             '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n' +
+            dark_load +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, themes2, choices2, *layouts, *descs]) + '\n'
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, themes2, choices2, *layouts, *descs, *dark_secs]) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
-        'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD).\n'
+        'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
+        'messages) and darkens the highway metal like GH5.\n'
         f'Author=WitchDoctoR\nVersion={VERSION}\n')
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
     assert os.path.exists(os.path.join(OUT, f'{MOD_NAME}.qb.xen')), 'compile failed'
@@ -355,8 +359,6 @@ def main():
     if got != want or lost:
         raise RuntimeError(f'round trip lost sections: {got}/{want} decompiled; missing printf: {lost}')
     print('built', OUT, '| descs:', len(descs), '| textures:', len(TEXTURES), '| pak:', os.path.getsize(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'bytes')
-    build_no_messages(themes2, choices2, wor)
-    build_dark_metal(work)
 
     if '--install' in sys.argv:
         dst = os.path.join(GAME, 'DATA', 'MODS', MOD_NAME)
@@ -368,61 +370,11 @@ def main():
         shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
         print('installed DATA\\PAK\\' + wor_1g.BORDER_GEM_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
-        dst2 = os.path.join(GAME, 'DATA', 'MODS', NOMSG_NAME)
-        if os.path.exists(dst2):
-            shutil.rmtree(dst2)
-        shutil.copytree(OUT_NOMSG, dst2, ignore=shutil.ignore_patterns('*.txt'))
-        print('installed', dst2)
-        dst3 = os.path.join(GAME, 'DATA', 'MODS', DARK_NAME)
-        if os.path.exists(dst3):
-            shutil.rmtree(dst3)
-        shutil.copytree(OUT_DARK, dst3, ignore=shutil.ignore_patterns('*.txt'))
-        print('installed', dst3)
 
     if '--package' in sys.argv:
         package()
 
 
-NOMSG_NAME = 'WoR_HUD_NoMessages'
-OUT_NOMSG = os.path.join(ROOT, 'build', NOMSG_NAME)
-
-
-def build_no_messages(themes2, choices2, wor):
-    """Companion mod: adds "Guitar Hero: Warriors of Rock (no messages)" to the HUD Theme list. Same theme row
-    (pak, meters, fonts) with a 1-guitar layout whose message containers are drawn at alpha 0, like GH5. It replaces
-    the theme table and choice list with the main mod's plus one row; mods load alphabetically, so it runs after
-    WoR_HUD (if it ever ran first, WoR_HUD's tables would win and the extra choice would just be missing)."""
-    if os.path.exists(OUT_NOMSG):
-        shutil.rmtree(OUT_NOMSG)
-    os.makedirs(OUT_NOMSG)
-    row = wor.replace('StructStruct ghwor', 'StructStruct ghwor_nomsg', 1)
-    row = re.sub(r'StructQBKey hud_1g = \S+', 'StructQBKey hud_1g = WoR_HUD_layout_1g_nomsg', row, count=1)
-    k = themes2.rindex('}', 0, themes2.rindex('}'))
-    themes3 = (themes2[:k] + '\t' + row + '\n\t' + themes2[k:]).replace('SectionStruct WoR_HUD_themes', 'SectionStruct WoR_HUD_NoMsg_themes', 1)
-    entry = ('\t\tStructHeader\n\t\t{\n\t\t\tStructString Title = "Guitar Hero: Warriors of Rock (no messages)"\n'
-             '\t\t\tStructQBKey value = ghwor_nomsg\n\t\t\tStructString value_string = "ghwor_nomsg"\n\t\t}\n\t')
-    k = choices2.rindex(']')
-    choices3 = (choices2[:k] + entry + choices2[k:]).replace('SectionArray WoR_HUD_choices', 'SectionArray WoR_HUD_NoMsg_choices', 1)
-    layout = ('SectionStruct WoR_HUD_layout_1g_nomsg\n{\n\tStructHeader\n\t{\n\t\tStructQBKey hud_version = nxgui\n'
-              '\t\tStructString desc_interface = "hud_1g_ghwor_nomsg"\n\t}\n}')
-    load = (f'Script {NOMSG_NAME}_Load [\n'
-            '\t:i $printf$%s("WoR_HUD_NoMessages: adding the no-messages WoR HUD theme")\n'
-            '\t:i $change$$[8ef7f1be]$ = (~$WoR_HUD_NoMsg_themes$)\n'
-            '\t:i $change$$[1f644846]$ = (~$WoR_HUD_NoMsg_choices$)\n'
-            '\t:i endfunction\n]\n')
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, themes3, choices3, layout, wor_1g.layout(no_messages=True)]) + '\n'
-    open(os.path.join(OUT_NOMSG, f'{NOMSG_NAME}.txt'), 'w', encoding='utf-8').write(src)
-    open(os.path.join(OUT_NOMSG, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: no messages\n'
-        'Description=Adds "Guitar Hero: Warriors of Rock (no messages)" to the HUD Theme options: no in-play text or '
-        'streak flame burst, like GH5. Needs the GH5 / Warriors of Rock HUD.\n'
-        f'Author=WitchDoctoR\nVersion={VERSION}\n')
-    sdk('compile', f'{NOMSG_NAME}.txt', cwd=OUT_NOMSG)
-    assert os.path.exists(os.path.join(OUT_NOMSG, f'{NOMSG_NAME}.qb.xen')), 'compile failed (no messages)'
-    print('built', OUT_NOMSG)
-
-
-DARK_NAME = 'WoR_HUD_DarkMetal'
-OUT_DARK = os.path.join(ROOT, 'build', DARK_NAME)
 DARK_K = 0.58          # colour multiplier for the highway's metal (user-approved mock verify/mock_metal_v021.png)
 # Highway metal materials (scripts/guitar/guitar_material.qb): border, fret bars, strikeline neck and silver cups.
 # Coloured ring edges (col_now_*_dark), lit caps and gems are left alone.
@@ -467,14 +419,11 @@ def darken_materials(arr, k):
     return ''.join(out), found
 
 
-def build_dark_metal(work):
-    """Optional mod: darker highway metal (border, fret bars, strikeline neck and cups) for every theme, like GH5.
-    Data only: the game builds its in-game materials at song start from two global arrays in guitar_material.qb;
-    this mod replaces them (tb.pak, the DE version) with copies whose metal materials carry a grey colour multiplier."""
-    os.makedirs(OUT_DARK, exist_ok=True)
-    for f in os.listdir(OUT_DARK):          # emptied, not removed (the folder may be open elsewhere)
-        p = os.path.join(OUT_DARK, f)
-        shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
+def dark_metal_sections(work):
+    """Darker highway metal (border, fret bars, strikeline neck and cups) for every theme, like GH5. Data only: the
+    game builds its in-game materials at song start from two global arrays in guitar_material.qb; the mod replaces
+    them (tb.pak, the DE version) with copies whose metal materials carry a grey colour multiplier.
+    Returns (script lines for WoR_HUD_Load, sections)."""
     _, qb = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'tb.pak.xen'), work, only={'guitar_material.qb.xen'})   # the DE's own version
     text = next(v for kk, v in qb.items() if kk.endswith('guitar_material.qb.xen'))
     secs, all_found = [], []
@@ -485,19 +434,10 @@ def build_dark_metal(work):
         secs.append(arr.replace(f'SectionArray {key}', f'SectionArray {new}', 1))
     missing = [n for n in DARK_MATERIALS if n not in all_found]
     assert not missing and len(all_found) == len(DARK_MATERIALS), ('dark metal materials not found', missing, len(all_found))
-    load = (f'Script {DARK_NAME}_Load [\n'
-            f'\t:i $printf$%s("{DARK_NAME}: darker highway metal, {len(all_found)} materials")\n'
+    load = (f'\t:i $printf$%s("WoR_HUD: darker highway metal, {len(all_found)} materials")\n'
             '\t:i $change$$[345d04a2]$ = (~$WoR_DarkMetal_mats_a$)\n'
-            '\t:i $change$$[af201180]$ = (~$WoR_DarkMetal_mats_b$)\n'
-            '\t:i endfunction\n]\n')
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load] + secs) + '\n'
-    open(os.path.join(OUT_DARK, f'{DARK_NAME}.txt'), 'w', encoding='utf-8').write(src)
-    open(os.path.join(OUT_DARK, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD: dark highway metal\n'
-        'Description=Darker highway borders, fret bars and strikeline rings, like GH5. Works with every HUD theme.\n'
-        f'Author=WitchDoctoR\nVersion={VERSION}\n')
-    sdk('compile', f'{DARK_NAME}.txt', cwd=OUT_DARK)
-    assert os.path.exists(os.path.join(OUT_DARK, f'{DARK_NAME}.qb.xen')), 'compile failed (dark metal)'
-    print('built', OUT_DARK, '|', len(all_found), 'materials')
+            '\t:i $change$$[af201180]$ = (~$WoR_DarkMetal_mats_b$)\n')
+    return load, secs
 
 
 def build_border_gempak(work):
@@ -539,36 +479,33 @@ def build_border_gempak(work):
 
 
 def package():
-    """Nexus-style drop-in archives: each one mirrors the game folder, so installing is "extract into the folder
-    with GHWT_Definitive.exe" and uninstalling is deleting the listed files. No scripts, no ini edits."""
+    """ONE Nexus-style drop-in archive mirroring the game folder: installing is "extract into the folder with
+    GHWT_Definitive.exe", uninstalling is deleting the listed files. No scripts, no ini edits."""
     dist = os.path.join(ROOT, 'dist')
     shutil.rmtree(dist, ignore_errors=True)
-    # 1. main file: the HUD theme (DE mod folder + its theme pak)
     main = os.path.join(dist, f'GH5-WoR_HUD_{VERSION}')
+    # the HUD theme (DE mod folder + its theme pak and border gem pak)
     shutil.copytree(OUT, os.path.join(main, 'DATA', 'MODS', MOD_NAME), ignore=shutil.ignore_patterns('*.txt', '*.pak.xen'))
     os.makedirs(os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
-    shutil.copy(os.path.join(GAME, 'dinput8.dll'), main)
+    shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))
+    shutil.copy(os.path.join(RESHADE_DIR, 'THIRD_PARTY_LICENSES.txt'), main)
+    # OPTIONAL folder (requirement for the WoR look, not for the HUD): ReShade (d3d9.dll) + the WoR preset + the
+    # background-only add-on and its GH5 tone shader; its contents also go next to GHWT_Definitive.exe
+    opt = os.path.join(main, 'Optional - ReShade (WoR shaders)')
+    os.makedirs(opt)
+    shutil.copy(os.path.join(paths.RESHADE, 'd3d9.dll'), opt)
+    for f in ('ReShade.ini', 'GHWoR.ini'):
+        shutil.copy(os.path.join(RESHADE_DIR, f), opt)
+    shutil.copytree(os.path.join(RESHADE_DIR, 'reshade-shaders'), os.path.join(opt, 'reshade-shaders'))
+    shutil.copy(GH5_GRADE, os.path.join(opt, 'reshade-shaders', 'Shaders'))
+    shutil.copy(BGFX_ADDON, opt)
     shutil.copy(os.path.join(ROOT, 'extras', 'README_main.txt'), os.path.join(main, 'README - GH5-WoR HUD.txt'))
-    # optional file: no in-play messages (companion mod, needs the main file)
-    nm = os.path.join(dist, f'GH5-WoR_HUD_No_messages_{VERSION}')
-    shutil.copytree(OUT_NOMSG, os.path.join(nm, 'DATA', 'MODS', NOMSG_NAME), ignore=shutil.ignore_patterns('*.txt'))
-    # 2. optional file: background-only shaders (ReShade add-on + GH5 tone shader, ReShade's default folders)
-    bg = os.path.join(dist, f'GH5-WoR_HUD_Background-only_shaders_{VERSION}')
-    os.makedirs(os.path.join(bg, 'reshade-shaders', 'Shaders'))
-    shutil.copy(BGFX_ADDON, bg)
-    shutil.copy(GH5_GRADE, os.path.join(bg, 'reshade-shaders', 'Shaders'))
-    shutil.copy(os.path.join(ROOT, 'extras', 'background_only_shaders', 'README.txt'),
-                os.path.join(bg, 'README - Background-only shaders.txt'))
-    # optional file: dark highway metal (data-only DE mod, any theme)
-    dk = os.path.join(dist, f'GH5-WoR_HUD_Dark_highway_metal_{VERSION}')
-    shutil.copytree(OUT_DARK, os.path.join(dk, 'DATA', 'MODS', DARK_NAME), ignore=shutil.ignore_patterns('*.txt'))
-    for d in (main, nm, bg, dk):
-        shutil.make_archive(d, 'zip', d)
-    print('packaged:', ', '.join(os.path.basename(d) + '.zip' for d in (main, nm, bg, dk)))
+    shutil.make_archive(main, 'zip', main)
+    print('packaged:', os.path.basename(main) + '.zip')
 
 
 if __name__ == '__main__':

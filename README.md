@@ -7,27 +7,28 @@ Warriors of Rock gameplay HUD from the games' own art: rock meter and star power
 the score / star / note-streak panel, the multiplier badge and soft HUD shadows. It adds
 "Guitar Hero: Warriors of Rock" to the DE's HUD Theme options; nothing in the game is overwritten.
 
-## What ships (Nexus drop-in zips, built by `python build.py --package`)
+## What ships (one Nexus drop-in zip, built by `python build.py --package`)
 
-| Zip | Installs into the game folder | Notes |
+**Requirement:** ReShade 6.x (32-bit, D3D9) for the WoR shader look; the HUD works without it. A copy ships in
+the zip's optional folder.
+
+| Part | Installs into the game folder | Notes |
 |---|---|---|
-| GH5-WoR HUD (main) | `DATA\MODS\WoR_HUD\`, `DATA\PAK\hud_ghwor.pak.xen`, `DATA\PAK\gems_ghwor_hud.pak.xen` | HUD Theme = Warriors of Rock; the WoR border needs Gem Theme = WoR |
-| No messages (optional) | `DATA\MODS\WoR_HUD_NoMessages\` | adds a theme variant without in-play messages, like GH5 |
-| Dark highway metal (optional) | `DATA\MODS\WoR_HUD_DarkMetal\` | darker border, fret bars and neck for every theme |
-| Background-only shaders (optional) | `ghwt_bgfx.addon32`, `reshade-shaders\Shaders\GH5_Grade.fx` | ReShade add-on: the preset applies to the venue only, never the HUD |
-| HUD fixes (optional, not packaged yet) | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | native fixes: WoR streak light colours, textures on the 2nd song, smooth star power fill, theme switch crash |
+| HUD theme | `DATA\MODS\WoR_HUD\`, `DATA\PAK\hud_ghwor.pak.xen`, `DATA\PAK\gems_ghwor_hud.pak.xen` | HUD Theme = Warriors of Rock (no in-play messages, darker highway metal); the WoR border needs Gem Theme = WoR |
+| HUD fixes | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | WoR streak light colours, textures on the 2nd song, smooth star power, theme switch crash |
+| Optional - ReShade (WoR shaders) | `d3d9.dll`, `ReShade.ini`, `GHWoR.ini`, `reshade-shaders\`, `ghwt_bgfx.addon32` | ReShade 6.8.0 + the WoR preset; the add-on keeps effects off the HUD |
 
 ## Building
 
 Requirements: Python 3 with Pillow, OpenCV and NumPy; Node.js; a Guitar Hero SDK checkout (`sdk.js`,
 `png2img.js`) with `x360img.py`; the DE installed; textures extracted from your own Warriors of Rock copy. Game
 assets are not in this repository: set the locations in `tools/paths.py` or through the environment variables it
-lists (`GAME`, `GAME_CONFIG`, `GH_TOOLS`, `WOR_EXTRACT`, `DE_EXTRACT`, `GH5_VIDEO`).
+lists (`GAME`, `GAME_CONFIG`, `GH_TOOLS`, `WOR_EXTRACT`, `DE_EXTRACT`, `GH5_VIDEO`, `RESHADE`, `ASI_LOADER`).
 
 ```
-python build.py              # build/ (WoR_HUD, WoR_HUD_NoMessages, WoR_HUD_DarkMetal)
+python build.py              # build/WoR_HUD
 python build.py --install    # copy into the game folder
-python build.py --package    # dist/*.zip
+python build.py --package    # dist/GH5-WoR_HUD_<version>.zip
 python tests/run_offline.py  # offline checks (never launches the game)
 ```
 

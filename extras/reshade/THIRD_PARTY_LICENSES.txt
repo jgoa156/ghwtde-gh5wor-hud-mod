@@ -1,0 +1,28 @@
+Third-party components shipped with the GH5 / WoR HUD mod
+==========================================================
+
+ReShade (d3d9.dll) - Copyright (C) 2014 Patrick Mours. BSD 3-Clause License.
+  https://github.com/crosire/reshade  (ReShade.fxh, ReShadeUI.fxh: same license)
+
+prod80 shaders (PD80_*) - Copyright (c) 2020 prod80 (Bas Veth). MIT License.
+  https://github.com/prod80/prod80-ReShade-Repository
+
+vort shaders (vort_MotionBlur and includes) - Copyright (c) 2023 vortigern11. MIT License.
+  https://github.com/vortigern11/vort_Shaders
+
+PPFX_SSDO - Pascal Gilcher / Euda (PPFX). Creative Commons Attribution (CC BY).
+
+SweetFX shaders (Curves, Vibrance, AdaptiveTonemapper ...) - Christian Cann Schuldt Jensen (CeeJay.dk) and
+  contributors. SweetFX license: free to use, modify and share with credit.
+  https://github.com/CeeJayDK/SweetFX
+
+SurfaceBlur - Ioxa. Free to use with credit.
+
+FXShaders includes - Lucas Melo (luluco250). MIT License.
+  https://github.com/luluco250/FXShaders
+
+Ultimate ASI Loader (dinput8.dll) - ThirteenAG. MIT License.
+  https://github.com/ThirteenAG/Ultimate-ASI-Loader
+
+GH5_Grade.fx, ghwt_bgfx.addon32 and wor_hud_fixes.asi are part of this mod.
+Each shader file keeps its original header; see it for the full license text.

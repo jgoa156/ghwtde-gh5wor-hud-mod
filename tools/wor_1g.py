@@ -90,8 +90,8 @@ RAIL_Z = {'rm_shadow': 3.01, 'sp_shadow': 3.01, 'rm_gap0': 3.012, 'rm_gap1': 3.0
           'needle_anchor': 3.09, 'side_meter_needle': 3.09, 'side_meter_red_ON': 3.06, 'nixie': 0.05}
 RAIL_Z.update({f'sp_seg{i}': 3.05 for i in range(6)})
 RAIL_Z['sp_clip'] = 3.05
-RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(6)})
-RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(6)})
+RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(8)})
+RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(8)})
 RAIL_Z.update({'sp_glow_bottom': 3.055, 'sp_cap_w': 3.06, 'sp_cap_c': 3.06, 'sp_burst0': 3.07, 'sp_burst1': 3.07,
                'sp_burst2': 3.07})
 RAIL_Z.update({f'{t}_void{n}': 0.04 for t in ('rm', 'sp') for n in ('', '1', '2', '3')})
@@ -326,8 +326,11 @@ SP_GLOW_BOTTOM_LEVEL = 0.045                 # inside the fill's rounded bottom 
 SP_GLOW_SPRITES = (('sp_glow_bottom', 0.5, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', 0.42, 0.0, (255, 255, 255, 255), 1.0),            #  alpha when shown)
                    ('sp_cap_c', 0.55, 0.0, (90, 240, 230, 255), 0.5))
-SP_FEATHER_H = 9.0                           # soft fill top: canvas units above the level faded in bands
-SP_FEATHER_ALPHA = (0.72, 0.58, 0.44, 0.31, 0.19, 0.08)     # band alphas, nearest the level first (each band its own clip window)
+SP_FEATHER_H = 12.0                          # soft fill top: canvas units above the level faded in bands
+SP_FEATHER_ALPHA = (0.80, 0.68, 0.56, 0.44, 0.33, 0.22, 0.12, 0.05)   # band alphas, nearest the level first
+# the windows are nested (window k spans from the level up through band k, so band j is covered by windows j..n-1 and
+# no two windows share an inner edge: no seam lines); with Add blending each window carries the alpha increment
+SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
@@ -454,7 +457,7 @@ def sp_segments():
     feathers = [E(f'sp_feather{k}', 'windowelement', pos=(cx, cy), dims=(cw, 0), just=(-1, -1), z=3.5, children=[
         E(f'sp_feather_fill{k}', 'SpriteElement', pos=(RIGHT.pos[0] - cx, RIGHT.pos[1] - cy), dims=(64, 256), just=(0, 1),
           scale=(RIGHT.sx, RAIL_SY), rot=RIGHT.rot, z=3.5, alpha=a, texture=SP_FULL_NAMES[0], blend='Add')])
-        for k, a in enumerate(SP_FEATHER_ALPHA)]
+        for k, a in enumerate(SP_FEATHER_INC)]
     return [E('sp_clip', 'windowelement', pos=(cx, cy), dims=(cw, ch), just=(-1, -1), z=3.5, children=segs)] + feathers
 
 

@@ -20,6 +20,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
+FONT_PAK = 'hud_ghwor_font'     # the WoR numeral font, resident from boot (see WoR_HUD_Load)
 VERSION = '0.39'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
@@ -246,10 +247,15 @@ def main():
     # multiplier: GH3:WoR's images, one copy cropped out of each 2048x256 strip
     for new_id, src in wor_1g.MULT_NORMAL + wor_1g.MULT_SP:
         ship(new_id, os.path.join(paths.GH3WOR_PNG, src + '.png'), (1, 1, 155, 138), wor_1g.BADGE_TEX)
-    # WoR's numeral font, converted from the Xbox format (same layout, PC texture), shipped in the theme pak
+    # WoR's numeral font, converted from the Xbox format (same layout, PC texture). Its own pak, loaded once at boot
+    # by WoR_HUD_Load and never unloaded: inside the theme pak it was unloaded on every theme switch, where the DE's
+    # font unload crashed (plugin 1.2) and the game then drew text with the freed font (crash in d3d9
+    # DrawPrimitiveUP, 2026-10-06). Stock themes ship no fonts in their paks either.
+    font_src = os.path.join(work, 'font_pak')
+    os.makedirs(font_src)
     for font_id, src in wor_1g.FONT_SRC.items():
-        wor_font.convert(src, os.path.join(pak_src, font_id + '.fnt.xen'))
-        sources[font_id] = {'src': src, 'box': None}
+        wor_font.convert(src, os.path.join(font_src, font_id + '.fnt.xen'))
+        sources[font_id] = {'src': src, 'box': None, 'pak': FONT_PAK}
     # note-streak counter: GH3:WoR's light images, same names as the DE's (state 0 off, 1 half, 2 lit)
     for name in wor_1g.STREAK_LIGHTS:
         ship(name, os.path.join(paths.GH3WOR_PNG, name + '.png'))
@@ -318,6 +324,8 @@ def main():
         run(['node', os.path.join(TOOLS, 'png2img.js'), pak_src, *pngs], TOOLS)
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
+    sdk('createpak', font_src, '-out', os.path.join(OUT, f'{FONT_PAK}.pak.xen'), cwd=os.path.dirname(SDK))
+    assert os.path.exists(os.path.join(OUT, f'{FONT_PAK}.pak.xen')), 'createpak (font) failed'
     build_border_gempak(work)
 
     # Register the pak with the HUD pak-links table through the DE's own AddToGlobalStruct helper (0x325bc724),
@@ -331,7 +339,12 @@ def main():
             '\t:i $printf$%s("WoR_HUD: theme pak registered with the HUD pak links")\n'
             + f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{wor_1g.BORDER_GEM_PAK}"):s}}\n'
             '\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[8a5ce489]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
-            '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n' +
+            '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n'
+            # the numeral font: registered like the theme pak, then loaded under an owner nothing ever unloads
+            + f'\t:i $WoR_HUD_fontlink$ = :s{{$name$ = %s("{FONT_PAK}"):s}}\n'
+            f'\t:i $[325bc724]$$id$ = $[cbcd0af1]$$field$ = ${FONT_PAK}$$element$ = %GLOBAL%$WoR_HUD_fontlink$\n'
+            f'\t:i $mpm_object_load_pak$$pak$ = ${FONT_PAK}$$owner$ = $WoR_HUD_font_owner$$async$ = %i(0)$links$ = $[cbcd0af1]$\n'
+            '\t:i $printf$%s("WoR_HUD: numeral font pak loaded, resident")\n' +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
@@ -366,6 +379,8 @@ def main():
         # the theme pak and the border gem pak go where the stock paks live
         shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK', f'{PAK_NAME}.pak.xen'))
         shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
+        shutil.copy(os.path.join(OUT, FONT_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
+        print('installed DATA\\PAK\\' + FONT_PAK + '.pak.xen')
         print('installed DATA\\PAK\\' + wor_1g.BORDER_GEM_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
         dst2 = os.path.join(GAME, 'DATA', 'MODS', NOMSG_NAME)
@@ -549,6 +564,7 @@ def package():
     os.makedirs(os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
+    shutil.copy(os.path.join(OUT, FONT_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(ROOT, 'extras', 'README_main.txt'), os.path.join(main, 'README - GH5-WoR HUD.txt'))
     # optional file: no in-play messages (companion mod, needs the main file)
     nm = os.path.join(dist, f'GH5-WoR_HUD_No_messages_{VERSION}')

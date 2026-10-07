@@ -35,7 +35,13 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
    modes and the microphone player still use the DE layouts). Drums: verify the DE's ghwor gem theme (gems,
    kick bars, strikeline) against WoR drum footage.
 4. Score thousands commas (plugin), Helper Pill / Menu Popup themes (later).
-4. Packaging: `build.py --package` doesn't include the plugin + loader yet (Nexus option 3, "HUD fixes").
+4. Crowd models for the DE (feasibility checked 2026-10-06: possible, but needs a new converter): WoR's crowd is already
+   extracted raw in `ghwor-extract/all/x/compressed_ZONES_*/models/real_crowd` (per-venue `crowd_ped_*` / `pedf_*` .skin.xen + .tex.xen,
+   ~70-110 KB skins, 200-640 KB textures) plus the shared hands in `ZONES_global` (6 skins). The DE extract has only the 8 hand
+   skins. Textures convert with the existing x360tex tooling; the Xbox 360 `.skin.xen` format (big-endian) has no converter in
+   the SDK, so the skins need reverse engineering to the DE's PC skin format first. Also needs the crowd animation data
+   (`guitar_crowd*.qb`) checked against the DE's.
+5. Packaging: `build.py --package` doesn't include the plugin + loader yet (Nexus option 3, "HUD fixes").
 
 ## How to work on it
 

@@ -408,7 +408,7 @@ namespace
 		{
 			void *win = g_sp.feather[k];
 			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
-			const float hi = top - (k + 1) * band, lo = top - k * band;
+			const float hi = top - (k + 1) * band, lo = top;   // nested: every window ends at the level
 			const float t = hi < kClipY ? kClipY : hi;
 			if (hidden || !fill || lo - t <= 0.0f)
 			{
@@ -594,7 +594,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.8 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.9 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

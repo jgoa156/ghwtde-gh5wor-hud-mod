@@ -962,3 +962,16 @@
   the slot hole, stretched by the DE's star_filler_scale; masks removed. tools/wedge_check.py renders the slot at
   1080p pixel scale.
 - WoR drums clip analysed: docs/WOR_DRUMS_REFERENCE.md.
+
+### v0.40 + plugin 1.9 (2026-10-06, installed, NOT yet tested): theme switch crash, soft SP top
+- User test of 1.8: textures back, wedge/glow/glide/plasma OK; still crashes on theme switch; SP top still stepped
+  and "flashes" while draining (Video Project 6: 2-3 horizontal seam lines between the feather bands).
+- Dump 20:47: first-chance AV reading 0x8 inside ReShade 6.8.0 (d3d9.dll+0x8cfef) under the game's
+  DrawPrimitiveUP (vtable +0x14c, exe 0x67ac85), right after the log's font unload lines; 0xc00001a5 follows.
+  Read as: text drawn with WoR_HUD_num_a1 after it was unloaded with the theme pak (not provable from the dump).
+  Also found: the name-based unload 0x63ff80 got only its start relocated by the DE (end 0x63ffc6 and slot
+  0x640019/0x640020 still old), so font unloading in the DE is unreliable in general.
+- Fix: the font moved to its own pak hud_ghwor_font, registered in the HUD pak links and loaded once by
+  WoR_HUD_Load (mpm_object_load_pak, owner WoR_HUD_font_owner, never unloaded). No theme loads/unloads a font now.
+- Feathers: 8 nested windows (each from the level up through its band, alpha increments) over 12 units: no inner
+  seams. Fallback if the boot load fails: a DE font for the digits (mock first).

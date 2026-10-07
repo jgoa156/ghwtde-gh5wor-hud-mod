@@ -73,7 +73,7 @@ static const uint32_t kBall[16] = {
 // star bar / song progress / star glow (tools/wor_1g.py)
 static const uint32_t kStarBar = 0xb6c865a9, kStarLead = 0x635ae815;
 static const uint32_t kProgFill = 0x424eda5d, kProgLead = 0x9f9c3522;
-static const float kCometHead = 0.800f, kStarLeadS = 1.500f, kProgLeadS = 1.350f;
+static const float kCometHead = 0.500f, kStarLeadS = 1.100f, kProgLeadS = 1.100f;
 static const float kFireFps = 20.0f, kFireBase = 0.950f, kFireAmp = 0.300f, kFireHz = 1.100f;
 static const uint32_t kStarFire[24] = {
 	0x78514edd, 0x0f567e4b, 0x965f2ff1, 0xe1581f67, 0x7f3c8ac4, 0x083bba52, 0x9132ebe8, 0xe635db7e,

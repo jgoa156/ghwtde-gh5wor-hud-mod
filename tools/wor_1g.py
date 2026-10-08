@@ -521,7 +521,7 @@ def star_slot_height():
     return bottom - top
 
 
-PROG_LEFT_EXT, PROG_RIGHT_EXT = 15.6, 8.0   # the line runs from the score box's left edge (WoR clip) to under the star
+PROG_LEFT_EXT, PROG_RIGHT_EXT = 0.0, 8.0     # the line starts where the gold star bar starts (user 2026-10-08: it began before the bar) and runs to under the star
 
 
 def prog_w():

@@ -39,7 +39,13 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
    material checksum; needs a material whose texture lives in a pak we control). Star: user chose "regress to 0.40";
    mocks A/B are in `verify/mock_star_v043_x2.png` if it is revisited.
 4. Multiplayer / vocals layouts (only 1 player is WoR-styled); drums gem theme check against WoR footage.
-5. Helper Pill / Menu Popup themes (later); crowd models and drummer animations (optional, need Xbox 360 converters).
+5. **Native ultrawide fix as an ASI plugin** (user: at 2560x1080 the WHOLE game is stretched). Leads (GHWT_Definitive.exe, 2026-10-08):
+   the engine's screen aspect is a global float at 0xd9ef74, written at boot by the setter 0x5c7c20 (called from 0x4fce6f with the
+   only 16/9 float constant, .rdata 0xa24eec); readers: 0x5546b0, 0x5c1538 / 0x5c1574 (FOV adjust, already aspect dependent),
+   0x6371b2, 0x7501cb, 0x75cb70. Plan: hook 0x5c7c20 to pass the real window aspect (3D un-stretch / Hor+), then find the 2D canvas
+   mapping (1280x720 canvas stretched to the window; refs 0x52a51a..0x52a562) and keep the canvas at 16:9 centred or anchor the
+   sides; our border / tubes / score are placed in canvas space, so they would need re-checking. Also videos/menus.
+6. Helper Pill / Menu Popup themes (later); crowd models and drummer animations (optional, need Xbox 360 converters).
 
 ## How to work on it
 

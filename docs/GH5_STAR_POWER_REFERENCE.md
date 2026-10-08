@@ -60,3 +60,19 @@ frame along the tube (1330,900) -> (1230,700), plus WoR's own files (same HUD as
 4. Animation rates: lightning and ball lightning 20 fps loops; the plasma is continuous noise (a 20 fps flipbook of
    it is close enough).
 5. Ready burst: ~0.25 s of white -> cyan sparks out of the fill top, gone by ~0.8 s.
+
+## Clone Hero / WoR star power on the DE (2026-10-08)
+
+- The DE already ports WoR's highway star power look (`Create_Highway_Star_Power_Effect`: sidebar glows
+  `Mat_sidebar_GLOW_02`, `Mat_Star03` star-outline particles drifting up the highway, spark/star particles) as DE script
+  0x68e7427a in tb `guitar_starpower.qb`, gated by the global `af5331bb` (SectionQBKey, default `ghwt`). Values (DE
+  options list c3cc2385 in menu 0xbb76de6b): `ghwt` "Guitar Hero: World Tour" (classic: sidebar arcs), `gh6_standard`
+  (0x8f24bf5c) "WOR: Standard FX", `gh6_pandora` (0x273bb215) "WOR: SP Nova FX (Pandora)". When it is not `ghwt`,
+  `setup_highway` (guitar_highway.qb) also hides the sidebar arcs (`sidebar_*_Lightning02`, alpha 0) - exactly the
+  Clone Hero look (smooth cyan rails, star outlines, no side arcs).
+- The materials it uses (`Mat_sidebar_GLOW_02`, `Mat_Star03`) are not in tb `guitar_material.qb`'s arrays; WoR textures:
+  sidebar01_glow02 = basic_gems d96d3be3 (32x128 soft bar), Star03 = 42235207 (128 px outlined star). If the DE option
+  shows missing textures, the mod can add both materials to the arrays it already replaces and ship the textures in the
+  gem pak (key = checksum of `tex\models\highway\<name>.dds`), and set `af5331bb` from WoR_HUD_Load.
+- Clone Hero clip (2026-10-08 02-24-49): activation at ~12.6 s turns the highway teal with glowing cyan rails and a
+  short sweep of star outlines; phrase bolts as ours; while active, cyan gems and cyan-green hit flames.

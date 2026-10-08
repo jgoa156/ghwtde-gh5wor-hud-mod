@@ -76,3 +76,16 @@ frame along the tube (1330,900) -> (1230,700), plus WoR's own files (same HUD as
   gem pak (key = checksum of `tex\models\highway\<name>.dds`), and set `af5331bb` from WoR_HUD_Load.
 - Clone Hero clip (2026-10-08 02-24-49): activation at ~12.6 s turns the highway teal with glowing cyan rails and a
   short sweep of star outlines; phrase bolts as ours; while active, cyan gems and cyan-green hit flames.
+
+### Result of the DE check (user, 2026-10-08): the "WOR: Standard FX" option does not exist / has no effect
+- The DE ships the WoR highway effect script (0x68e7427a = Create_Highway_Star_Power_Effect, tb guitar_starpower.qb) and
+  the value list c3cc2385, but: no script ever spawns 0x68e7427a (its hash occurs only at its definition in all extracted
+  qb/exe/dll), no option entry references list c3cc2385 (menu 0x5c2f930d), nothing assigns the global af5331bb (default
+  ghwt), and the materials it needs (Mat_Star03, Mat_sidebar_GLOW_02) are not defined in tb guitar_material.qb. It is an
+  unfinished port.
+- To clone the Clone Hero / WoR highway look the mod would have to: (1) define Mat_Star03 + Mat_sidebar_GLOW_02 in the
+  material arrays it already replaces and ship their textures in the gem pak, (2) set af5331bb to gh6_standard
+  (0x8f24bf5c) from WoR_HUD_Load (this also hides the sidebar arcs in setup_highway), and (3) get 0x68e7427a spawned at
+  star power activation and killed at the end (Kill_Highway_Star_Power_Effect) with the player param: the plugin would
+  detect activation (it already hooks the SP tube / IsStarPower) and spawn the script natively (needs the engine's
+  spawn-script function located and called).

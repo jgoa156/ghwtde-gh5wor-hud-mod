@@ -521,7 +521,7 @@ def star_slot_height():
     return bottom - top
 
 
-PROG_LEFT_EXT, PROG_RIGHT_EXT = 0.0, 8.0     # the line starts where the gold star bar starts (user 2026-10-08: it began before the bar) and runs to under the star
+PROG_LEFT_EXT, PROG_RIGHT_EXT = -4.0, 8.0    # the line starts where the VISIBLE gold star bar starts (the box art hides the bar's first canvas px; user 2026-10-09, mock verify/mock_songline_v2.png) and runs to under the star
 
 
 def prog_w():

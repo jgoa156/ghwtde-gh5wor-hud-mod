@@ -1065,3 +1065,12 @@
 - Ultrawide probe result (1.14, 2560x1080): screen size floats 0xb056a4/a8 = 2560/1080 (set by 0x52a510 from
   0xe51440/44); 2D canvas scale 0xd5ab7c/80 = 2.0/1.5, written by GHWTDE.dll (runtime eip 0x6a727406/0b). Next: hook so
   sprite sizes use the y scale on x while positions keep the x scale (user: keep positions, no stretch).
+
+### v0.44 fix-up (2026-10-09, installed, NOT yet tested)
+- User test of v0.44: textures load at boot and on every switch (boot fix confirmed).
+- Song line dot sat in the middle: the 50% tick used the fill's texture, so the plugin (finds the fill by texture name)
+  took the tick for the fill. The tick now has its own texture WoR_HUD_prog_tick.
+- SP tube bottom: the charging bottom glow (SB_Tubeglow01) looked wrong; per the user's WoR reference both ends carry
+  the needle arc. The bottom glow sprite is now the neon needle too (core + halo in one texture, drawn like the half
+  divider, at level 0, shown charging and ready, alpha 0.7 = a bit less glow than the top, as in WoR); the needle baked
+  into the ready frames was removed. Both needles 0.85x narrower than the divider (SP_NEON_X_K).

@@ -12,6 +12,7 @@ Output (build/):
 usage: python build.py [--install] [--package]
 """
 import json, os, re, shutil, subprocess, sys, tempfile
+from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
 import desc_edit, paths, texdict, wor_1g, wor_art, wor_font  # noqa: E402
@@ -293,9 +294,7 @@ def main():
                                    core_k=wor_1g.SP_PLASMA_CORE_K,
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
-    # neon needle along the ready fill's bottom edge, baked in (the bottom never moves; ready frames only)
-    needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
-    frames = [wor_art.neon_bottom(f, needle, wor_1g.SP_NEON_RGB) for f in frames]
+
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')
         im.save(out)
@@ -308,7 +307,7 @@ def main():
     # WoR's straight star-progress bar and song progress line: soft-edged strips from hud_progression_bar_lead's
     # vertical profile (the DE tints the star bar), the same dot at both tips, WoR's dark progress track
     lead = os.path.join(WOR_PNG, 'hud_progression_bar_lead.png')
-    for name, core in ((wor_1g.STAR_BAR_NAME, 0.0), (wor_1g.PROG_FILL_NAME, 0.0)):
+    for name, core in ((wor_1g.STAR_BAR_NAME, 0.0), (wor_1g.PROG_FILL_NAME, 0.0), (wor_1g.PROG_TICK_NAME, 0.0)):
         out = os.path.join(work, name + '.png')
         wor_art.soft_strip(lead, out, core=core)
         pngs.append(out)
@@ -327,11 +326,15 @@ def main():
         pngs.append(out)
         sources[name] = {'src': star_glow, 'noise': noise, 'box': None, 'flip': False}
     # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
-    ship(wor_1g.SP_GLOW_NAMES[0], os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))
-    # fill-top cap: the neon needle (white core + blue halo) in SB_TubeNeedle01's own frame
+    # neon needles (SB_TubeNeedle01's own frame, drawn like the half divider): the fill-top cap as white core + blue
+    # halo (two sprites), the bottom one as both in one texture (one sprite, shown charging and ready)
     caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
     wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB)
-    for n, c in zip(wor_1g.SP_GLOW_NAMES[1:], caps):
+    bottom = Image.open(caps[1]).convert('RGBA')
+    bottom.alpha_composite(Image.open(caps[0]).convert('RGBA'))
+    caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
+    bottom.save(caps[0])
+    for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)

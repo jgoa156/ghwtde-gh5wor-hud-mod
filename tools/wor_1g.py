@@ -325,9 +325,11 @@ SP_BALL_FPS = 20
 SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (canvas offset from the fill top, scale)
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
-SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # SB_Tubeglow01; the cap = neon needle (core, halo)
-SP_GLOW_BOTTOM_LEVEL = 0.045                 # inside the fill's rounded bottom (0.02 hung past it)
-SP_GLOW_SPRITES = (('sp_glow_bottom', 0.5, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
+SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo
+SP_GLOW_BOTTOM_LEVEL = 0.0                   # the bottom neon needle sits on the fill's bottom edge (like the cap on its top)
+SP_NEON_X_K = 0.85                           # neon needles a bit narrower than the half divider (user 2026-10-09)
+# the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
+SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.7),    # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
                    ('sp_cap_c', None, None, (255, 255, 255, 255), 1.0))           #  needle uses the divider's rot/scale
 SP_FEATHER_H = 12.0                          # soft fill top: canvas units above the level faded in bands
@@ -424,9 +426,10 @@ def sp_effect_sprites():
         pos = sp_level_point(SP_GLOW_BOTTOM_LEVEL) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
         if k is None:   # neon needle cap: drawn like the half divider (same texture frame, rotation and scale)
             k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT
+            sc = (k * SP_NEON_X_K, k)
         else:
-            rot = RIGHT.angle + rot_off
-        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=(k, k), rot=rot, z=3.06,
+            rot, sc = RIGHT.angle + rot_off, (k, k)
+        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=sc, rot=rot, z=3.06,
                      alpha=0.0, rgba=rgba, texture=tex, blend='Add'))
     for i, (off, k) in enumerate(SP_BURST):
         out.append(E(f'sp_burst{i}', 'SpriteElement', pos=add(sp_level_point(0.5), off), dims=(32, 32), scale=(k, k),
@@ -497,6 +500,7 @@ PROG_LEAD_S = 1.1
 STAR_LEAD_RGB = (255, 255, 255)            # tail colours (clip: gold trail on the star bar, steel blue on the song line)
 PROG_LEAD_RGB = (255, 255, 255)           # both bars use the same white ball
 PROG_FILL_NAME = 'WoR_HUD_prog_fill'
+PROG_TICK_NAME = 'WoR_HUD_prog_tick'          # same strip, own name: the plugin finds the fill by its texture
 PROG_BACK_NAME = 'WoR_HUD_prog_back'
 PROG_LEAD_NAME = 'WoR_HUD_prog_lead'
 PROG_ROW = 30.0                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
@@ -598,7 +602,7 @@ def band_meter():
           just=(-1, -1), z=4.1, rgba=PROG_RGBA, texture=PROG_FILL_NAME, blend='Add'),
         # WoR's 50% mark: a plain black tick across the line at its midpoint (user 2026-10-09), over the fill
         E('prog_half', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET + (prog_w() - PROG_FILL_INSET) / 2, prog_y()),
-          dims=(PROG_HALF_W, PROG_H * SCORE_K * 1.3), z=4.15, rgba=(0, 0, 0, 255), texture=PROG_FILL_NAME),
+          dims=(PROG_HALF_W, PROG_H * SCORE_K * 1.3), z=4.15, rgba=(0, 0, 0, 255), texture=PROG_TICK_NAME),
         E('prog_lead', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET, prog_y()), dims=(64, 16),
           scale=(PROG_LEAD_S, PROG_LEAD_S), z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,

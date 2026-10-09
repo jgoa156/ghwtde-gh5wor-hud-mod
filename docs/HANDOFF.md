@@ -31,7 +31,12 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   - send mocks to the user with SendUserFile (writing them to `verify/` is not enough).
 - **Desktop zip is stale** (0.40): rebuild with `python build.py --package` and copy it to the Desktop after the next test.
 
-## Latest (2026-10-09): v0.44 + plugin 1.15 installed, NOT yet tested (see MODLOG last section)
+## Latest (2026-10-09): v0.44 + plugin 1.15 installed (see MODLOG last section)
+- Confirmed in game: WoR theme loads at boot and on every theme switch; song line dot follows the fill; neon needles.
+- Installed, not yet tested: single-arc neon needles (0.75x width, bottom one -5 deg).
+- Pending ideas (user, not started): WoR highway lines (fret gradient, lighter border bottom, line above the strikeline,
+  strings fading halfway; feasibility table in this session's notes: frets/border textures live in gems_ghwt, strings'
+  material sys_String01 in z_in_game); crowd selector option (evaluating).
 - Test: boot with HUDTheme=ghwor (log line "WoR_HUD: HUD Theme re-read..."), textures must load; theme switches
   both ways; song line (track = gold bar span, 50% tick); SP tube (flat bottom, lighter blue ready, neon needles).
 - Ultrawide: canvas scale 0xd5ab7c/80 (2.0/1.5 at 2560x1080) written by GHWTDE.dll; fix = sprite sizes on the y scale.

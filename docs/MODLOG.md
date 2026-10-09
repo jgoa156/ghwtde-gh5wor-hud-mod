@@ -1074,3 +1074,9 @@
   the needle arc. The bottom glow sprite is now the neon needle too (core + halo in one texture, drawn like the half
   divider, at level 0, shown charging and ready, alpha 0.7 = a bit less glow than the top, as in WoR); the needle baked
   into the ready frames was removed. Both needles 0.85x narrower than the divider (SP_NEON_X_K).
+- User test of the fix-up: song line dot follows the fill again; neon needles in place. Corrections (installed, NOT yet
+  tested): the needle art is two-tone (bright edge line + darker band); taking its silhouette as the white core made the
+  band glow as a second, dimmer arc. The neon now uses alpha x brightness (bright line only, normalised to full alpha,
+  stray pixels cut) with a tight halo (blur 1.4, gain 1.8). Both needles 0.75x the divider's width; the bottom one is
+  turned -5 deg more than the divider (SP_NEON_BOTTOM_ROT; user: the top one's angle is right). The dark arc under the
+  top needle at 50% is the half divider (intended).

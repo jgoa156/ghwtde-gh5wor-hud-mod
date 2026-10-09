@@ -439,15 +439,19 @@ def neon_bottom(img, needle_png, rgb, halo_blur=3.0):
     return out
 
 
-def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=2.5):
+def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.8):
     """The tube needle in its own 64x64 frame (same placement as SB_TubeNeedle01, so the half divider's rotation and
-    scale apply) as a white core and an `rgb` blurred halo: the neon cap at the fill top."""
-    from PIL import ImageFilter
+    scale apply) as a white core and an `rgb` blurred halo: the neon cap at the fill top. Only the needle's bright
+    edge line glows (alpha x brightness): its darker lower band, taken as a silhouette, read as a second arc."""
+    from PIL import ImageChops, ImageFilter
     nd = Image.open(needle_png).convert('RGBA')
-    a = nd.split()[3]
+    lum = nd.convert('L').point(lambda v: max(0, min(255, int((v - 100) * 255 / 60))))    # the bright line only
+    a = ImageChops.multiply(nd.split()[3], lum)
+    peak = max(1, a.getextrema()[1])          # the needle art is semi-transparent: its line peaks at full alpha
+    a = a.point(lambda v: 0 if v < 48 else min(255, int(v * 255 / peak)))
     core = Image.new('RGBA', nd.size, (255, 255, 255, 255))
     core.putalpha(a)
     core.save(out_core)
     halo = Image.new('RGBA', nd.size, tuple(rgb) + (255,))
-    halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * 2.6))))
+    halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * halo_gain))))
     halo.save(out_halo)

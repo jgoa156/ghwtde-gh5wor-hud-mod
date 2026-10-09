@@ -327,7 +327,8 @@ SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo
 SP_GLOW_BOTTOM_LEVEL = 0.0                   # the bottom neon needle sits on the fill's bottom edge (like the cap on its top)
-SP_NEON_X_K = 0.85                           # neon needles a bit narrower than the half divider (user 2026-10-09)
+SP_NEON_X_K = 0.75                           # neon needles narrower than the half divider: fit the glass (user 2026-10-09)
+SP_NEON_BOTTOM_ROT = -5.0                    # the bottom needle turned a bit more than the divider (user 2026-10-09; the top one is right)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
 SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.7),    # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
@@ -425,7 +426,7 @@ def sp_effect_sprites():
     for (lid, k, rot_off, rgba, _), tex in zip(SP_GLOW_SPRITES, SP_GLOW_NAMES):
         pos = sp_level_point(SP_GLOW_BOTTOM_LEVEL) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
         if k is None:   # neon needle cap: drawn like the half divider (same texture frame, rotation and scale)
-            k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT
+            k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT + (SP_NEON_BOTTOM_ROT if lid == 'sp_glow_bottom' else 0.0)
             sc = (k * SP_NEON_X_K, k)
         else:
             rot, sc = RIGHT.angle + rot_off, (k, k)

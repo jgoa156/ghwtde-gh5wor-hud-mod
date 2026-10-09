@@ -251,10 +251,9 @@ def main():
     for font_id, src in wor_1g.FONT_SRC.items():
         wor_font.convert(src, os.path.join(pak_src, font_id + '.fnt.xen'))
         sources[font_id] = {'src': src, 'box': None}
-    # note-streak counter: GH3:WoR's light images, same names as the DE's (state 0 off, 1 half, 2 lit)
-    for name in wor_1g.STREAK_LIGHTS:
-        ship(name, os.path.join(paths.GH3WOR_PNG, name + '.png'))
-    # the same lights under unique names (used by the HUD fixes plugin), plus WoR's x1 pink set (lit states tinted)
+    # note-streak counter: GH3:WoR's light images (state 0 off, 1 half, 2 lit). Never under the DE's own names
+    # (HUD_score_light_*): stock themes use those too, and unloading our pak on a theme switch took them away
+    # ("MISSING TEXTURE" on WT/WT+). Only unique names, which the HUD fixes plugin sets; plus WoR's x1 pink set.
     for name, src in wor_1g.OWN_LIGHTS.items():
         ship(name, os.path.join(paths.GH3WOR_PNG, src + '.png'))
     for name, src in wor_1g.PINK_LIGHTS.items():
@@ -266,11 +265,12 @@ def main():
             wor_art.tint_luma(p, out, wor_1g.PINK_TINT)
             pngs.append(out)
             sources[name] = {'src': p, 'box': None, 'flip': False, 'tint_luma': list(wor_1g.PINK_TINT)}
-    # star-power fill: WoR's SP_Fill01 under the DE's tube-glow names (charging / active), cut into the slanted
+    # star-power fill: WoR's SP_Fill01 under our own segment names only (the DE's hud_rock_tube_glow_full(_b) are
+    # shared with stock themes, see the streak lights above), cut into the slanted
     # parallelogram the segments expect; the colour comes from the segments' rgba, as in WoR. Flipped: the star power
     # tube is mirrored but the DE overwrites the segments' scale, so the mirror is baked into the texture.
     seg_h, seg_w = wor_1g.seg_canvas_size()
-    for name in [n for pair in wor_1g.SP_FILL_NAMES for n in pair]:
+    for name in [ours for _, ours in wor_1g.SP_FILL_NAMES]:
         ship(name, os.path.join(WOR_PNG, 'SP_Fill01.png'), wor_1g.SP_FILL_BAND, (64, 16), flip=wor_1g.SP_FILL_FLIP)
         wor_art.slant_band(os.path.join(work, name + '.png'), wor_1g.sp_slant_geom(), wor_1g.SP_FILL_COLS, seg_h, seg_w)
         wor_art.tint_rgb(os.path.join(work, name + '.png'), wor_1g.SP_FILL_RGBA)     # colour baked in (sprites are white)

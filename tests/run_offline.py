@@ -146,6 +146,16 @@ def safety_no_change_of_native_tables():
 
 
 @test
+def safety_theme_pak_has_only_our_texture_names():
+    """Every texture in our theme pak must carry a WoR_HUD_ name: stock themes also use the DE names
+    (HUD_score_light_*, hud_rock_tube_glow_full*), and unloading our pak on a theme switch took them away
+    (MISSING TEXTURE on WT+, 2026-10-09)."""
+    preview = os.path.join(os.path.dirname(SRC), '..', 'preview')
+    bad = [f for f in os.listdir(preview) if f.endswith('.png') and not f.startswith('WoR_HUD')]
+    assert not bad, f'theme pak ships stock-named textures: {bad}'
+
+
+@test
 def safety_no_script_redefinitions():
     """The engine ignores scripts a mod redefines, and $change$ cannot swap them: every mod script must be a new
     WoR_HUD_* symbol (checked on the source, where names are readable)."""

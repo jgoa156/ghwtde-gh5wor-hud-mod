@@ -37,6 +37,7 @@
 // the fill top; crossing into ready, a ball-lightning burst (16 frames at 20 fps) at the fill top.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tlhelp32.h>
 #include <cmath>
 #include <cstdarg>
 #include <cstdint>
@@ -751,6 +752,87 @@ namespace
 		}
 	}
 
+	// ---- ultrawide probe (diagnostic, log only): who writes the 2D canvas scale and what the screen struct holds.
+	// Hardware write breakpoints on the canvas scale x/y (0xd5ab7c/80) and the screen width (0xb056a4); each hit logs
+	// the writing instruction, the caller and the new value (first 12 hits), then the values are dumped a few times.
+	constexpr uintptr_t kProbe[] = { 0xd5ab7c, 0xd5ab80, 0xb056a4 };
+	volatile LONG g_probe_hits = 0;
+
+	LONG CALLBACK probe_veh(EXCEPTION_POINTERS *ep)
+	{
+		if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
+			return EXCEPTION_CONTINUE_SEARCH;
+		CONTEXT *c = ep->ContextRecord;
+		const DWORD hit = c->Dr6 & 0xf;
+		if (!hit)
+			return EXCEPTION_CONTINUE_SEARCH;
+		if (InterlockedIncrement(&g_probe_hits) <= 12)
+		{
+			for (int k = 0; k < 3; ++k)
+				if (hit & (1u << k))
+					log("ultrawide probe: write to 0x%08x = %f at eip 0x%08x, [esp] 0x%08x, ebp 0x%08x [ebp+4] 0x%08x",
+					    static_cast<unsigned>(kProbe[k]), *reinterpret_cast<const float *>(kProbe[k]),
+					    static_cast<unsigned>(c->Eip), *reinterpret_cast<const unsigned *>(c->Esp),
+					    static_cast<unsigned>(c->Ebp),
+					    c->Ebp > 0x10000 && !IsBadReadPtr(reinterpret_cast<void *>(c->Ebp + 4), 4) ? *reinterpret_cast<const unsigned *>(c->Ebp + 4) : 0u);
+		}
+		c->Dr6 = 0;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+
+	void probe_arm_threads()
+	{
+		const DWORD pid = GetCurrentProcessId(), me = GetCurrentThreadId();
+		HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+		THREADENTRY32 te = { sizeof te };
+		int armed = 0;
+		for (BOOL ok = Thread32First(snap, &te); ok; ok = Thread32Next(snap, &te))
+		{
+			if (te.th32OwnerProcessID != pid || te.th32ThreadID == me)
+				continue;
+			HANDLE t = OpenThread(THREAD_GET_CONTEXT | THREAD_SET_CONTEXT | THREAD_SUSPEND_RESUME, FALSE, te.th32ThreadID);
+			if (!t)
+				continue;
+			SuspendThread(t);
+			CONTEXT c = {};
+			c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+			if (GetThreadContext(t, &c))
+			{
+				c.Dr0 = kProbe[0]; c.Dr1 = kProbe[1]; c.Dr2 = kProbe[2];
+				c.Dr7 = (1 << 0) | (1 << 2) | (1 << 4)          // local enable DR0-2
+				      | (0x1 << 16) | (0x3 << 18)                // DR0: write, 4 bytes
+				      | (0x1 << 20) | (0x3 << 22)                // DR1
+				      | (0x1 << 24) | (0x3 << 26);               // DR2
+				if (SetThreadContext(t, &c))
+					++armed;
+			}
+			ResumeThread(t);
+			CloseHandle(t);
+		}
+		CloseHandle(snap);
+		log("ultrawide probe: write breakpoints armed on %d threads", armed);
+	}
+
+	DWORD WINAPI probe_thread(void *)
+	{
+		AddVectoredExceptionHandler(1, probe_veh);
+		for (int round = 0; round < 12; ++round)
+		{
+			if (round < 6)
+				probe_arm_threads();          // re-arm so threads created after boot (render thread) are covered
+			const float *s = reinterpret_cast<const float *>(0xd5ab60);
+			const unsigned *u = reinterpret_cast<const unsigned *>(0xd5ab60);
+			log("ultrawide probe t=%ds: screen %d x %d (0xe51440) | b056a4.. %.2f %.2f %.2f %.2f | d5ab60.. "
+			    "%.3f %.3f %08x %08x %08x %08x %08x %.4f %.4f %08x %08x | aspect 0xd9ef74 %.4f",
+			    round * 5, *reinterpret_cast<const int *>(0xe51440), *reinterpret_cast<const int *>(0xe51444),
+			    *reinterpret_cast<const float *>(0xb056a4), *reinterpret_cast<const float *>(0xb056a8),
+			    *reinterpret_cast<const float *>(0xb056ac), *reinterpret_cast<const float *>(0xb056b0),
+			    s[0], s[1], u[2], u[3], u[4], u[5], u[6], s[7], s[8], u[9], u[10], *reinterpret_cast<const float *>(0xd9ef74));
+			Sleep(5000);
+		}
+		return 0;
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -758,7 +840,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.13 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.14 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -786,6 +868,8 @@ namespace
 			const bool ok = target == kSnwprintf && install_call(kScoreFmtCall, reinterpret_cast<void *>(&score_text_hook));
 			log(ok ? "score text: thousands separators hooked" : "score text: hook failed (unexpected call target)");
 		}
+		if (HANDLE t = CreateThread(nullptr, 0, probe_thread, nullptr, 0, nullptr))
+			CloseHandle(t);
 		(void)self;
 	}
 }

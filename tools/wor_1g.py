@@ -315,17 +315,21 @@ SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) o
 SP_PLASMA_FPS = 60
 SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
-SP_PLASMA_COLOURS = dict(base=(165, 240, 236), hot=(240, 255, 252), dark=(75, 185, 182))   # whiter than GH5's ~(127,231,228)
+SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
+SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
+SP_FLAT_BOTTOM = True                        # the fill keeps the glass's full width down to its last row (no curve)
+SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
+SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
 SP_BALL_FPS = 20
 SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (canvas offset from the fill top, scale)
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
-SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spglow_cap_w', 'WoR_HUD_spglow_cap_c')   # SB_Tubeglow01, own names
+SP_GLOW_NAMES = ('WoR_HUD_spglow_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # SB_Tubeglow01; the cap = neon needle (core, halo)
 SP_GLOW_BOTTOM_LEVEL = 0.045                 # inside the fill's rounded bottom (0.02 hung past it)
 SP_GLOW_SPRITES = (('sp_glow_bottom', 0.5, 180.0, (110, 245, 230, 255), 1.0),     # (id, scale, rot vs tube, rgba,
-                   ('sp_cap_w', 0.42, 0.0, (255, 255, 255, 255), 1.0),            #  alpha when shown)
-                   ('sp_cap_c', 0.55, 0.0, (90, 240, 230, 255), 0.5))
+                   ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
+                   ('sp_cap_c', None, None, (255, 255, 255, 255), 1.0))           #  needle uses the divider's rot/scale
 SP_FEATHER_H = 12.0                          # soft fill top: canvas units above the level faded in bands
 SP_FEATHER_ALPHA = (0.80, 0.68, 0.56, 0.44, 0.33, 0.22, 0.12, 0.05)   # band alphas, nearest the level first
 # the windows are nested (window k spans from the level up through band k, so band j is covered by windows j..n-1 and
@@ -418,7 +422,11 @@ def sp_effect_sprites():
     out = []
     for (lid, k, rot_off, rgba, _), tex in zip(SP_GLOW_SPRITES, SP_GLOW_NAMES):
         pos = sp_level_point(SP_GLOW_BOTTOM_LEVEL) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
-        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=(k, k), rot=RIGHT.angle + rot_off, z=3.06,
+        if k is None:   # neon needle cap: drawn like the half divider (same texture frame, rotation and scale)
+            k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT
+        else:
+            rot = RIGHT.angle + rot_off
+        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=(k, k), rot=rot, z=3.06,
                      alpha=0.0, rgba=rgba, texture=tex, blend='Add'))
     for i, (off, k) in enumerate(SP_BURST):
         out.append(E(f'sp_burst{i}', 'SpriteElement', pos=add(sp_level_point(0.5), off), dims=(32, 32), scale=(k, k),
@@ -521,7 +529,19 @@ def star_slot_height():
     return bottom - top
 
 
-PROG_LEFT_EXT, PROG_RIGHT_EXT = -4.0, 8.0    # the line starts where the VISIBLE gold star bar starts (the box art hides the bar's first canvas px; user 2026-10-09, mock verify/mock_songline_v2.png) and runs to under the star
+PROG_LEFT_EXT, PROG_RIGHT_EXT = -4.0, 0.0    # the track spans the VISIBLE gold star bar exactly (both ends aligned; user 2026-10-09):
+                                              # the box art hides the bar's first 4 canvas units, and the line ends where the bar ends
+
+
+PROG_HALF_W = 3.0           # canvas units: width of the black 50% tick
+PROG_FILL_INSET = 1.0       # canvas units: the blue fill starts this far right of the track's start (user 2026-10-09: ~2 px)
+
+
+PROG_BACK_ART = (26, 233)       # first / last opaque column of the 256-wide track texture
+
+
+def prog_back_w():
+    return prog_w() * 256 / (PROG_BACK_ART[1] - PROG_BACK_ART[0] + 1)
 
 
 def prog_w():
@@ -568,13 +588,18 @@ def band_meter():
         E('star_lead', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(64, 16),
           scale=(STAR_LEAD_S, STAR_LEAD_S), z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
         # song progress: the DE sets songtime_fg's dims to songtime_bg's width x completion (script dadb0cff)
-        E('prog_back', 'SpriteElement', pos=(prog_x() + prog_w() / 2, prog_y()), dims=(prog_w() / 0.9, PROG_BACK_H * SCORE_K),
+        # the track's visible art (texture columns PROG_BACK_ART) covers exactly the line's span
+        E('prog_back', 'SpriteElement', pos=(prog_x() + prog_w() / 2 - prog_back_w() * ((PROG_BACK_ART[0] + PROG_BACK_ART[1] + 1) / 2 - 128) / 256,
+          prog_y()), dims=(prog_back_w(), PROG_BACK_H * SCORE_K),
           z=4.0, texture=PROG_BACK_NAME),
-        E('songtime_bg', 'SpriteElement', pos=(prog_x(), prog_y() - PROG_H * SCORE_K / 2), dims=(prog_w(), PROG_H * SCORE_K),
+        E('songtime_bg', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET, prog_y() - PROG_H * SCORE_K / 2), dims=(prog_w() - PROG_FILL_INSET, PROG_H * SCORE_K),
           just=(-1, -1), z=4.05, texture=BLANK),
-        E('songtime_fg', 'SpriteElement', pos=(prog_x(), prog_y() - PROG_H * SCORE_K / 2), dims=(0.0, PROG_H * SCORE_K),
+        E('songtime_fg', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET, prog_y() - PROG_H * SCORE_K / 2), dims=(0.0, PROG_H * SCORE_K),
           just=(-1, -1), z=4.1, rgba=PROG_RGBA, texture=PROG_FILL_NAME, blend='Add'),
-        E('prog_lead', 'SpriteElement', pos=(prog_x(), prog_y()), dims=(64, 16),
+        # WoR's 50% mark: a plain black tick across the line at its midpoint (user 2026-10-09), over the fill
+        E('prog_half', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET + (prog_w() - PROG_FILL_INSET) / 2, prog_y()),
+          dims=(PROG_HALF_W, PROG_H * SCORE_K * 1.3), z=4.15, rgba=(0, 0, 0, 255), texture=PROG_FILL_NAME),
+        E('prog_lead', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET, prog_y()), dims=(64, 16),
           scale=(PROG_LEAD_S, PROG_LEAD_S), z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),

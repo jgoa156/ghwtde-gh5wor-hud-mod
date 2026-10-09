@@ -65,7 +65,7 @@ def state(health, sp, mult):
     col = {1: '', 2: '_green', 3: '_purple', 4: '_purple'}.get(mult, '')
     for i, st in enumerate((2, 2, 2, 1, 0)):
         v[f'light{i}'] = {'texture': f'HUD_score_light_{st}{col}'}
-    v['songtime_fg'] = {'dims': (wor_1g.prog_w() * 0.45, wor_1g.PROG_H * wor_1g.SCORE_K)}   # DE: bg width x completion
+    v['songtime_fg'] = {'dims': ((wor_1g.prog_w() - wor_1g.PROG_FILL_INSET) * 0.7, wor_1g.PROG_H * wor_1g.SCORE_K)}   # DE: bg width x completion (70%: past the 50% tick)
     v['star_lead'] = {'alpha': 1.0}      # the plugin shows the tip dots and moves them to the tips (see walk)
     v['prog_lead'] = {'alpha': 1.0}
     if os.environ.get('MOCK_PLASMA'):    # the plugin's ready fill: a plasma frame on the full-length tube fill

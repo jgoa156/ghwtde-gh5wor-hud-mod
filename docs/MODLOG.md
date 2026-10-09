@@ -1044,3 +1044,24 @@
 - Plugin: mid-function hook in Create2DParticleSystem (0x4aaae0) at 0x4aad13, after start/end scale are stored in the config
   slot (esi: +0x10 start_scale, +0x20 end_scale, +0x44 material, +0x5c start_color bytes r g b a). With the WoR HUD up:
   Star01 0.55 -> 0.25; Star02 0.5 -> 0.125, end 0.15, half alpha; Spark01 only at 1.5 (the burst) -> 0.5. Textures stay the DE ones.
+
+## v0.44 + plugin 1.15 (2026-10-09, installed, NOT yet tested)
+
+- **Booting with WoR as the saved HUD theme showed MISSING TEXTURE** (switching to WoR after boot worked). The DE reads
+  HUDTheme from the ini (script 0x67da6f76, log "Reading INI string value for HUD Theme") before mods load and matches
+  it against the menu choices 0x1f644846; "ghwor" wasn't there yet, so the theme global 0x12ad2474 fell back and
+  hudtheme_load_paks (theme struct from 0x254b8078) loaded hud_ghwt_withtime + hud_shared_assets. The DE re-reads Gem
+  Theme after mods (0x1727e98d: `$[67da6f76]$(~$[f26e4c1f]$->$gem_material$)`); WoR_HUD_Load now does the same for
+  the HUD Theme option (member c98b95d8) right after registering the choice.
+- Theme pak: no stock-named textures any more (HUD_score_light_*, hud_rock_tube_glow_full*); offline test guards it.
+- Song line: the dark track's visible art (texture columns 26-233) spans exactly the visible gold star bar (both ends
+  aligned, PROG_LEFT/RIGHT_EXT -4 / 0); the blue fill starts 1 canvas unit inside it; black 50% tick (3 units wide).
+- Score group: the unapproved 10/08 Clone Hero sizes were reverted (sizes as approved 2026-10-07).
+- SP tube (user picked mock B, verify/mock_sp_tube_v3.png): flat fill bottom (the base art's tail curve no longer cuts
+  it); ready body lighter blue with less white core (core_k 0.35) so the lightning stands out; charging unchanged;
+  neon needle (SB_TubeNeedle01 white core + blue halo) baked along the ready fill's bottom edge, and the fill-top cap
+  sprites are now the same neon needle drawn like the half divider. tools/mock_sp_tube.py mocks the tube textures.
+- Plugin 1.15: probe (1.14) compiled out (WOR_ULTRAWIDE_PROBE); new cap texture names.
+- Ultrawide probe result (1.14, 2560x1080): screen size floats 0xb056a4/a8 = 2560/1080 (set by 0x52a510 from
+  0xe51440/44); 2D canvas scale 0xd5ab7c/80 = 2.0/1.5, written by GHWTDE.dll (runtime eip 0x6a727406/0b). Next: hook so
+  sprite sizes use the y scale on x while positions keep the x scale (user: keep positions, no stretch).

@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-07)
+# GH5 / WoR HUD mod: session handoff (2026-10-09)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -30,6 +30,12 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
     `plugin\build.bat` (v0.42 shipped with stale ball offsets);
   - send mocks to the user with SendUserFile (writing them to `verify/` is not enough).
 - **Desktop zip is stale** (0.40): rebuild with `python build.py --package` and copy it to the Desktop after the next test.
+
+## Latest (2026-10-09): v0.44 + plugin 1.15 installed, NOT yet tested (see MODLOG last section)
+- Test: boot with HUDTheme=ghwor (log line "WoR_HUD: HUD Theme re-read..."), textures must load; theme switches
+  both ways; song line (track = gold bar span, 50% tick); SP tube (flat bottom, lighter blue ready, neon needles).
+- Ultrawide: canvas scale 0xd5ab7c/80 (2.0/1.5 at 2560x1080) written by GHWTDE.dll; fix = sprite sizes on the y scale.
+- Highway SP effect (stars up the highway, glowing rails): researched only, plan in docs/GH5_STAR_POWER_REFERENCE.md.
 
 ## Next steps
 

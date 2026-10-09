@@ -81,8 +81,8 @@ static const uint32_t kStarFire[24] = {
 	0x8829daa9, 0xff2eea3f, 0x6f91f7ae, 0x1896c738, 0x4a672c5f, 0x3d601cc9, 0xa4694d73, 0xd36e7de5,
 };
 
-static const uint32_t kGlowTex[3] = { 0x12792a28, 0x7169eb54, 0x6bb33f29 };   // WoR_HUD_spglow_bottom, WoR_HUD_spglow_cap_w, WoR_HUD_spglow_cap_c
-static const float kGlowAlpha[3] = { 1.00f, 1.00f, 0.50f };
+static const uint32_t kGlowTex[3] = { 0x12792a28, 0xa98f56ca, 0xb35582b7 };   // WoR_HUD_spglow_bottom, WoR_HUD_spneon_w, WoR_HUD_spneon_c
+static const float kGlowAlpha[3] = { 1.00f, 1.00f, 1.00f };
 // burst sprites: canvas offset from the fill top
 static const float kBurstOff[3][2] = { { 0.0f, 0.0f }, { -6.0f, -8.0f }, { 5.0f, -12.0f } };
 // fill-top point on the tube centre line (canvas) for level i / 64

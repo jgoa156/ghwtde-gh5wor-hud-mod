@@ -27,7 +27,7 @@ def tint_luma(src_png, out_png, rgb):
 
 
 def tube_fill(tube_png, fill_png, band_rows, fill_cols, rows, rim, tint, out_png, bolts=(), bolt_png=None,
-              bolt_k=0.8, center=(51.86, -0.040), frames=16, soften=1.4):
+              bolt_k=0.8, center=(51.86, -0.040), frames=16, soften=1.4, flat_bottom=False):
     """A fill in the tube texture's own frame (64x256): every row of the glass interior (the tube's alpha span minus
     `rim`) between `rows` gets the fill band's colour profile across its width, times `tint`. bolts: (frame, x offset)
     crackle wires from bolt_png (16 horizontal frames, white on black) added along the tube centre line."""
@@ -37,8 +37,14 @@ def tube_fill(tube_png, fill_png, band_rows, fill_cols, rows, rim, tint, out_png
     prof = fill[band_rows[0]:band_rows[1], fill_cols[0]:fill_cols[1] + 1].mean(0)
     h, w = tube.shape[:2]
     out = np.zeros((h, w, 4))
+    spans = {y: np.where(tube[y, :, 3] > 128)[0] for y in range(int(rows[0]), int(rows[1]))}
+    widths = {y: xs[-1] - xs[0] for y, xs in spans.items() if len(xs) >= 2}
+    full_w = max(widths.values())
+    last_full = max(y for y, wd in widths.items() if wd >= full_w - 1)   # below it the base art bends into its tail
     for y in range(int(rows[0]), int(rows[1])):
-        xs = np.where(tube[y, :, 3] > 128)[0]
+        xs = spans[y]
+        if flat_bottom and y > last_full:
+            xs = spans[last_full]     # keep the glass's full width down to the last row: a flat bottom, no curve
         if len(xs) < 2 * rim + 2:
             continue
         x0, x1 = xs[0] + rim, xs[-1] - rim
@@ -139,7 +145,7 @@ def tube_glow(fill_png, out_png, rgb, spread=3, blur=5.0, core=0.35, ramp=None):
 
 
 def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.0, loop_tiles=((0, 1), (1, -1)),
-                  noise_scale=(0.5, 1.0), smooth=1.2, arc=None):
+                  noise_scale=(0.5, 1.0), smooth=1.2, arc=None, core_k=1.0, bottom_line=None):
     """GH5's ready star power (WoR material Mat_Sp_Ready_Fire: SP_Fill_Glow02 under a scrolling noise volume) as a
     seamless loop of n frames in the tube fill's own frame. fill_png: the fill (its alpha is the glass interior);
     glow_png: SP_Fill_Glow02 (its brightness across the width is the hot core); noise_png: WoR's noise slice. Two
@@ -175,6 +181,13 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
             t = np.clip((np.arange(w) - xs[0]) / max(1, xs[-1] - xs[0]), 0, 1)
             core[y] = np.interp(t * (w - 1), np.arange(w), glow)
     base, hot, dark = (np.array(c, float) for c in (base, hot, dark))
+    line = np.zeros((h, w))
+    if bottom_line:
+        for x in range(w):
+            ys = np.where(inside[:, x] > 0.5)[0]
+            if len(ys):
+                d = ys[-1] - np.arange(h)
+                line[:, x] = np.where((d >= 0), np.clip(1.0 - d / float(bottom_line[0]), 0, 1), 0) ** 1.5
     frames = []
     for k in range(n):
         t = k / n
@@ -182,7 +195,9 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
         b = sample(u0 * 1.7 + 7.3 + loop_tiles[1][0] * nw * t, v0 * 1.7 + 3.1 + loop_tiles[1][1] * nh * t)
         m = np.clip(((a + b) - 1.0) * 3.0 * contrast + 0.5, 0, 1)      # 0 = blotch, 1 = bright
         col = dark[None, None] + (base - dark)[None, None] * m[..., None]
-        col = col + (hot - col) * (core * (0.55 + 0.45 * m))[..., None]
+        col = col + (hot - col) * (core_k * core * (0.55 + 0.45 * m))[..., None]
+        if bottom_line:   # (rows, strength): a bright line along the fill's bottom edge, fading upwards
+            col = col + (hot - col) * (bottom_line[1] * line)[..., None]
         out = np.zeros((h, w, 4))
         out[..., :3] = col
         out[..., 3] = fill[..., 3]
@@ -386,3 +401,53 @@ def shrink_into(src_png, out_png, canvas, content, alpha=1.0):
     out = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
     out.alpha_composite(im, ((canvas - content) // 2, (canvas - content) // 2))
     out.save(out_png)
+
+
+def neon_needle_layers(needle_png, width, rgb, halo_blur=3.0):
+    """WoR's tube needle (SB_TubeNeedle01, the star power tube's half divider arc) flattened to the tube's
+    cross-section (texture frame) and stretched to `width` px: (core, halo) RGBA images of the same size, the core
+    white, the halo `rgb` and blurred, both padded by the blur."""
+    from PIL import ImageFilter
+    nd = Image.open(needle_png).convert('RGBA').rotate(-16.7, Image.BICUBIC)
+    nd = nd.crop(nd.split()[3].getbbox())
+    nd = nd.resize((width, max(3, round(nd.size[1] * width / nd.size[0]))), Image.LANCZOS)
+    pad = int(halo_blur * 3)
+    a = Image.new('L', (nd.size[0] + 2 * pad, nd.size[1] + 2 * pad), 0)
+    a.paste(nd.split()[3], (pad, pad))
+    core = Image.new('RGBA', a.size, (255, 255, 255, 255))
+    core.putalpha(a)
+    halo = Image.new('RGBA', a.size, tuple(rgb) + (255,))
+    halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * 2.6))))
+    return core, halo, pad
+
+
+def neon_bottom(img, needle_png, rgb, halo_blur=3.0):
+    """A neon needle along the bottom edge of a tube fill texture (64x256 frame): the arc spans the fill's width at
+    its last rows and its lowest point sits exactly on the fill's bottom edge."""
+    import numpy as np
+    a = np.asarray(img.split()[3])
+    rows = np.where(a.max(1) > 128)[0]
+    bottom = rows[-1]
+    xs = np.where(a[bottom - 3] > 128)[0]          # the glass width just above the edge
+    core, halo, pad = neon_needle_layers(needle_png, int(xs[-1] - xs[0] + 1), rgb, halo_blur)
+    ca = np.asarray(core.split()[3])
+    low = np.where(ca.max(1) > 128)[0][-1]          # the arc's lowest opaque row in its own image
+    x, y = int(xs[0]) - pad, int(bottom) - int(low)
+    out = img.copy()
+    out.alpha_composite(halo, (x, y)) if x >= 0 and y >= 0 else out.paste(halo, (x, y), halo)
+    out.alpha_composite(core, (x, y)) if x >= 0 and y >= 0 else out.paste(core, (x, y), core)
+    return out
+
+
+def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=2.5):
+    """The tube needle in its own 64x64 frame (same placement as SB_TubeNeedle01, so the half divider's rotation and
+    scale apply) as a white core and an `rgb` blurred halo: the neon cap at the fill top."""
+    from PIL import ImageFilter
+    nd = Image.open(needle_png).convert('RGBA')
+    a = nd.split()[3]
+    core = Image.new('RGBA', nd.size, (255, 255, 255, 255))
+    core.putalpha(a)
+    core.save(out_core)
+    halo = Image.new('RGBA', nd.size, tuple(rgb) + (255,))
+    halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * 2.6))))
+    halo.save(out_halo)

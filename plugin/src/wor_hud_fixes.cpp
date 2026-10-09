@@ -840,7 +840,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.14 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.15 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -868,8 +868,10 @@ namespace
 			const bool ok = target == kSnwprintf && install_call(kScoreFmtCall, reinterpret_cast<void *>(&score_text_hook));
 			log(ok ? "score text: thousands separators hooked" : "score text: hook failed (unexpected call target)");
 		}
+#ifdef WOR_ULTRAWIDE_PROBE   // diagnostic of 1.14 (results in docs/ULTRAWIDE_RESEARCH.md); off in normal builds
 		if (HANDLE t = CreateThread(nullptr, 0, probe_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
+#endif
 		(void)self;
 	}
 }

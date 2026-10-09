@@ -20,7 +20,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.40'
+VERSION = '0.44'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
@@ -278,7 +278,8 @@ def main():
     full = os.path.join(work, wor_1g.SP_FULL_NAMES[0] + '.png')
     wor_art.tube_fill(os.path.join(WOR_PNG, 'SP_Base.png'), os.path.join(WOR_PNG, 'SP_Fill01.png'),
                       (wor_1g.SP_FILL_BAND[1], wor_1g.SP_FILL_BAND[3]), (35, 63), wor_1g.SP_FILL_ROWS,
-                      int(wor_1g.SP_RIM), wor_1g.SP_CHARGING_RGBA, full, center=wor_1g.TEX_CENTER)
+                      int(wor_1g.SP_RIM), wor_1g.SP_CHARGING_RGBA, full, center=wor_1g.TEX_CENTER,
+                      flat_bottom=wor_1g.SP_FLAT_BOTTOM)
     pngs.append(full)
     sources[wor_1g.SP_FULL_NAMES[0]] = {'src': os.path.join(WOR_PNG, 'SP_Fill01.png'),
                                         'shape': os.path.join(WOR_PNG, 'SP_Base.png'), 'box': None, 'flip': False}
@@ -289,8 +290,12 @@ def main():
     # + WoR's tube lightning (Tesla needle: Lightining_arc_anim01, 16 frames at 20 fps) along the fill's centre
     arc_src = paths.wor('basic_gems_png', '0c30522c.png')
     frames = wor_art.plasma_frames(full, glow02, noise, wor_1g.SP_PLASMA_FRAMES, **wor_1g.SP_PLASMA_COLOURS,
+                                   core_k=wor_1g.SP_PLASMA_CORE_K,
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
+    # neon needle along the ready fill's bottom edge, baked in (the bottom never moves; ready frames only)
+    needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
+    frames = [wor_art.neon_bottom(f, needle, wor_1g.SP_NEON_RGB) for f in frames]
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')
         im.save(out)
@@ -322,8 +327,13 @@ def main():
         pngs.append(out)
         sources[name] = {'src': star_glow, 'noise': noise, 'box': None, 'flip': False}
     # bottom glow and fill-top cap: WoR's SB_Tubeglow01 under unique names
-    for name in wor_1g.SP_GLOW_NAMES:
-        ship(name, os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))
+    ship(wor_1g.SP_GLOW_NAMES[0], os.path.join(WOR_PNG, 'SB_Tubeglow01.png'))
+    # fill-top cap: the neon needle (white core + blue halo) in SB_TubeNeedle01's own frame
+    caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
+    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB)
+    for n, c in zip(wor_1g.SP_GLOW_NAMES[1:], caps):
+        pngs.append(c)
+        sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)
@@ -347,6 +357,11 @@ def main():
             '\t:i $printf$%s("WoR_HUD: registering Warriors of Rock HUD theme")\n'
             '\t:i $change$$[8ef7f1be]$ = (~$WoR_HUD_themes$)\n'
             '\t:i $change$$[1f644846]$ = (~$WoR_HUD_choices$)\n'
+            # The DE reads HUDTheme from the ini before mods load and matches it against the menu choices; "ghwor"
+            # wasn't there yet, so booting with WoR as the saved theme fell back to the first choice's paks (MISSING
+            # TEXTURE). Re-read it now, the way the DE re-reads Gem Theme after mods (script 0x1727e98d).
+            '\t:i $[67da6f76]$(~$[f26e4c1f]$->$[c98b95d8]$)\n'
+            '\t:i $printf$%s("WoR_HUD: HUD Theme re-read from the ini after registering ghwor")\n'
             f'\t:i $WoR_HUD_link$ = :s{{$name$ = %s("{PAK_NAME}"):s}}\n'
             f'\t:i $[325bc724]$$id$ = $[cbcd0af1]$$field$ = ${PAK_NAME}$$element$ = %GLOBAL%$WoR_HUD_link$\n'
             '\t:i $printf$%s("WoR_HUD: theme pak registered with the HUD pak links")\n'

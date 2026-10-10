@@ -9,14 +9,14 @@
 
 usage: python run_offline.py [-k name]      exit code 0 = all pass
 """
-import hashlib, json, os, re, shutil, subprocess, sys, tempfile
+import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MOD = os.path.normpath(os.path.join(HERE, '..', 'build', 'WoR_HUD'))
 SRC = os.path.join(MOD, 'WoR_HUD.txt')
 sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
 import paths  # noqa: E402
-import wor_ui  # noqa: E402
+import wor_menus, wor_ui  # noqa: E402
 TOOLS, SDK, GAME = paths.GH_TOOLS, paths.SDK, paths.GAME
 GOLDEN = os.path.join(HERE, 'golden_textures.json')
 
@@ -44,12 +44,14 @@ def flat(s):
 
 
 _cache = {}
+_TMP = tempfile.mkdtemp(prefix='worhud_tests_')
+atexit.register(shutil.rmtree, _TMP, True)   # extracted paks and round trips
 
 
 def decompiled_mod():
     """Compile the source in a temp dir and decompile the result (round trip)."""
     if 'mod' not in _cache:
-        d = tempfile.mkdtemp(prefix='worhud_')
+        d = tempfile.mkdtemp(prefix='worhud_', dir=_TMP)
         shutil.copy(SRC, d)
         r = sdk('compile', 'WoR_HUD.txt', cwd=d)
         qb = os.path.join(d, 'WoR_HUD.qb.xen')
@@ -64,7 +66,7 @@ def decompiled_mod():
 def de_scripts():
     """Extract the installed DE's script pack (tb) once and return the folder."""
     if 'tb' not in _cache:
-        d = tempfile.mkdtemp(prefix='de_tb_')
+        d = tempfile.mkdtemp(prefix='de_tb_', dir=_TMP)
         sdk('extract', os.path.join(GAME, 'DATA', 'PAK', 'tb.pak.xen'), d, cwd=os.path.dirname(SDK))
         _cache['tb'] = d
     return _cache['tb']
@@ -73,7 +75,7 @@ def de_scripts():
 def de_decompiled(rel):
     d = de_scripts()
     src = os.path.join(d, rel)
-    work = tempfile.mkdtemp(prefix='de_qb_')
+    work = tempfile.mkdtemp(prefix='de_qb_', dir=_TMP)
     shutil.copy(src, work)
     sdk('decompile', os.path.basename(src), cwd=work)
     return open(os.path.join(work, os.path.basename(src)[:-len('.qb.xen')] + '.txt'), encoding='utf-8', errors='replace').read()
@@ -206,10 +208,11 @@ def integrity_textures_in_theme_pak():
     assert used, 'no mod textures used'
 
     def entries_of(pak_name):
-        work = tempfile.mkdtemp(prefix='pak_')
-        sdk('extract', os.path.join(MOD, pak_name + '.pak.xen'), work, cwd=os.path.dirname(SDK))
-        return {f.split('.')[0].lower().replace('0x', '').zfill(8) for f in os.listdir(work)}
-    ui = {wor_ui.LOAD_TEX} | {f'{wor_ui.WHEEL_TEX}{k}' for k in range(wor_ui.WHEEL_FRAMES)}
+        with tempfile.TemporaryDirectory(prefix='pak_') as work:
+            sdk('extract', os.path.join(MOD, pak_name + '.pak.xen'), work, cwd=os.path.dirname(SDK))
+            return {f.split('.')[0].lower().replace('0x', '').zfill(8) for f in os.listdir(work)}
+    ui = ({wor_ui.LOAD_TEX} | {f'{wor_ui.WHEEL_TEX}{k}' for k in range(wor_ui.WHEEL_FRAMES)} |
+          {wor_menus.FRAME, wor_menus.BAR, wor_menus.BLANK, wor_menus.WHITE})
     missing = [t for t in used - ui if qbkey(t) not in entries_of('hud_ghwor')]
     assert not missing, f'textures used but not in the theme pak: {missing}'
     ui_entries = entries_of(wor_ui.UI_PAK)

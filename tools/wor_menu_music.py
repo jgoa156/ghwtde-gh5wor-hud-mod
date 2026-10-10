@@ -29,7 +29,7 @@ WOR_TRACKS = ['gh6_mm_bodies', 'gh6_mm_jetcitywoman', 'gh6_mm_chemicalwarfare', 
               'gh6_mm_hardtosee', 'gh6_mm_waidmannsheil', 'gh6_mm_holywars', 'gh6_mm_imbroken', 'gh6_mm_indians',
               'gh6_mm_psychosocial', 'gh6_mm_reignition', 'gh6_mm_theoutsider', 'gh6_mm_childrenofthegrave']
 WOR_VOLUME = 6                               # the GH5 menu music mod's value
-MM_LUFS = -14.0
+MM_LUFS = -10.0                              # the GH5 mod's tracks are ~-9.5 (user: -14 was too quiet next to them)
 MP3_QUALITY = '2'                            # LAME VBR ~190 kb/s (the GH5 mod: ~166 kb/s VBR)
 
 

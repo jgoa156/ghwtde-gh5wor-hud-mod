@@ -629,6 +629,23 @@ namespace
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
 		{ 0xa3428532 /* set_user_control_color */, 0xb497ac21 /* wor_hud_set_user_control_color */, 0x6a7342a4 /* _orig */,
 		  "helper pills: set_user_control_color wrapped (WoR pill colours on every screen)" },
+		// 1.26: WoR popup boxes and pause menu (tools/wor_menus.py)
+		{ 0xae7ee7a3 /* create_popup_warning_menu */, 0x02e1432d /* wrapper */, 0xc37ce317 /* _orig */,
+		  "popup: WoR descs while the WoR popup theme is on" },
+		{ 0xe8f07af7 /* create_popup_warning_text */, 0x446fde79 /* wrapper */, 0x0c4d6d6c /* _orig */,
+		  "popup: WoR title colour" },
+		{ 0xa88dea1c /* create_popup_warning_menu_option */, 0xa6c23e37 /* wrapper */, 0x80199521 /* _orig */,
+		  "popup: WoR option font, colour and brush bar" },
+		{ 0x830bd68d /* menu_popup_focus */, 0x892ced82 /* wrapper */, 0xddbfc1f5 /* _orig */,
+		  "popup: WoR focus" },
+		{ 0x0cd171d4 /* menu_popup_unfocus */, 0x3a428e18 /* wrapper */, 0xe23bbdf8 /* _orig */,
+		  "popup: WoR unfocus" },
+		{ 0x09e116bf /* ui_create_pausemenu */, 0x9b050bdb /* wrapper */, 0x54c07f17 /* _orig */,
+		  "pause: WoR desc, song info and item style" },
+		{ 0x96351a14 /* menu_item_focus */, 0xb1a0329a /* wrapper */, 0x0ca8ea66 /* _orig */,
+		  "pause: WoR item focus" },
+		{ 0x3e80db22 /* menu_item_unfocus */, 0xae35e188 /* wrapper */, 0x14eb4c76 /* _orig */,
+		  "pause: WoR item unfocus" },
 	};
 
 	uint8_t *find_symbol(uint32_t checksum)
@@ -1181,7 +1198,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.25 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.26 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

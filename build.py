@@ -11,11 +11,11 @@ Output (build/):
 --package: ONE drop-in zip (mod, paks, HUD fixes plugin + ASI loader, ReShade + GHWoR preset + background-only add-on)
 usage: python build.py [--install] [--package]
 """
-import hashlib, json, os, re, shutil, subprocess, sys, tempfile
+import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_ui  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_ui  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -134,6 +134,7 @@ def extract_decompile(pak, work, only=None):
 
 def main():
     work = tempfile.mkdtemp(prefix='worhud_build_')
+    atexit.register(shutil.rmtree, work, True)   # extracted paks: ~100 MB a build (476 left over filled C: once)
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
     os.makedirs(OUT)
@@ -143,6 +144,8 @@ def main():
     themes = block(tb['0x29ebe78e.qb.xen'], 'SectionStruct 0x8ef7f1be')
     choices = block(tb['0xbb76de6b.qb.xen'], 'SectionArray 0x1f644846')
     wtp_dir, wtp = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'hud_ghwt_withtime.pak.xen'), work)
+    _, ui_wtde = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'ui_shared_wtde.pak.xen'), work,
+                                   only={v[1] for v in wor_menus.DLG.values()})
 
     # ---- descs: copy WT+ descs, rename to *_ghwor, retarget textures
     desc_by_key = {}
@@ -389,13 +392,13 @@ def main():
                       f'\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[{key}]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
                       for key, _, dst, _ in wor_1g.BORDER_GEM_PAKS) +
             '\t:i $printf$%s("WoR_HUD: every stock gem theme repointed to its copy with the WoR highway border")\n' +
-            dark_load + SP_HIGHWAY_LOAD + wor_ui.load_script() +
+            dark_load + SP_HIGHWAY_LOAD + wor_ui.load_script() + wor_menus.load_script() +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
-                       'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
+                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
@@ -634,7 +637,7 @@ def build_ui_pak():
     src = os.path.join(ROOT, 'build', 'pak_src', wor_ui.UI_PAK)
     shutil.rmtree(src, ignore_errors=True)
     os.makedirs(src)
-    pngs = wor_ui.pill_images(src)
+    pngs = wor_ui.pill_images(src) + wor_menus.images(src)
     art = os.path.join(src, wor_ui.LOAD_TEX + '.png')
     wor_ui.loading_art().save(art)
     pngs.append(art)
@@ -648,6 +651,7 @@ def build_ui_pak():
     for p in pngs:
         os.remove(p)                                   # only the .img.xen files go into the pak
     wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
+    wor_font.convert(wor_menus.TITLE_FONT_SRC, os.path.join(src, wor_menus.TITLE_FONT + '.fnt.xen'))
     out = os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen')
     sdk('createpak', src, '-out', out, cwd=os.path.dirname(SDK))
     assert os.path.exists(out), 'createpak failed (UI pak)'

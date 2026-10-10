@@ -8,7 +8,7 @@ top-left), rescale the UVs to the padded size, re-encode with png2img and splice
 
 usage: python wor_font.py <src.fnt.xen> <out.fnt.xen>
 """
-import os, struct, subprocess, sys, tempfile
+import os, shutil, struct, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -55,6 +55,7 @@ def convert(src, out):
         off += 36
     head = bytes(b[:tex_off])
     open(out, 'wb').write(head + pc_tex)
+    shutil.rmtree(work, ignore_errors=True)
     return (w, h), (pw, ph), (off - 0x200a8) // 36
 
 

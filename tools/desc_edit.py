@@ -30,7 +30,7 @@ def _floats2(name, x, y):
 
 
 def set_elem(desc, local_id, texture=None, pos=None, dims=None, scale=None, just=None, z=None, blend=None,
-             alpha=None, rot=None, rgba=None):
+             alpha=None, rot=None, rgba=None, font=None):
     """Return desc with the element <local_id> changed. Raises if the element is missing or ambiguous."""
     hits = [m.start() for m in re.finditer(rf'StructQBKey local_id = {re.escape(local_id)}\s*\n', desc)]
     if len(hits) != 1:
@@ -69,6 +69,8 @@ def set_elem(desc, local_id, texture=None, pos=None, dims=None, scale=None, just
     if rgba is not None:
         blk = sub(r'(StructArray rgba\s*\{\s*ArrayInteger\s*\[)[^\]]*(\])',
                   r'\g<1>\n' + '\n'.join(str(int(c)) for c in rgba) + r'\n\g<2>', blk, 'rgba')
+    if font is not None:
+        blk = sub(r'StructQBKey font = \S+', f'StructQBKey font = {font}', blk, 'font')
     return desc[:a] + blk + desc[b:]
 
 

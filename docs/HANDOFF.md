@@ -40,8 +40,9 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Next steps
 
-1. **WoR menus, loading screen, pill and helper themes** (next, user, 2026-10-10): research what the DE lets a mod
-   theme there and what WoR assets exist. Mock first.
+1. **WoR menu look** (v0.48 WIP, MODLOG "v0.48 WIP"): helper pills done; loading screen needs rework (user video
+   pending); menu music built (tools/wor_menu_music.py), untested. Menu music = one mod per game, all installed so the
+   DE shuffles them; other games' menu music to be extracted the same way later. Then popup boxes, You Rock; pause parked.
 2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
    frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
 3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.

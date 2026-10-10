@@ -1118,3 +1118,7 @@
   wider than 16:9, so all 2D (HUD, menus) draws as a centred 16:9 picture. Probe compiled out.
 - Bottom neon needle baked into the fill textures (charging + every ready frame) on the fill's bottom edge: exact
   alignment, clips with the fill; the bottom sprite is hidden (alpha 0).
+
+### Plugin 1.19 (2026-10-09)
+- 1.18 canvas struct writes: logged, no visible effect (the renderer uses copies made at boot); menus got slow/glitchy.
+  Compiled out (WOR_CANVAS_STRUCT). Next candidate: remap pre-transformed (XYZRHW) 2D vertices at the D3D9 level.

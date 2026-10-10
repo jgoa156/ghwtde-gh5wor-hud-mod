@@ -943,7 +943,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.18 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.19 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -980,8 +980,10 @@ namespace
 		if (HANDLE t = CreateThread(nullptr, 0, probe_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
 #endif
+#ifdef WOR_CANVAS_STRUCT   // 1.18 experiment: values written, no effect on screen (renderer uses copies); menus slowed
 		if (HANDLE t = CreateThread(nullptr, 0, canvas_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
+#endif
 		(void)self;
 	}
 }

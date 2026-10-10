@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-09)
+# GH5 / WoR HUD mod: session handoff (2026-10-09, v0.45)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -31,7 +31,12 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   - send mocks to the user with SendUserFile (writing them to `verify/` is not enough).
 - **Desktop zip is stale** (0.40): rebuild with `python build.py --package` and copy it to the Desktop after the next test.
 
-## Latest (2026-10-09): v0.44 + plugin 1.15 installed (see MODLOG last section)
+## Latest (2026-10-09): v0.45 + plugin 1.21 installed, release zip in releases/ (MODLOG last sections)
+- WoR border now ships in a copy of every stock gem pak (any gem theme). Untested in game with non-WoR gems.
+- Ultrawide is a separate repo/mod: E:\Dev\ghwt\ghwtde-ultrawide-fix (github.com/jgoa156/ghwtde-ultrawide-fix).
+  Next there: per-element viewport modes (full-width gradients/backgrounds, left-pinned panels, black bars for the
+  loading screen 12) using a per-element tag from the HUD plugin (element vtable 0xa28534).
+- SP tube bottom neon: computed in screen space (wor_1g.bake_screen_needle); awaiting in-game check.
 - Confirmed in game: WoR theme loads at boot and on every theme switch; song line dot follows the fill; neon needles.
 - Installed, not yet tested: single-arc neon needles (0.75x width, bottom one -5 deg).
 - Pending ideas (user, not started): WoR highway lines (fret gradient, lighter border bottom, line above the strikeline,

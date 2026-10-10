@@ -1081,7 +1081,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.20 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.21 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -1122,8 +1122,10 @@ namespace
 		if (HANDLE t = CreateThread(nullptr, 0, canvas_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
 #endif
+#ifdef WOR_D3D_UP_REMAP   // 1.20 experiment: never fired (the 2D is not pre-transformed); ultrawide is the standalone add-on
 		if (HANDLE t = CreateThread(nullptr, 0, d3d_hook_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
+#endif
 		(void)self;
 	}
 }

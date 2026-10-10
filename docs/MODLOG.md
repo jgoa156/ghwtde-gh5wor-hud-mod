@@ -1163,3 +1163,15 @@
   fill bottom and mapped back through the fill sprite transform into the texture (wor_1g.bake_screen_needle), slid
   along the tube until its lowest point is on the fill's last row. verify/mock_cap_vs_bottom.png: top cap (left) vs
   baked bottom arc (right), same shape and slant. Mock tool: MOCK_CAPS=1 shows the cap sprites.
+
+## v0.45 + plugin 1.21 (2026-10-09): WoR border with every gem theme; ultrawide split out
+- User report (from the 0.40 beta): with another gem theme the WoR highway border is missing (stock rails). Verified
+  still present: create_in_game_materials_spawned (log "Sidebar texture") resolves the theme's border key 18f90ff6
+  right after the gem theme's pak loads and long before setup_hud loads the HUD pak; WoR_HUD_border only existed in
+  gems_ghwor_hud, i.e. only with Gem Theme = WoR. Fix: every stock gem link (af130dc4: 8a5ce489 ghwor, 5f672e05 gh3,
+  b348ac85 ghwt, 1065d6eb flat) is repointed to a copy with the border added (gems_<theme>_hud; the WoR one also keeps
+  the WoR bolt). Custom gem-theme mods are not covered.
+- Ultrawide moved to its own mod: github.com/jgoa156/ghwtde-ultrawide-fix (ghwtde_ultrawide.addon32, same viewport +
+  scissor mapping). Removed from ghwt_bgfx.addon32 (two add-ons would map the UI twice); plugin 1.21 compiles out the
+  1.20 DrawPrimitiveUP remap.
+- Release zips are committed under releases/ (no GitHub API access for release assets here).

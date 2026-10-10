@@ -13,10 +13,13 @@ REQUIREMENTS
 Install: extract this archive into the game folder (the one with GHWT_Definitive.exe). It adds:
   DATA\MODS\WoR_HUD\            the HUD theme mod (no in-play messages, darker highway metal, like GH5)
   DATA\PAK\hud_ghwor.pak.xen    its textures and fonts
-  DATA\PAK\gems_ghwor_hud.pak.xen  the WoR highway border
+  DATA\PAK\gems_ghwor_hud.pak.xen  the WoR highway border (+ WoR star power strike), Warriors of Rock gems
+  DATA\PAK\gems_ghwt_hud.pak.xen, gems_gh3_hud.pak.xen, gems_flat_hud.pak.xen
+                                the WoR highway border for the other stock gem themes
   wor_hud_fixes.asi             native fixes (smooth animated star power, note-streak lights)
   dinput8.dll                   Ultimate ASI Loader (MIT), loads the .asi
-Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock", Gem Theme = Warriors of Rock.
+Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock". Gem Theme = Warriors of Rock gives the full
+WoR look; the WoR highway border also shows with the other stock gem themes (custom gem-theme mods keep their own).
 If you already use an ASI loader (dinput8.dll), keep yours and only add the .asi.
 Uninstall: delete those items.
 
@@ -35,3 +38,7 @@ KNOWN ISSUES (beta)
   - The theme does not apply in Career mode yet.
   - Band, multiplayer and microphone layouts still use the stock layouts.
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
+
+ULTRAWIDE SCREENS
+  The HUD and menus are stretched on ultrawide screens by the game itself. The separate "GHWT:DE Ultrawide Fix"
+  (ReShade add-on, https://github.com/jgoa156/ghwtde-ultrawide-fix) draws them as a centred 16:9 picture.

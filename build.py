@@ -21,7 +21,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.44'
+VERSION = '0.45'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
@@ -379,9 +379,10 @@ def main():
             f'\t:i $WoR_HUD_link$ = :s{{$name$ = %s("{PAK_NAME}"):s}}\n'
             f'\t:i $[325bc724]$$id$ = $[cbcd0af1]$$field$ = ${PAK_NAME}$$element$ = %GLOBAL%$WoR_HUD_link$\n'
             '\t:i $printf$%s("WoR_HUD: theme pak registered with the HUD pak links")\n'
-            + f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{wor_1g.BORDER_GEM_PAK}"):s}}\n'
-            '\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[8a5ce489]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
-            '\t:i $printf$%s("WoR_HUD: WoR gem theme repointed to its pak with the WoR highway border")\n' +
+            + ''.join(f'\t:i $WoR_HUD_gemlink$ = :s{{$name$ = %s("{dst}"):s}}\n'
+                      f'\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[{key}]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
+                      for key, _, dst, _ in wor_1g.BORDER_GEM_PAKS) +
+            '\t:i $printf$%s("WoR_HUD: every stock gem theme repointed to its copy with the WoR highway border")\n' +
             dark_load +
             '\t:i endfunction\n]\n')
 
@@ -415,8 +416,9 @@ def main():
         shutil.copytree(OUT, dst, ignore=shutil.ignore_patterns('*.txt', '*.pak.xen'))
         # the theme pak and the border gem pak go where the stock paks live
         shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK', f'{PAK_NAME}.pak.xen'))
-        shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
-        print('installed DATA\\PAK\\' + wor_1g.BORDER_GEM_PAK + '.pak.xen')
+        for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
+            shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
+            print('installed DATA\\PAK\\' + gem_pak + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
 
     if '--package' in sys.argv:
@@ -489,32 +491,39 @@ def dark_metal_sections(work):
 
 
 def build_border_gempak(work):
+    """The border-carrying copy of every stock gem pak (wor_1g.BORDER_GEM_PAKS)."""
+    for _, src, dst, bolt in wor_1g.BORDER_GEM_PAKS:
+        build_border_gempak_one(work, src, dst, bolt)
+
+
+def build_border_gempak_one(work, src_name, dst_name, with_bolt):
     """WoR's highway border (z_in_game basic_gems 388dd606, decoded from the Xbox dictionary) added to a copy of the
     DE's WoR gem pak. The game reads the HUD theme's border texture (key 18f90ff6) BEFORE the theme pak loads but
     AFTER the gem theme's pak, so the texture rides in the gem pak, which the mod repoints (pak links af130dc4) to
     this copy. Every original record and DDS stays byte-identical (tools/texdict.py round-trips the original)."""
     import struct
-    d = open(os.path.join(GAME, 'DATA', 'PAK', 'gems_ghwor.pak.xen'), 'rb').read()
+    d = open(os.path.join(GAME, 'DATA', 'PAK', src_name + '.pak.xen'), 'rb').read()
     typ, off, size = struct.unpack('>III', d[0:12])
-    assert typ == 0x8bfa5e8e and off == 0x1000, 'unexpected gems_ghwor layout'
+    assert typ == 0x8bfa5e8e and off == 0x1000, f'unexpected {src_name} layout'
     recs = texdict.parse(d[off:off + size])
     assert texdict.build(recs) == d[off:off + size], 'tex dict round trip failed'
-    tdir = os.path.join(work, 'border_tex')
+    tdir = os.path.join(work, 'border_tex_' + src_name)
     os.makedirs(tdir, exist_ok=True)
     png = os.path.join(tdir, wor_1g.BORDER_TEX_NAME + '.png')
     shutil.copy(wor_1g.BORDER_SRC, png)
     run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png], TOOLS)
     img = open(os.path.join(tdir, wor_1g.BORDER_TEX_NAME + '.img.xen'), 'rb').read()
     recs.append(texdict.record(int(qbkey(wor_1g.BORDER_TEX_NAME), 16), img[img.index(b'DDS '):]))
-    # the star power strike on the gems: WoR's Tesla arc under the stock bolt texture's key (see wor_1g.BOLT_KEY)
-    bolt = os.path.join(tdir, 'WoR_HUD_bolt.png')
-    wor_art.bolt_sheet(wor_1g.BOLT_SRC, bolt)
-    run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, bolt], TOOLS)
-    bimg = open(os.path.join(tdir, 'WoR_HUD_bolt.img.xen'), 'rb').read()
-    recs = [r for r in recs if r['checksum'] != wor_1g.BOLT_KEY]
-    recs.append(texdict.record(wor_1g.BOLT_KEY, bimg[bimg.index(b'DDS '):]))
+    if with_bolt:
+        # the star power strike on the gems: WoR's Tesla arc under the stock bolt texture's key (see wor_1g.BOLT_KEY)
+        bolt = os.path.join(tdir, 'WoR_HUD_bolt.png')
+        wor_art.bolt_sheet(wor_1g.BOLT_SRC, bolt)
+        run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, bolt], TOOLS)
+        bimg = open(os.path.join(tdir, 'WoR_HUD_bolt.img.xen'), 'rb').read()
+        recs = [r for r in recs if r['checksum'] != wor_1g.BOLT_KEY]
+        recs.append(texdict.record(wor_1g.BOLT_KEY, bimg[bimg.index(b'DDS '):]))
     tex = texdict.build(recs)
-    short = int(qbkey(wor_1g.BORDER_GEM_PAK), 16)
+    short = int(qbkey(dst_name), 16)
     full = struct.unpack('>I', d[16:20])[0]
     lt = list(struct.unpack('>8I', d[32:64]))
     last_data = d[32 + lt[1]:32 + lt[1] + lt[2]]
@@ -528,7 +537,7 @@ def build_border_gempak(work):
     out += b'\0' * (last_off - len(out))
     out += last_data
     out += b'\0' * ((-len(out)) % 0x1000)
-    dst = os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen')
+    dst = os.path.join(OUT, dst_name + '.pak.xen')
     open(dst, 'wb').write(bytes(out))
     print('built', dst, '|', len(recs), 'textures (+ ' + wor_1g.BORDER_TEX_NAME + ')')
 
@@ -543,7 +552,8 @@ def package():
     shutil.copytree(OUT, os.path.join(main, 'DATA', 'MODS', MOD_NAME), ignore=shutil.ignore_patterns('*.txt', '*.pak.xen'))
     os.makedirs(os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    shutil.copy(os.path.join(OUT, wor_1g.BORDER_GEM_PAK + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
+    for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
+        shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))

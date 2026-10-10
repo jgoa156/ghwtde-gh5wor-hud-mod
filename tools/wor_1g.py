@@ -830,6 +830,13 @@ LIGHT_MARKER = 'WoR_HUD_light_0'     # the light elements' starting texture: the
 BORDER_SRC = paths.wor('basic_gems_png', '388dd606.png')
 BORDER_TEX_NAME = 'WoR_HUD_border'
 BORDER_GEM_PAK = 'gems_ghwor_hud'
+# The border must exist whatever gem theme is selected (the game resolves it from the gem pak loaded before the
+# HUD pak): every stock gem theme's pak link is repointed to a copy with the border added (user report 2026-10-09:
+# WoR border missing with another gem theme). (link key, DE pak, our copy, extra WoR bolt)
+BORDER_GEM_PAKS = (('8a5ce489', 'gems_ghwor', 'gems_ghwor_hud', True),
+                   ('5f672e05', 'gems_gh3', 'gems_gh3_hud', False),
+                   ('b348ac85', 'gems_ghwt', 'gems_ghwt_hud', False),
+                   ('1065d6eb', 'gems_flat', 'gems_flat_hud', False))
 # the star power strike on the gem (phrase complete): WoR's Tesla arc in the DE's bolt texture layout (big_lighning01: 8 vertical
 # cells of 128 x 512, material sys_Big_Bolt01, 15 fps). It rides in the WoR gem pak under the stock texture's own key, so the
 # material needs no change; the sprite is already 6 x 3 like WoR's.

@@ -1128,3 +1128,10 @@
   device). Draws with FVF XYZRHW or a POSITIONT declaration are remapped x' = off + x*k (k = 16/9*h/w): all 2D
   (HUD, menus, text, likely the 2D highway too) becomes a centred 16:9 picture; 3D untouched. Log: "remapping 2D draws".
   Not covered yet: 2D drawn from vertex buffers (DrawPrimitive); menu side bars not blacked out.
+
+### Add-on: ultrawide UI viewport (2026-10-09, installed, NOT yet tested)
+- 1.20 vertex remap hooked fine but never fired: the 2D is not pre-transformed DrawPrimitiveUP; it goes through vertex
+  shaders, so the VIEWPORT places it. ghwt_bgfx.addon32 already knows the boundary (everything into the back buffer
+  after the composite draw g_composite_ps is 2D UI): each UI draw now gets its viewport (and scissor) mapped into the
+  centred 16:9 area (x' = ox + x*k, width*k). Overlay: checkbox + "UI viewports mapped last frame"; ReShade.log line
+  "ghwt_bgfx: ultrawide UI at 16:9". Frames without a composite (loading) are not mapped yet.

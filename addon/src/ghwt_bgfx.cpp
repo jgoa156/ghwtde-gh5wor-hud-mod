@@ -406,8 +406,63 @@ namespace
 				u->Release();
 	}
 
+	// ---- Ultrawide: 2D UI as a centred 16:9 picture ----
+	// Everything drawn into the back buffer after the composite is 2D UI (HUD, menus, text). On a back buffer wider
+	// than 16:9 each of those draws gets its viewport (and scissor) mapped into the centred 16:9 area, x' = ox + x*k,
+	// width' = width*k (k = 16/9*h/w): the UI renders natively at the closest 16:9 size (1920x1080 for 2560x1080),
+	// unstretched and centred; the 3D scene keeps the full width.
+	bool g_ultrawide = true;
+	bool g_ui_phase = false;                 // the composite has been drawn this frame
+	D3DVIEWPORT9 g_vp_set = {};              // the last viewport we set (re-map only when the game changed it)
+	bool g_vp_valid = false;
+	uint32_t g_ui_mapped = 0, g_ui_mapped_last = 0;
+	bool g_ultrawide_logged = false;
+
+	void map_ui_viewport(command_list *cmd_list)
+	{
+		if (!g_ultrawide || !g_ui_phase || g_runtime == nullptr || g_cur_rt0 != g_runtime->get_current_back_buffer().handle)
+			return;
+		uint32_t bw = 0, bh = 0;
+		g_runtime->get_screenshot_width_and_height(&bw, &bh);
+		if (bh == 0 || bw * 9 <= bh * 16 + 9)
+			return;                                   // 16:9 or narrower
+		IDirect3DDevice9 *dev = native(cmd_list);
+		D3DVIEWPORT9 vp = {};
+		if (FAILED(dev->GetViewport(&vp)))
+			return;
+		if (g_vp_valid && memcmp(&vp, &g_vp_set, sizeof vp) == 0)
+			return;                                   // still ours
+		const float w169 = bh * 16.0f / 9.0f, k = w169 / bw, ox = (bw - w169) * 0.5f;
+		D3DVIEWPORT9 m = vp;
+		m.X = static_cast<DWORD>(ox + vp.X * k + 0.5f);
+		m.Width = static_cast<DWORD>(vp.Width * k + 0.5f);
+		dev->SetViewport(&m);
+		g_vp_set = m;
+		g_vp_valid = true;
+		DWORD scissor = FALSE;
+		if (SUCCEEDED(dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &scissor)) && scissor)
+		{
+			RECT r;
+			if (SUCCEEDED(dev->GetScissorRect(&r)))
+			{
+				r.left = static_cast<LONG>(ox + r.left * k + 0.5f);
+				r.right = static_cast<LONG>(ox + r.right * k + 0.5f);
+				dev->SetScissorRect(&r);
+			}
+		}
+		++g_ui_mapped;
+		if (!g_ultrawide_logged)
+		{
+			g_ultrawide_logged = true;
+			char msg[160];
+			sprintf_s(msg, "ghwt_bgfx: ultrawide UI at 16:9: back buffer %ux%u, UI area x %.0f width %.0f", bw, bh, ox, w169);
+			reshade::log::message(reshade::log::level::info, msg);
+		}
+	}
+
 	void on_draw_common(command_list *cmd_list, const char *kind, uint32_t count)
 	{
+		map_ui_viewport(cmd_list);
 		if (g_auto && !g_scrub && g_pending_inject && !g_injected_this_frame)
 		{
 			g_pending_inject = false;
@@ -431,6 +486,7 @@ namespace
 		{
 			g_composite_seen = true;
 			g_pending_inject = true; // the composite itself must finish first
+			g_ui_phase = true;       // from the next draw on: 2D UI
 		}
 
 		if (g_scrub && g_draw_index == g_scrub_n)
@@ -573,6 +629,10 @@ namespace
 
 		g_draws_last_frame = g_draw_index;
 		g_draw_index = 0;
+		g_ui_phase = false;
+		g_vp_valid = false;
+		g_ui_mapped_last = g_ui_mapped;
+		g_ui_mapped = 0;
 		g_injected_this_frame = false;
 		g_composite_seen = false;
 		g_pending_inject = false;
@@ -664,6 +724,8 @@ namespace
 	void draw_overlay(effect_runtime *)
 	{
 		ImGui::Text("Draws last frame: %u", g_draws_last_frame);
+		ImGui::Checkbox("Ultrawide: UI as centred 16:9", &g_ultrawide);
+		ImGui::Text("UI viewports mapped last frame: %u", g_ui_mapped_last);
 		ImGui::Separator();
 		ImGui::Checkbox("Auto: effects after scene composite only (experimental)", &g_auto);
 		ImGui::Text("Composite PS %08X, effects applied before draw %d (-1 = none)", g_composite_ps, g_inject_at_last);

@@ -403,12 +403,21 @@ def shrink_into(src_png, out_png, canvas, content, alpha=1.0):
     out.save(out_png)
 
 
-def neon_needle_layers(needle_png, width, rgb, halo_blur=3.0):
+def neon_needle_layers(needle_png, width, rgb, halo_blur=3.0, mirror=False):
     """WoR's tube needle (SB_TubeNeedle01, the star power tube's half divider arc) flattened to the tube's
     cross-section (texture frame) and stretched to `width` px: (core, halo) RGBA images of the same size, the core
     white, the halo `rgb` and blurred, both padded by the blur."""
     from PIL import ImageFilter
     nd = Image.open(needle_png).convert('RGBA').rotate(-16.7, Image.BICUBIC)
+    if mirror:   # the arc's tilt mirrored left-right (user 2026-10-09: it ran against the tube end's slant)
+        nd = nd.transpose(Image.FLIP_LEFT_RIGHT)
+    # only the needle's bright line glows (its darker band read as a second arc); cropped to that line so the arc
+    # spans the fill's whole width
+    from PIL import ImageChops
+    lum = nd.convert('L').point(lambda v: max(0, min(255, int((v - 100) * 255 / 60))))
+    a0 = ImageChops.multiply(nd.split()[3], lum)
+    peak = max(1, a0.getextrema()[1])
+    nd.putalpha(a0.point(lambda v: 0 if v < 48 else min(255, int(v * 255 / peak))))
     nd = nd.crop(nd.split()[3].getbbox())
     nd = nd.resize((width, max(3, round(nd.size[1] * width / nd.size[0]))), Image.LANCZOS)
     pad = int(halo_blur * 3)
@@ -421,7 +430,7 @@ def neon_needle_layers(needle_png, width, rgb, halo_blur=3.0):
     return core, halo, pad
 
 
-def neon_bottom(img, needle_png, rgb, halo_blur=3.0):
+def neon_bottom(img, needle_png, rgb, halo_blur=1.6, mirror=False):
     """A neon needle along the bottom edge of a tube fill texture (64x256 frame): the arc spans the fill's width at
     its last rows and its lowest point sits exactly on the fill's bottom edge."""
     import numpy as np
@@ -429,7 +438,7 @@ def neon_bottom(img, needle_png, rgb, halo_blur=3.0):
     rows = np.where(a.max(1) > 128)[0]
     bottom = rows[-1]
     xs = np.where(a[bottom - 3] > 128)[0]          # the glass width just above the edge
-    core, halo, pad = neon_needle_layers(needle_png, int(xs[-1] - xs[0] + 1), rgb, halo_blur)
+    core, halo, pad = neon_needle_layers(needle_png, int(xs[-1] - xs[0] + 1), rgb, halo_blur, mirror)
     ca = np.asarray(core.split()[3])
     low = np.where(ca.max(1) > 128)[0][-1]          # the arc's lowest opaque row in its own image
     x, y = int(xs[0]) - pad, int(bottom) - int(low)

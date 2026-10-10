@@ -1154,3 +1154,6 @@
   CPU in screen space. Per-element modes therefore go through the VIEWPORT: centred (default), full (stretched
   gradients/backgrounds), left (pinned panels); the per-element tag needs the engine's element draw method (element
   vtable 0xa28534: 0x5a3620, 0x536e00, 0x5a0170, ...).
+- User: the edge-traced line (and the needle before it) had the wrong slant; wants the needle arc mirrored. Back to
+  the needle arc baked on the fill bottom (neon_bottom), MIRRORED left-right, cropped to its bright line so it spans the
+  fill width; charging and ready. verify/mock_neon_mirrored.png.

@@ -39,7 +39,8 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   material sys_String01 in z_in_game); crowd selector option (evaluating).
 - Test: boot with HUDTheme=ghwor (log line "WoR_HUD: HUD Theme re-read..."), textures must load; theme switches
   both ways; song line (track = gold bar span, 50% tick); SP tube (flat bottom, lighter blue ready, neon needles).
-- Ultrawide: canvas scale 0xd5ab7c/80 (2.0/1.5 at 2560x1080) written by GHWTDE.dll; fix = sprite sizes on the y scale.
+- Ultrawide: plugin 1.16 narrows HUD leaf elements' world x scale by sy/sx after the transform update 0x5a05e0
+  (MODLOG). Check the log line "ultrawide: un-stretching ..." and layered parts for drift.
 - Highway SP effect (stars up the highway, glowing rails): researched only, plan in docs/GH5_STAR_POWER_REFERENCE.md.
 
 ## Next steps

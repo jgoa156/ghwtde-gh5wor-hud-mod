@@ -1088,3 +1088,14 @@
   (Crowd_PedF/PedM_Cabo*, inside z_cabo.pak), z_Stone (+monk) and z_training (security) differ. The DE ships GH5 band
   characters but no GH5/WoR crowd peds; a real GH5/WoR crowd needs their models extracted and converted (360 -> PC).
   The option itself is feasible (options entry with an eb4f9555 change callback that $change$s the zone arrays).
+
+### Plugin 1.16 (2026-10-09, installed, NOT yet tested): ultrawide un-stretch of the HUD
+- The 2D canvas (1280x720) maps to the window with canvas scale 0xd5ab7c/80 (2.0 / 1.5 at 2560x1080); the probe found
+  it written from outside the exe (a system DLL via an out-pointer); its readers in the exe are 3D camera code. Instead
+  of changing the canvas, the element transform update 0x5a05e0 is hooked: world state at element+0x160 (alpha),
+  +0x174/+0x178 world pos, +0x18c/+0x190 world scale = parent world scale * own scale (0xc0/0xc4). After the engine's
+  update, LEAF elements (no children) under hud_root (id at +0x2c = 0x39155705) get world scale x * sy/sx (0.75): they
+  keep their positions (from the parent's untouched scale) and draw at the true aspect (user: keep the layout, no
+  stretch). Highway/gems are excluded (2D sprites too; narrowing them would put gems off the lanes). No effect at 16:9.
+- Risks to check: layered parts made of sprites with different anchors (tube art / fill / needles, score box) may
+  drift by a few px; text blocks whose glyphs are child elements would narrow per glyph (letter-spaced).

@@ -84,6 +84,12 @@ namespace
 	constexpr size_t kElementAlpha = 0x94;           // float alpha (tween target at +0x44 = 0xd8)
 	constexpr size_t kElementFirstChild = 0x70;
 	constexpr size_t kElementNextSibling = 0x7c;
+	constexpr uintptr_t kTransformUpdate = 0x5a05e0; // void __thiscall (element): world alpha/scale/pos from the parent
+	constexpr size_t kWorldScale = 0x18c;            // float x, y: parent world scale * own scale (0xc0)
+	constexpr uintptr_t kCanvasScale = 0xd5ab7c;     // float x, y: 2D canvas -> screen (2.0, 1.5 at 2560x1080)
+	constexpr uint32_t kFlagAlphaOnly = 0x80000;     // element flag: the update only recomputes alpha
+	constexpr size_t kElementId = 0x2c;              // element id checksum (the constructor sets 0xdeadbeef)
+	constexpr uint32_t kHudRoot = 0x39155705;        // hud_root
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
 	const Site kSites[] = {
@@ -116,6 +122,8 @@ namespace
 		{ kElementUpdate, { 0x56, 0x8B, 0xF1, 0x8B, 0x46, 0x08, 0x83, 0x46, 0x54, 0x01 }, 10, "element update prologue" },
 		{ 0x5a2e6e, { 0x8B, 0x7E, 0x70 }, 3, "element update first child" },
 		{ 0x5a2e87, { 0x8B, 0x7F, 0x7C }, 3, "element update next sibling" },
+		{ kTransformUpdate, { 0x83, 0xEC, 0x08, 0x56, 0x8B, 0xF1, 0x8B, 0x46, 0x64 }, 9, "element transform update prologue" },
+		{ 0x5a06b6, { 0xF3, 0x0F, 0x11, 0x53, 0x2C }, 5, "transform update: world scale x store" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -833,6 +841,46 @@ namespace
 		return 0;
 	}
 
+	// ---- Fix 9, ultrawide (2026-10-09): the 2D canvas (1280x720) is scaled to the window with separate x / y factors
+	// (0xd5ab7c / 0xd5ab80; 2.0 / 1.5 at 2560x1080), so every sprite and text is stretched sideways. Positions are right
+	// (the user wants the layout as it is); only the drawn width is wrong. After the engine's transform update
+	// (0x5a05e0), a LEAF element (no children: sprites, text) gets its world x scale multiplied by sy / sx, so it keeps
+	// its position (computed from the parent's world scale, untouched) and draws at the canvas's true aspect. Containers
+	// keep their scale, so children stay where they are. No effect at 16:9 (factor 1).
+	using TransformUpdateFn = void(__fastcall *)(void *element, void *edx);
+	TransformUpdateFn g_transform_update = nullptr;
+	volatile LONG g_unstretch_logged = 0;
+
+	void __fastcall transform_update_hook(void *e, void *edx)
+	{
+		g_transform_update(e, edx);
+		const float sx = *reinterpret_cast<const float *>(kCanvasScale), sy = *reinterpret_cast<const float *>(kCanvasScale + 4);
+		if (!(sx > 0.0f) || !(sy > 0.0f) || sy >= sx * 0.999f)
+			return;                                            // 16:9 or narrower: nothing stretched sideways
+		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		if (!parent || *reinterpret_cast<void **>(field(e, kElementFirstChild)))
+			return;                                            // root or container
+		if (*reinterpret_cast<uint32_t *>(field(e, 8)) & kFlagAlphaOnly)
+			return;                                            // the engine didn't recompute the scale this time
+		// HUD only: the highway and gems are 2D sprites too, and narrowing them while the lanes keep their positions
+		// would put the gems off the highway. Act only under hud_root (element id at +0x2c).
+		bool in_hud = false;
+		void *p = parent;
+		for (int depth = 0; p && depth < 32; ++depth, p = *reinterpret_cast<void **>(field(p, kElementParent)))
+			if (*reinterpret_cast<uint32_t *>(field(p, kElementId)) == kHudRoot)
+			{
+				in_hud = true;
+				break;
+			}
+		if (!in_hud)
+			return;
+		const float own = *reinterpret_cast<float *>(field(e, kElementScale));
+		const float pw = *reinterpret_cast<float *>(field(parent, kWorldScale));
+		*reinterpret_cast<float *>(field(e, kWorldScale)) = pw * own * (sy / sx);
+		if (InterlockedExchange(&g_unstretch_logged, 1) == 0)
+			log("ultrawide: un-stretching 2D elements, width factor %.4f (canvas scale %.3f x %.3f)", sy / sx, sx, sy);
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -840,7 +888,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.15 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.16 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -861,6 +909,9 @@ namespace
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
 		g_particle_tramp = install_jmp(kParticleRead, 8, reinterpret_cast<void *>(&particle_hook));
+		// sub esp, 8; push esi; mov esi, ecx = 6 bytes of whole instructions
+		g_transform_update = reinterpret_cast<TransformUpdateFn>(install_jmp(kTransformUpdate, 6, reinterpret_cast<void *>(&transform_update_hook)));
+		log(g_transform_update ? "ultrawide: transform update hooked (2D elements keep their aspect)" : "ultrawide: hook failed");
 		log(g_particle_tramp ? "star power burst: particle sizes hooked (WoR sizes)" : "star power burst: hook failed");
 		{
 			const uint8_t *call = reinterpret_cast<const uint8_t *>(kScoreFmtCall);

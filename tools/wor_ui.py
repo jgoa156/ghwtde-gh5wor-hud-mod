@@ -31,7 +31,7 @@ PILL_IMAGE = {c: f'WoR_HUD_pill_{c}' for c in PILL_COLOURS}
 # fret caps in WoR's buttons_x360 font texture (508x208)
 PILL_CAP_BOX = {'green': (471, 111, 498, 157), 'red': (3, 160, 29, 206), 'yellow': (34, 160, 61, 206),
                 'blue': (66, 160, 93, 206), 'orange': (98, 160, 125, 206)}
-PILL_BG = (0, 0, 0, 150)             # WoR: black, see-through (user crops 2026-10-10)
+PILL_BG = (0, 0, 0, 110)             # WoR: black, see-through (user crops 2026-10-10; 150 was a bit strong)
 PILL_TEXT = (255, 255, 255, 255)     # WoR: pure white
 # WoR's own pill text font (fontgrid_text_a1, converted to the PC format), in the UI pak. This pak is loaded once and
 # never unloaded, so the v0.19b crash (a font unloaded with a theme pak) can't happen.
@@ -92,13 +92,18 @@ LOAD_MOVIE = 'loading_flipbook_ghm'                    # smallest DE loading mov
 LOAD_DIR = ('data', 'compressed', 'UI_IMAGES', 'LOADING')
 # the ring's hole in the 1024x512 art (centre, radius): WoR spins load_wheel at (1015,192) of 1280x720
 RING = (815.0, 140.5, 50.0)
-# the spinning wheel: its own sprite (additive lightning, clipped round) over the ember disc baked into the art, turned
-# every frame by WoR_HUD_loading_spin while our desc is up (found through its alias)
-WHEEL_TEX = 'WoR_HUD_load_wheel'
+# the load wheel (user video 2026-10-10): a ball in the ring's hole (0.83 of it, a dark gap around), brown, lit from
+# above, with WoR's load_wheel strip (256x128: lightning across a brown background) wrapped round it and turning, so the
+# thick lightning flows sideways and bulges with the ball. Pre-rendered frames (sphere projection of a WHEEL_WIN window
+# of the strip), switched every game frame by WoR_HUD_loading_anim while our desc is up (found through its alias).
+# 64 frames, 4 px of strip apart: ~3 ball widths a second at 60 fps, as in the video.
+WHEEL_TEX = 'WoR_HUD_load_wheel_'                              # + frame number 0..WHEEL_FRAMES-1
+WHEEL_FRAMES = 64
+WHEEL_WIN = (128.0, 100.0)                                     # strip px across / down the ball's visible face
+WHEEL_BALL = (82, 44, 28)                                      # the ball's brown (video: mean 118,78,39 with lightning)
 WHEEL_ALIAS = 'WoR_HUD_wheel_alias'
 WHEEL_POS = (RING[0] * 1280 / 1024, RING[1] * 720 / 512)       # canvas units
-WHEEL_SIZE = 124.0                                             # square; the hole is 125x141 on the 16:9 canvas
-WHEEL_STEP = 3.0                                               # degrees per frame, anticlockwise (WoR: speed -2)
+WHEEL_DIMS = (0.83 * 2 * RING[2] * 1280 / 1024, 0.83 * 2 * RING[2] * 720 / 512)   # 0.83 of the hole as shown
 
 
 def wor_xbox_img(*parts):
@@ -110,70 +115,76 @@ def wor_xbox_img(*parts):
 
 
 def loading_art():
-    """ingame_loading with an ember disc baked into the ring's hole (the lightning is the spinning WHEEL_TEX)."""
+    """WoR's ingame_loading as it is (the hole is filled by the load wheel sprite)."""
     bg = wor_xbox_img(*LOAD_DIR, 'ingame_loading.img.xen')
     assert bg.size == (1024, 512), bg.size
-    cx, cy, r = RING
-    bp = bg.load()
-    for y in range(int(cy - r) - 1, int(cy + r) + 2):
-        for x in range(int(cx - r) - 1, int(cx + r) + 2):
-            d = math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r
-            if d >= 1.0:
-                continue
-            edge = max(0.0, min(1.0, (1.0 - d) * r / 1.5))           # 1.5 px soft rim
-            glow = 0.35 + 0.65 * d ** 2                               # ember: darker centre, brighter rim
-            px = (int(70 * glow), int(18 * glow), int(6 * glow))
-            old = bp[x, y]
-            bp[x, y] = tuple(round(o + (q - o) * edge) for o, q in zip(old[:3], px)) + (255,)
     return bg
 
 
-def wheel_image():
-    """WoR's load_wheel lightning strip across a 128x128 square, clipped to a circle, as light (additive sprite)."""
-    strip = wor_xbox_img(*LOAD_DIR, 'load_wheel.img.xen')
+def wheel_frames():
+    """WHEEL_FRAMES 128x128 frames of the ball: a brown ball lit from above-front, mottled with the strip's own dark
+    texture, and the strip's light (lightning, above its near-black background) added on top. Each pixel of the disc
+    maps through a sphere to the strip (longitude -> strip x, latitude -> strip y around the lightning's middle row),
+    the strip turned by k*256/WHEEL_FRAMES; round, soft 1.5 px edge."""
+    strip = wor_xbox_img(*LOAD_DIR, 'load_wheel.img.xen').convert('RGB')
     assert strip.size == (256, 128), strip.size
-    n = 128
-    sw = strip.resize((n, n // 2), Image.LANCZOS).convert('RGB')
-    # the strip's dark background is brownish, not black: only light above it is kept
-    row = sorted(sw.getpixel((x, 0)) for x in range(n))
-    floor = row[len(row) // 2]
-    sw = Image.merge('RGB', [Image.eval(ch, lambda v, f=f: max(0, v - f) * 255 // max(1, 255 - f))
-                             for ch, f in zip(sw.split(), floor)])
-    out = Image.new('RGBA', (n, n), (0, 0, 0, 0))
-    op, sp = out.load(), sw.load()
-    for y in range(n // 4, n // 4 + n // 2):
-        for x in range(n):
-            d = math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) / (n / 2)
-            fade = max(0.0, min(1.0, (0.92 - d) / 0.08))              # clipped inside the hole, soft
-            c = tuple(round(v * fade) for v in sp[x, y - n // 4])
-            op[x, y] = c + (max(c),)
-    return out
-
+    sp = strip.load()
+    rows = [sum(sum(sp[x, y]) for x in range(256)) for y in range(128)]
+    mid = max(range(128), key=lambda y: sum(rows[max(0, y - 6):y + 7]))      # the lightning band's middle row
+    bgpx = sorted(sp[x, y] for x in range(0, 256, 4) for y in (4, 8, 120, 124))
+    floor = bgpx[len(bgpx) // 2]                                              # its near-black background
+    lum = lambda c: (c[0] + c[1] + c[2]) / 3
+    fl = lum(floor)
+    n, step = 128, 256 / WHEEL_FRAMES
+    frames = []
+    for k in range(WHEEL_FRAMES):
+        out = Image.new('RGBA', (n, n), (0, 0, 0, 0))
+        op = out.load()
+        for py in range(n):
+            for px in range(n):
+                x, y = (px + 0.5) / (n / 2) - 1, (py + 0.5) / (n / 2) - 1
+                r2 = x * x + y * y
+                if r2 >= 1.0:
+                    continue
+                z = math.sqrt(1 - r2)
+                lon = math.atan2(x, z) / (math.pi / 2)            # -1..1 across the face
+                lat = math.asin(max(-1.0, min(1.0, y))) / (math.pi / 2)
+                sx = (lon * WHEEL_WIN[0] / 2 + k * step) % 256
+                sy = min(127.0, max(0.0, mid + lat * WHEEL_WIN[1] / 2))
+                c = sp[int(sx), int(sy)]
+                light = 0.45 + 0.55 * max(0.0, 0.35 * -y + 0.9 * z)  # from above-front
+                mottle = 0.8 + 0.4 * min(1.0, lum(c) / max(1.0, 2 * fl))
+                glow = [max(0, v - f) * w for v, f, w in zip(c, floor, (1.35, 1.1, 0.8))]   # redder glow
+                rgb = tuple(min(255, round(b * light * mottle + g)) for b, g in zip(WHEEL_BALL, glow))
+                a = round(255 * max(0.0, min(1.0, (1.0 - math.sqrt(r2)) * n / 2 / 1.5)))
+                op[px, py] = rgb + (a,)
+        frames.append(out)
+    return frames
 
 def loading_desc():
     root = E('WoR_HUD_loading_root', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
         E('WoR_HUD_loading_bg', 'SpriteElement', dims=(1280, 720), just=(-1, -1), texture=LOAD_TEX),
-        E('WoR_HUD_loading_wheel', 'SpriteElement', pos=WHEEL_POS, dims=(WHEEL_SIZE, WHEEL_SIZE), just=(0, 0),
-          z=1.0, texture=WHEEL_TEX, blend='Add')])
+        E('WoR_HUD_loading_wheel', 'SpriteElement', pos=WHEEL_POS, dims=WHEEL_DIMS, just=(0, 0), z=1.0,
+          texture=WHEEL_TEX + '0')])
     return desc_gen.desc(LOAD_DESC, root, aliases=[(WHEEL_ALIAS, 'WoR_HUD_loading_wheel')])
 
 
 # Wrappers (plugin 1.25 kScriptSwaps moves each DE script to its *_orig placeholder and puts the wrapper in its place)
 WAIT_FRAME = '$wait$${\n\t\tStructInt 1\n\t\tStructQBKey gameframe\n\t\tStructQBKey ignoreslomo\n\t}$'
 SCRIPTS = (
-    # create_loading_screen: after the DE's own, spin our wheel if our desc is the one up
+    # create_loading_screen: after the DE's own, animate our wheel if our desc is the one up
     'Script WoR_HUD_create_loading_screen [\n'
     '\t:i $WoR_HUD_create_loading_screen_orig$ isNull\n'
     '\t:i if $ScreenElementExists$${StructQBKey id = loading_screen_container}$\n'
     f'\t\t:i if $loading_screen_container$.$desc_resolvealias$$name$ = ${WHEEL_ALIAS}$\n'
-    '\t\t\t:i $KillSpawnedScript$$name$ = $WoR_HUD_loading_spin$\n'
-    '\t\t\t:i $spawnscriptnow$$WoR_HUD_loading_spin$\n'
+    '\t\t\t:i $KillSpawnedScript$$name$ = $WoR_HUD_loading_anim$\n'
+    '\t\t\t:i $spawnscriptnow$$WoR_HUD_loading_anim$\n'
     '\t\t:i endif\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
-    # turns the wheel every frame until the loading screen goes ("continue" is NodeROQ's break)
-    'Script WoR_HUD_loading_spin [\n'
-    '\t:i $angle$ = %f(0.0)\n'
+    # next wheel frame every game frame until the loading screen goes ("continue" is NodeROQ's break)
+    'Script WoR_HUD_loading_anim [\n'
+    '\t:i $frame$ = %i(0)\n'
     '\t:i while\n'
     '\t\t:i if NOT $ScreenElementExists$${StructQBKey id = loading_screen_container}$\n'
     '\t\t\t:i continue\n'
@@ -181,8 +192,12 @@ SCRIPTS = (
     f'\t\t:i if NOT $loading_screen_container$.$desc_resolvealias$$name$ = ${WHEEL_ALIAS}$\n'
     '\t\t\t:i continue\n'
     '\t\t:i endif\n'
-    f'\t\t:i $angle$ = (%GLOBAL%$angle$ - %f({WHEEL_STEP}))\n'
-    '\t\t:i %GLOBAL%$resolved_id$.$se_setprops$$rot_angle$ = %GLOBAL%$angle$\n'
+    '\t\t:i $frame$ = (%GLOBAL%$frame$ + %i(1))\n'
+    f'\t\t:i if (%GLOBAL%$frame$ > %i({WHEEL_FRAMES - 1}))\n'
+    '\t\t\t:i $frame$ = %i(0)\n'
+    '\t\t:i endif\n'
+    f'\t\t:i $FormatText$$checksumname$ = $wheel_tex$%s("{WHEEL_TEX}%f")$f$ = %GLOBAL%$frame$\n'
+    '\t\t:i %GLOBAL%$resolved_id$.$se_setprops$$texture$ = %GLOBAL%$wheel_tex$\n'
     f'\t\t:i {WAIT_FRAME}\n'
     '\t:i loop_to\n'
     '\t:i endfunction\n]\n\n'

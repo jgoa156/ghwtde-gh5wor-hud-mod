@@ -1,9 +1,14 @@
-"""Warriors of Rock main menu music as a GHWT:DE menu music mod (same layout as Raccoon_333's "(GH5) Main Menu Music").
+"""Main menu music collection for GHWT:DE: every game's menu songs in ONE menu music mod, so the DE shuffles them all.
 
-Source: your own WoR copy (paths.WOR_XBOX): data/streams/streamall.fsb.xen, an Xbox FSB4 bank of XMA streams indexed by
-streamall.dat.xen. WoR plays menu_music_songs (scripts/game/audio/global_sound_definitions.qb): 14 gh6_mm_* clips.
-Each is wrapped as an XMA2 RIFF, decoded by ffmpeg (xma2), brought to MM_LUFS with a peak limiter (WoR's streams are
-mixed ~12 dB quieter than the GH5 mod's), and encoded to 48 kHz stereo MP3 frames (no tags), as the GH5 mod has them.
+The DE loads only one menu music mod ("ERROR: Exceeded limit of 1 menu music mod." in Logs\\debug.txt), so each game
+is a SOURCE merged into one bank. Sources:
+  - existing DE menu music mods (e.g. Raccoon_333's "(GH5) Main Menu Music", kept in paths.MENU_MUSIC_SOURCES, NOT in
+    DATA\\MODS): their MP3 samples are copied as they are, with their ini Delay/Volume/Offset;
+  - Warriors of Rock, from your own copy (paths.WOR_XBOX): data/streams/streamall.fsb.xen is an Xbox FSB4 bank of XMA
+    streams indexed by streamall.dat.xen; WoR plays menu_music_songs (scripts/game/audio/global_sound_definitions.qb),
+    14 gh6_mm_* clips. Each is wrapped as an XMA2 RIFF, decoded by ffmpeg (xma2), brought to MM_LUFS with a peak
+    limiter (WoR's streams are mixed ~12 dB quieter than the GH5 mod's) and encoded to 48 kHz stereo MP3 frames.
+More games: add a source function returning clips.
 
 DE menu music mod layout:
   menumusic.ini              [MenuMusicInfo] FSBName + Track=<name> lines, then one [<name>] Delay/Volume/Offset each
@@ -12,18 +17,18 @@ DE menu music mod layout:
 
 usage: python wor_menu_music.py <out folder>   (needs ffmpeg on PATH)
 """
-import math, os, shutil, struct, subprocess, sys, tempfile, zlib
+import glob, math, os, shutil, struct, subprocess, sys, tempfile, zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths  # noqa: E402
 
-MOD_DIR = 'WoR Main Menu Music'
-FSB_NAME = 'WoR_Music_Menu'
+MOD_DIR = 'Main Menu Music Collection'
+FSB_NAME = 'Menu_Music_Collection'
 # WoR's menu_music_songs, in its order (each: delay 0.0, vol 3, offset 0 in WoR)
-TRACKS = ['gh6_mm_bodies', 'gh6_mm_jetcitywoman', 'gh6_mm_chemicalwarfare', 'gh6_mm_bloodlines', 'gh6_mm_ravenous',
-          'gh6_mm_hardtosee', 'gh6_mm_waidmannsheil', 'gh6_mm_holywars', 'gh6_mm_imbroken', 'gh6_mm_indians',
-          'gh6_mm_psychosocial', 'gh6_mm_reignition', 'gh6_mm_theoutsider', 'gh6_mm_childrenofthegrave']
-VOLUME = 6                                   # the GH5 menu music mod's value
+WOR_TRACKS = ['gh6_mm_bodies', 'gh6_mm_jetcitywoman', 'gh6_mm_chemicalwarfare', 'gh6_mm_bloodlines', 'gh6_mm_ravenous',
+              'gh6_mm_hardtosee', 'gh6_mm_waidmannsheil', 'gh6_mm_holywars', 'gh6_mm_imbroken', 'gh6_mm_indians',
+              'gh6_mm_psychosocial', 'gh6_mm_reignition', 'gh6_mm_theoutsider', 'gh6_mm_childrenofthegrave']
+WOR_VOLUME = 6                               # the GH5 menu music mod's value
 MM_LUFS = -14.0
 MP3_QUALITY = '2'                            # LAME VBR ~190 kb/s (the GH5 mod: ~166 kb/s VBR)
 
@@ -49,6 +54,43 @@ def fsb4_samples(path):
         off += nbytes
         p += size
     return out
+
+
+def read_ini(path):
+    """{section: {key: [values]}} (Track repeats)."""
+    out, sec = {}, None
+    for line in open(path, encoding='utf-8', errors='replace'):
+        line = line.strip()
+        if line.startswith('[') and line.endswith(']'):
+            sec = out.setdefault(line[1:-1], {})
+        elif '=' in line and sec is not None:
+            k, v = line.split('=', 1)
+            sec.setdefault(k.strip(), []).append(v.strip())
+    return out
+
+
+# ---- sources: each returns [(track name, mp3 frames, samples, delay, volume, offset)]
+
+def source_menu_music_mod(folder):
+    """An existing DE menu music mod (MP3 FSB4), copied as it is."""
+    ini = read_ini(os.path.join(folder, 'menumusic.ini'))
+    fsb_name = ini['MenuMusicInfo']['FSBName'][0]
+    bank = os.path.join(folder, 'Content', fsb_name + '.fsb.xen')
+    dat = open(os.path.join(folder, 'Content', fsb_name + '.dat.xen'), 'rb').read()
+    index = {struct.unpack_from('>I', dat, 8 + 20 * k)[0]: struct.unpack_from('>I', dat, 12 + 20 * k)[0]
+             for k in range(struct.unpack_from('>I', dat, 0)[0])}
+    samples = fsb4_samples(bank)
+    clips = []
+    with open(bank, 'rb') as f:
+        for t in ini['MenuMusicInfo']['Track']:
+            name, nsamp, nbytes, mode, freq, chans, off = samples[index[qbkey(t)]]
+            assert mode & 0x200 and freq == 48000 and chans == 2, (folder, name, hex(mode))
+            f.seek(off)
+            s = ini.get(t, {})
+            clips.append((t, f.read(nbytes), nsamp, s.get('Delay', ['0.0'])[0], s.get('Volume', ['6'])[0],
+                          s.get('Offset', ['0'])[0]))
+    print(f'{os.path.basename(folder)}: {len(clips)} tracks copied')
+    return clips
 
 
 def xma2_riff(raw, samples, freq, chans):
@@ -92,7 +134,8 @@ def mp3_frames(data):
     return data[start:i], n
 
 
-def build(out):
+def source_wor():
+    """Warriors of Rock's 14 menu songs, from your own copy's stream bank."""
     bank = os.path.join(paths.WOR_XBOX, 'data', 'streams', 'streamall.fsb.xen')
     dat = open(os.path.join(paths.WOR_XBOX, 'data', 'streams', 'streamall.dat.xen'), 'rb').read()
     index = {struct.unpack_from('>I', dat, 8 + 20 * k)[0]: struct.unpack_from('>I', dat, 12 + 20 * k)[0]
@@ -101,7 +144,7 @@ def build(out):
     work = tempfile.mkdtemp(prefix='wormm_')
     clips = []
     with open(bank, 'rb') as f:
-        for t in TRACKS:
+        for t in WOR_TRACKS:
             name, nsamp, nbytes, mode, freq, chans, off = samples[index[qbkey(t)]]
             assert name.split('.')[0] == t and mode & 0x01000000 and freq == 48000 and chans == 2, (name, mode)
             f.seek(off)
@@ -115,33 +158,50 @@ def build(out):
                    '-ac', '2', '-c:a', 'libmp3lame', '-q:a', MP3_QUALITY, '-write_xing', '0', '-id3v2_version', '0',
                    '-map_metadata', '-1', mp3)
             frames, n = mp3_frames(open(mp3, 'rb').read())
-            clips.append((t, frames, n * 1152))
+            clips.append((t, frames, n * 1152, '0.0', str(WOR_VOLUME), '0'))
             print(f'{t:28s} {nsamp / freq:7.2f}s  gain {gain:+.1f} dB  mp3 {len(frames) / 1e6:.1f} MB')
     shutil.rmtree(work, ignore_errors=True)
+    return clips
 
+
+def write_mod(out, clips):
     mod = os.path.join(out, MOD_DIR)
     shutil.rmtree(mod, ignore_errors=True)
     os.makedirs(os.path.join(mod, 'Content'))
+    names = [c[0].lower() for c in clips]
+    assert len(set(names)) == len(names), 'duplicate track names across sources'
     # FSB4: header, 80-byte sample headers (the GH5 mod's layout), data
-    shdrs, data = b'', b''
-    for t, frames, nsamp in clips:
-        name = (t + '.mp3').encode()[:29]
-        shdrs += (struct.pack('<H30s', 80, name) +
+    shdrs = b''
+    for t, frames, nsamp, *_ in clips:
+        shdrs += (struct.pack('<H30s', 80, (t + '.mp3').encode()[:29]) +
                   struct.pack('<IIIII', nsamp, len(frames), 0, nsamp - 4, 0x220) +
                   struct.pack('<iHhHH', 48000, 255, 128, 128, 2) + struct.pack('<ff', 1.0, 10000.0) + bytes(8))
-        data += frames
-    head = struct.pack('<4sIIIII', b'FSB4', len(clips), len(shdrs), len(data), 0x40000, 0) + bytes(24)
-    open(os.path.join(mod, 'Content', FSB_NAME + '.fsb.xen'), 'wb').write(head + shdrs + data)
-    dat_out = struct.pack('>II', len(clips), qbkey(FSB_NAME)) + b''.join(
-        struct.pack('>II', qbkey(t), i) + bytes(12) for i, (t, _, _) in enumerate(clips))
-    open(os.path.join(mod, 'Content', FSB_NAME + '.dat.xen'), 'wb').write(dat_out)
-    ini = ['[ModInfo]', f'Name={FSB_NAME}', 'Description=Guitar Hero: Warriors of Rock main menu music (from your own copy)',
+    size = sum(len(c[1]) for c in clips)
+    with open(os.path.join(mod, 'Content', FSB_NAME + '.fsb.xen'), 'wb') as f:
+        f.write(struct.pack('<4sIIIII', b'FSB4', len(clips), len(shdrs), size, 0x40000, 0) + bytes(24) + shdrs)
+        for c in clips:
+            f.write(c[1])
+    dat = struct.pack('>II', len(clips), qbkey(FSB_NAME)) + b''.join(
+        struct.pack('>II', qbkey(c[0]), i) + bytes(12) for i, c in enumerate(clips))
+    open(os.path.join(mod, 'Content', FSB_NAME + '.dat.xen'), 'wb').write(dat)
+    ini = ['[ModInfo]', f'Name={FSB_NAME}',
+           'Description=Main menu music from every game (GH5 mod by Raccoon_333 + Warriors of Rock from your own copy), shuffled',
            'Author=WitchDoctoR', 'Version=1.0', '', '[MenuMusicInfo]', f'FSBName={FSB_NAME}']
-    ini += [f'Track={t}' for t, _, _ in clips] + ['']
-    for t, _, _ in clips:
-        ini += [f'[{t}]', 'Delay=0.0', f'Volume={VOLUME}', 'Offset=0', '']
+    ini += [f'Track={c[0]}' for c in clips] + ['']
+    for t, _, _, delay, vol, offset in clips:
+        ini += [f'[{t}]', f'Delay={delay}', f'Volume={vol}', f'Offset={offset}', '']
     open(os.path.join(mod, 'menumusic.ini'), 'w', newline='\r\n').write('\n'.join(ini))
+    print(f'{MOD_DIR}: {len(clips)} tracks, {size / 1e6:.0f} MB')
     return mod
+
+
+def build(out):
+    clips = []
+    for folder in sorted(glob.glob(os.path.join(paths.MENU_MUSIC_SOURCES, '*'))):
+        if os.path.exists(os.path.join(folder, 'menumusic.ini')):
+            clips += source_menu_music_mod(folder)
+    clips += source_wor()
+    return write_mod(out, clips)
 
 
 if __name__ == '__main__':

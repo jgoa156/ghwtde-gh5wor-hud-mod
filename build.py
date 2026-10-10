@@ -394,7 +394,8 @@ def main():
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
     src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, themes2, choices2, *layouts,
-                       *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc()]) + '\n'
+                       *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
+                       'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
@@ -410,7 +411,7 @@ def main():
     sdk('decompile', f'{MOD_NAME}.qb.xen', cwd=rt)
     back = open(os.path.join(rt, f'{MOD_NAME}.txt'), encoding='utf-8', errors='replace').read()
     want = len(re.findall(r'^(?:Section\w+|Script) ', src, re.M))
-    got = len(re.findall(r'(?:Section\w+|Script) \S+\s*(?:babeface\s*)?[\[{]', back))
+    got = len(re.findall(r'(?:Section\w+|Script) \S+\s*(?:babeface\s*)?[\[{]|SectionInteger \S+ -?\d+', back))   # ints: no brace
     lost = [t for t in re.findall(r'\$printf\$%s\("([^"]+)"\)', src) if t not in back]
     if got != want or lost:
         raise RuntimeError(f'round trip lost sections: {got}/{want} decompiled; missing printf: {lost}')
@@ -430,6 +431,8 @@ def main():
         print('installed DATA\\PAK\\' + wor_ui.UI_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
         mm = menu_music()
+        # the DE loads ONE menu music mod: the collection replaces 0.48's own WoR-only folder
+        shutil.rmtree(os.path.join(GAME, 'DATA', 'MODS', 'WoR Main Menu Music'), ignore_errors=True)
         mm_dst = os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.MOD_DIR)
         shutil.rmtree(mm_dst, ignore_errors=True)
         shutil.copytree(mm, mm_dst)
@@ -473,6 +476,12 @@ SP_HIGHWAY_SCRIPTS = (
     '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t\t:i $spawnscriptnow$$[68e7427a]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
+    # Star Power Activation SFX "HUD Theme Dependent" (default) falls back to World Tour's sounds; with this theme it
+    # plays Band Hero's (user, 2026-10-10) until star power ends. A sound the player picked stays as it is.
+    '\t\t:i if (~$[0f3ca55b]$ = $default$)\n'
+    '\t\t\t:i $change$$[0f3ca55b]$ = $[aa840d4f]$\n'
+    '\t\t\t:i $change$$WoR_HUD_sp_sfx_set$ = %i(1)\n'
+    '\t\t:i endif\n'
     '\t:i else \n'
     '\t\t:i $change$$[af5331bb]$ = $[09982fd5]$\n'
     '\t:i endif\n'
@@ -483,6 +492,10 @@ SP_HIGHWAY_SCRIPTS = (
     '\t\t:i $spawnscriptnow$$[b2114e69]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
     '\t:i endif\n'
     '\t:i $WoR_HUD_sp_verb_off_orig$$player$ = %GLOBAL%$player$\n'
+    '\t:i if (~$WoR_HUD_sp_sfx_set$ = %i(1))\n'
+    '\t\t:i $change$$[0f3ca55b]$ = $default$\n'
+    '\t\t:i $change$$WoR_HUD_sp_sfx_set$ = %i(0)\n'
+    '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
     # placeholders: plugin 1.23 moves the DE scripts' data here (their own bodies never run)
     'Script WoR_HUD_sp_verb_on_orig [\n'
@@ -603,7 +616,7 @@ def dark_metal_sections(work):
 
 
 def menu_music():
-    """WoR's main menu music mod (tools/wor_menu_music.py), built once into build/menu_music (90 MB of audio,
+    """The menu music collection (tools/wor_menu_music.py), built once into build/menu_music (~140 MB of audio,
     ~1 minute): rebuilt only when the tool changes."""
     root = os.path.join(ROOT, 'build', 'menu_music')
     mod = os.path.join(root, wor_menu_music.MOD_DIR)
@@ -625,9 +638,10 @@ def build_ui_pak():
     art = os.path.join(src, wor_ui.LOAD_TEX + '.png')
     wor_ui.loading_art().save(art)
     pngs.append(art)
-    wheel = os.path.join(src, wor_ui.WHEEL_TEX + '.png')
-    wor_ui.wheel_image().save(wheel)
-    pngs.append(wheel)
+    for k, im in enumerate(wor_ui.wheel_frames()):
+        wheel = os.path.join(src, f'{wor_ui.WHEEL_TEX}{k}.png')
+        im.save(wheel)
+        pngs.append(wheel)
     for p in pngs:
         shutil.copy(p, os.path.join(ROOT, 'build', 'preview'))
     run(['node', os.path.join(TOOLS, 'png2img.js'), src, *pngs], TOOLS)
@@ -713,7 +727,7 @@ def package():
     for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
         shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    shutil.copytree(menu_music(), os.path.join(main, 'DATA', 'MODS', wor_menu_music.MOD_DIR))
+    # menu music collection: NOT packaged yet (it merges other modders' menu music mods; decide what ships first)
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))

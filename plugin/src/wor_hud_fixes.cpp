@@ -629,6 +629,9 @@ namespace
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
 		{ 0xa3428532 /* set_user_control_color */, 0xb497ac21 /* wor_hud_set_user_control_color */, 0x6a7342a4 /* _orig */,
 		  "helper pills: set_user_control_color wrapped (WoR pill colours on every screen)" },
+		// 1.27: the gamertag pill ("Controller 2") gets the WoR pill colours too (the DE hardcodes green)
+		{ 0xf4d9a825 /* add_user_control_helper */, 0x70703cd2 /* wor_hud_add_user_control_helper */, 0xdb9c5de2 /* _orig */,
+		  "helper pills: add_user_control_helper wrapped (gamertag pill in the WoR pill colours)" },
 		// 1.26: WoR popup boxes and pause menu (tools/wor_menus.py)
 		{ 0xae7ee7a3 /* create_popup_warning_menu */, 0x02e1432d /* wrapper */, 0xc37ce317 /* _orig */,
 		  "popup: WoR descs while the WoR popup theme is on" },
@@ -1202,7 +1205,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.26 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.27 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

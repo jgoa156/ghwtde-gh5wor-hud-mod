@@ -74,6 +74,18 @@ def set_elem(desc, local_id, texture=None, pos=None, dims=None, scale=None, just
     return desc[:a] + blk + desc[b:]
 
 
+def set_flag(desc, local_id, key, value):
+    """Return desc with the element's `StructQBKey <key> = ...` set to value (the key must be there already)."""
+    hits = [m.start() for m in re.finditer(rf'StructQBKey local_id = {re.escape(local_id)}\s*\n', desc)]
+    if len(hits) != 1:
+        raise ValueError(f'local_id {local_id}: {len(hits)} matches')
+    a, b = _block_bounds(desc, hits[0])
+    blk, n = re.subn(rf'StructQBKey {re.escape(key)} = \S+', f'StructQBKey {key} = {value}', desc[a:b], count=1)
+    if n != 1:
+        raise ValueError(f'{local_id}: no {key} field')
+    return desc[:a] + blk + desc[b:]
+
+
 def get_elem(desc, local_id):
     """The props block of an element (for tests and inspection)."""
     m = re.search(rf'StructQBKey local_id = {re.escape(local_id)}\s*\n', desc)

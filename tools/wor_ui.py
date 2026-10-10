@@ -13,6 +13,7 @@ unloaded, it avoids the v0.19b crash (a font unloaded with a theme pak).
   500000); it gets the smallest one.
 """
 import math, os, struct, sys, zlib
+import numpy as np
 from PIL import Image, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -99,6 +100,11 @@ RING = (811.9, 139.1, 50.0)
 PLATE_BOX = (682, 399, 938, 463)
 PLATE_TEX = 'WoR_HUD_load_plate_'                              # + frame number 0..PLATE_FRAMES-1
 PLATE_FRAMES = 64                                              # 4 px of mottle apart, with the wheel's frame counter
+# v0.48 test: the loading screen looked pixelated (WoR's 1024x512 art and 128 px ball frames, DXT5, nearest-sampled
+# strip). Now: everything at 2x (art Lanczos-upscaled, frames rendered at 2x with bilinear sampling), stored as raw
+# PNG inside the .img (png2img --raw=RAW_TEX; the DE loads those, no DXT blocks). ~40 MB of RAM; the exe is LAA.
+HIRES = 2
+RAW_TEX = r'^WoR_HUD_load(ing|_wheel_|_plate_)'
 PLATE_ALIAS = 'WoR_HUD_plate_alias'
 PLATE_POS = (PLATE_BOX[0] * 1280 / 1024, PLATE_BOX[1] * 720 / 512)
 PLATE_DIMS = ((PLATE_BOX[2] - PLATE_BOX[0]) * 1280 / 1024, (PLATE_BOX[3] - PLATE_BOX[1]) * 720 / 512)
@@ -140,23 +146,32 @@ def loading_art():
             d = min(x, x1 - x0 - 1 - x, y, h - 1 - y)
             mp[x, y] = min(255, round(255 * d / f)) if d < f else 255
     bg.paste(patch, (x0, y0), mask)
-    return bg
+    return bg.resize((1024 * HIRES, 512 * HIRES), Image.LANCZOS)
+
+
+def _bilinear(img, x, y):
+    """img (h, w, c) float array sampled at float coords x, y (arrays), x wrapping, y clamped."""
+    h, w = img.shape[:2]
+    x0 = np.floor(x).astype(int)
+    y0 = np.clip(np.floor(y).astype(int), 0, h - 1)
+    fx, fy = (x - np.floor(x))[..., None], (np.clip(y, 0, h - 1) - y0)[..., None]
+    x1, y1 = (x0 + 1) % w, np.minimum(y0 + 1, h - 1)
+    x0 %= w
+    return ((img[y0, x0] * (1 - fx) + img[y0, x1] * fx) * (1 - fy) +
+            (img[y1, x0] * (1 - fx) + img[y1, x1] * fx) * fy)
 
 
 def plate_frames():
     """PLATE_FRAMES frames of the LOADING plate (as in the art), its red area (not the letters or their glow) with a
-    dark-red mottle drifting left: WoR's load_wheel strip background (the same grain) as the noise, tileable."""
+    dark-red mottle drifting left: WoR's load_wheel strip background (the same grain) as the noise, tileable. Made at
+    the art's size, then HIRES x (Lanczos plate, bilinear noise)."""
     art = wor_xbox_img(*LOAD_DIR, 'ingame_loading.img.xen').convert('RGBA')
     plate = art.crop(PLATE_BOX)
     strip = wor_xbox_img(*LOAD_DIR, 'load_wheel.img.xen').convert('L')
     w, h = plate.size
-    noise = strip.resize((256, 128)).load()                  # 256 px period (the strip tiles sideways)
-    lo, hi = 255, 0
-    for x in range(0, 256, 2):
-        for y in range(0, 128, 2):
-            lo, hi = min(lo, noise[x, y]), max(hi, noise[x, y])
+    noise = np.asarray(strip.resize((256, 128)), dtype=np.float64)[..., None]   # 256 px period (tiles sideways)
+    lo, hi = noise[::2, ::2].min(), noise[::2, ::2].max()
     pp = plate.load()
-    red = [[pp[x, y][0] > 120 and pp[x, y][1] < 70 and pp[x, y][2] < 60 for y in range(h)] for x in range(w)]
     # the plate's own shape (not the background around it): saturated (red, gold) or near-black (outline) pixels,
     # each row filled between its outermost ones, edge feathered 1 px
     shape = Image.new('L', (w, h), 0)
@@ -173,63 +188,63 @@ def plate_frames():
                 sp_[x, y] = 255
     shape = shape.filter(ImageFilter.GaussianBlur(0.8))
     plate.putalpha(shape)
-    pp = plate.load()
+    W, H = w * HIRES, h * HIRES
+    big = np.asarray(plate.resize((W, H), Image.LANCZOS), dtype=np.float64)
+    a = np.asarray(plate, dtype=np.int32)
+    red = (a[..., 0] > 120) & (a[..., 1] < 70) & (a[..., 2] < 60)
+    red = np.asarray(Image.fromarray((red * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR),
+                     dtype=np.float64)[..., None] / 255                     # soft edge between red and the rest
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float64)
+    xx, yy = (xx + 0.5) / HIRES - 0.5, (yy + 0.5) / HIRES - 0.5             # art px
     frames = []
     for k in range(PLATE_FRAMES):
-        out = plate.copy()
-        op = out.load()
-        off = k * 256 // PLATE_FRAMES
-        for x in range(w):
-            for y in range(h):
-                if not red[x][y]:
-                    continue
-                n = (noise[(x * 2 + off) % 256, (y * 2) % 128] - lo) / max(1, hi - lo)
-                r, g, b, a = op[x, y]
-                k_ = 0.62 + 0.55 * n                               # darker and lighter flecks
-                op[x, y] = (min(255, round(r * k_)), min(255, round(g * k_)), min(255, round(b * k_)), a)
-        frames.append(out)
+        off = k * 256 / PLATE_FRAMES
+        n = (_bilinear(noise, xx * 2 + off, (yy * 2) % 128) - lo) / max(1.0, hi - lo)
+        f = 1 + red * (0.62 + 0.55 * n - 1)                               # darker and lighter flecks on the red
+        out = big.copy()
+        out[..., :3] = np.clip(big[..., :3] * f, 0, 255)
+        frames.append(Image.fromarray(np.round(out).astype(np.uint8), 'RGBA'))
     return frames
 
 
 def wheel_frames():
-    """WHEEL_FRAMES 128x128 frames of the ball: a brown ball lit from above-front, mottled with the strip's own dark
-    texture, and the strip's light (lightning, above its near-black background) added on top. Each pixel of the disc
-    maps through a sphere to the strip (longitude -> strip x, latitude -> strip y around the lightning's middle row),
-    the strip turned by k*256/WHEEL_FRAMES; round, soft 1.5 px edge."""
+    """WHEEL_FRAMES frames (128*HIRES px) of the ball: a brown ball lit from above-front, mottled with the strip's own
+    dark texture, and the strip's light (lightning, above its near-black background) added on top. Each pixel of the
+    disc maps through a sphere to the strip (longitude -> strip x, latitude -> strip y around the lightning's middle
+    row), sampled bilinearly, the strip turned by k*256/WHEEL_FRAMES; round, soft 1.5 px edge (at 128 px)."""
     strip = wor_xbox_img(*LOAD_DIR, 'load_wheel.img.xen').convert('RGB')
     assert strip.size == (256, 128), strip.size
     sp = strip.load()
     rows = [sum(sum(sp[x, y]) for x in range(256)) for y in range(128)]
     mid = max(range(128), key=lambda y: sum(rows[max(0, y - 6):y + 7]))      # the lightning band's middle row
     bgpx = sorted(sp[x, y] for x in range(0, 256, 4) for y in (4, 8, 120, 124))
-    floor = bgpx[len(bgpx) // 2]                                              # its near-black background
-    lum = lambda c: (c[0] + c[1] + c[2]) / 3
-    fl = lum(floor)
-    n, step = 128, 256 / WHEEL_FRAMES
+    floor = np.array(bgpx[len(bgpx) // 2], dtype=np.float64)                 # its near-black background
+    fl = floor.mean()
+    src = np.asarray(strip, dtype=np.float64)
+    n, step = 128 * HIRES, 256 / WHEEL_FRAMES
+    py, px = np.mgrid[0:n, 0:n].astype(np.float64)
+    x, y = (px + 0.5) / (n / 2) - 1, (py + 0.5) / (n / 2) - 1
+    r2 = x * x + y * y
+    inside = r2 < 1.0
+    z = np.sqrt(np.clip(1 - r2, 0, 1))
+    lon = np.arctan2(x, z) / (math.pi / 2)                                   # -1..1 across the face
+    lat = np.arcsin(np.clip(y, -1, 1)) / (math.pi / 2)
+    sy = np.clip(mid + lat * WHEEL_WIN[1] / 2, 0, 127)
+    light = (0.45 + 0.55 * np.maximum(0.0, 0.35 * -y + 0.9 * z))[..., None]  # from above-front
+    alpha = np.clip((1.0 - np.sqrt(r2)) * 128 / 2 / 1.5, 0, 1) * inside
+    ball = np.array(WHEEL_BALL, dtype=np.float64)
+    gain = np.array((1.35, 1.1, 0.8))                                        # redder glow
     frames = []
     for k in range(WHEEL_FRAMES):
-        out = Image.new('RGBA', (n, n), (0, 0, 0, 0))
-        op = out.load()
-        for py in range(n):
-            for px in range(n):
-                x, y = (px + 0.5) / (n / 2) - 1, (py + 0.5) / (n / 2) - 1
-                r2 = x * x + y * y
-                if r2 >= 1.0:
-                    continue
-                z = math.sqrt(1 - r2)
-                lon = math.atan2(x, z) / (math.pi / 2)            # -1..1 across the face
-                lat = math.asin(max(-1.0, min(1.0, y))) / (math.pi / 2)
-                sx = (lon * WHEEL_WIN[0] / 2 + k * step) % 256
-                sy = min(127.0, max(0.0, mid + lat * WHEEL_WIN[1] / 2))
-                c = sp[int(sx), int(sy)]
-                light = 0.45 + 0.55 * max(0.0, 0.35 * -y + 0.9 * z)  # from above-front
-                mottle = 0.8 + 0.4 * min(1.0, lum(c) / max(1.0, 2 * fl))
-                glow = [max(0, v - f) * w for v, f, w in zip(c, floor, (1.35, 1.1, 0.8))]   # redder glow
-                rgb = tuple(min(255, round(b * light * mottle + g)) for b, g in zip(WHEEL_BALL, glow))
-                a = round(255 * max(0.0, min(1.0, (1.0 - math.sqrt(r2)) * n / 2 / 1.5)))
-                op[px, py] = rgb + (a,)
-        frames.append(out)
+        c = _bilinear(src, lon * WHEEL_WIN[0] / 2 + k * step, sy)
+        mottle = 0.8 + 0.4 * np.minimum(1.0, c.mean(axis=2, keepdims=True) / max(1.0, 2 * fl))
+        glow = np.maximum(0, c - floor) * gain
+        rgb = np.clip(ball * light * mottle + glow, 0, 255)
+        out = np.dstack([rgb, alpha[..., None] * 255])
+        out[~inside] = 0
+        frames.append(Image.fromarray(np.round(out).astype(np.uint8), 'RGBA'))
     return frames
+
 
 def loading_desc():
     root = E('WoR_HUD_loading_root', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
@@ -289,12 +304,32 @@ SCRIPTS = (
     '\t\t:i $WoR_HUD_set_user_control_color_orig$ isNull\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
+    # add_user_control_helper: the gamertag pill ("Controller 2") has its colours hardcoded (green, grey text); with
+    # the WoR pill theme it gets the same colours as the other pills (v0.48 test)
+    'Script WoR_HUD_add_user_control_helper [\n'
+    '\t:i $WoR_HUD_add_user_control_helper_orig$ isNull\n'
+    '\t:i if $GotParam$$helper_pill_id$\n'
+    '\t\t:i if $GotParam$$gamertag$\n'
+    '\t\t\t:i $[795f4c8c]$\n'
+    f'\t\t\t:i if (%GLOBAL%$[7d211cbc]$ = ${THEME}$)\n'
+    '\t\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$helper_pill_id$\n'
+    '\t\t\t\t\t:i %GLOBAL%$helper_pill_id$.$se_setprops$$helper_pill_rgba$ = (~$user_control_pill_color$)'
+    '$helper_description_rgba$ = (~$user_control_pill_text_color$)\n'
+    '\t\t\t\t:i endif\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i endif\n'
+    '\t\t:i return$helper_pill_id$ = %GLOBAL%$helper_pill_id$\n'
+    '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
     # placeholders: the plugin moves the DE scripts' data here
     'Script WoR_HUD_create_loading_screen_orig [\n'
     '\t:i $printf$%s("WoR_HUD: create_loading_screen placeholder ran, plugin swap missing")\n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_set_user_control_color_orig [\n'
     '\t:i $printf$%s("WoR_HUD: set_user_control_color placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_add_user_control_helper_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: add_user_control_helper placeholder ran, plugin swap missing")\n'
     '\t:i endfunction\n]\n')
 
 

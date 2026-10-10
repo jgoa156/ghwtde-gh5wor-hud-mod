@@ -400,10 +400,7 @@ def main():
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
-    open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
-        'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
-        'messages) and darkens the highway metal like GH5.\n'
-        f'Author=WitchDoctoR\nVersion={VERSION}\n')
+    open(os.path.join(OUT, 'Mod.ini'), 'w').write(mod_ini('GH5 / Warriors of Rock HUD', MOD_DESCRIPTION, VERSION))
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
     assert os.path.exists(os.path.join(OUT, f'{MOD_NAME}.qb.xen')), 'compile failed'
     # Guard: decompile the binary and check every section made it (script bytecode is encoded, so the strings are
@@ -433,9 +430,10 @@ def main():
         shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
         print('installed DATA\\PAK\\' + wor_ui.UI_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
-        mm = menu_music()
+        mm = menu_music()[0]
         # the DE loads ONE menu music mod: the collection replaces 0.48's own WoR-only folder
         shutil.rmtree(os.path.join(GAME, 'DATA', 'MODS', 'WoR Main Menu Music'), ignore_errors=True)
+        shutil.rmtree(os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.WOR_MOD[0]), ignore_errors=True)   # (packaged one)
         mm_dst = os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.MOD_DIR)
         shutil.rmtree(mm_dst, ignore_errors=True)
         shutil.copytree(mm, mm_dst)
@@ -642,18 +640,36 @@ def dark_metal_sections(work):
     return load, secs
 
 
+# The DE's fonts lack some ASCII glyphs (the double quote in almost all of them; parentheses, underscore, hyphen,
+# semicolon, exclamation mark, ampersand in some), shown as boxes in the mod list: descriptions use only these.
+MOD_INI_CHARS = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.:/')
+MOD_DESCRIPTION = ('Adds Guitar Hero: Warriors of Rock to the HUD, helper pill, loading screen, menu popup, pause menu '
+                   'and You Rock themes: GH5 / WoR style HUD with no in play messages, and the highway metal darkened '
+                   'like GH5.')
+
+
+def mod_ini(name, description, version):
+    """[ModInfo] block; name and description are checked against MOD_INI_CHARS."""
+    for text in (name, description):
+        bad = sorted(set(text) - MOD_INI_CHARS)
+        assert not bad, f'mod ini text has characters the DE fonts lack: {bad} in {text!r}'
+    return f'[ModInfo]\nName={name}\nDescription={description}\nAuthor=WitchDoctoR\nVersion={version}\n'
+
+
 def menu_music():
-    """The menu music collection (tools/wor_menu_music.py), built once into build/menu_music (~140 MB of audio,
-    ~1 minute): rebuilt only when the tool changes."""
+    """The menu music mods (tools/wor_menu_music.py): the collection (installed here) and the WoR-only one (released,
+    shipped in the package), built once into build/menu_music (~200 MB of audio, ~1 minute): rebuilt only when the
+    tool changes. Returns (collection folder, WoR-only folder)."""
     root = os.path.join(ROOT, 'build', 'menu_music')
-    mod = os.path.join(root, wor_menu_music.MOD_DIR)
+    mods = tuple(os.path.join(root, spec[0]) for spec in (wor_menu_music.COLLECTION, wor_menu_music.WOR_MOD))
     stamp = os.path.join(root, 'tool.sha1')
     tool = hashlib.sha1(open(wor_menu_music.__file__, 'rb').read()).hexdigest()
-    if not (os.path.exists(stamp) and open(stamp).read() == tool and os.path.isdir(mod)):
-        os.makedirs(root, exist_ok=True)
+    if not (os.path.exists(stamp) and open(stamp).read() == tool and all(os.path.isdir(m) for m in mods)):
+        shutil.rmtree(root, ignore_errors=True)
+        os.makedirs(root)
         wor_menu_music.build(root)
         open(stamp, 'w').write(tool)
-    return mod
+    return mods
 
 
 def build_ui_pak():
@@ -675,7 +691,7 @@ def build_ui_pak():
         pngs.append(plate)
     for p in pngs:
         shutil.copy(p, os.path.join(ROOT, 'build', 'preview'))
-    run(['node', os.path.join(TOOLS, 'png2img.js'), src, *pngs], TOOLS)
+    run(['node', os.path.join(TOOLS, 'png2img.js'), f'--raw={wor_ui.RAW_TEX}', src, *pngs], TOOLS)
     for p in pngs:
         os.remove(p)                                   # only the .img.xen files go into the pak
     wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
@@ -759,7 +775,10 @@ def package():
     for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
         shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    # menu music collection: NOT packaged yet (it merges other modders' menu music mods; decide what ships first)
+    # Warriors of Rock menu music (its own release: ghwtde-ghwor-menu-music-mod); the collection is not shipped (it
+    # merges other modders' menu music mods)
+    wor_mm = menu_music()[1]
+    shutil.copytree(wor_mm, os.path.join(main, 'DATA', 'MODS', os.path.basename(wor_mm)))
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))

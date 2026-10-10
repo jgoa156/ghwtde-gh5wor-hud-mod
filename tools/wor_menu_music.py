@@ -10,27 +10,40 @@ is a SOURCE merged into one bank. Sources:
     limiter (WoR's streams are mixed ~12 dB quieter than the GH5 mod's) and encoded to 48 kHz stereo MP3 frames.
 More games: add a source function returning clips.
 
+build() writes two mods from one decode:
+  - COLLECTION ("Main Menu Music Collection"): every source, for your own install;
+  - WOR_MOD ("(GHWoR) Main Menu Music"): Warriors of Rock only, the one released (repo ghwtde-ghwor-menu-music-mod,
+    also shipped with the GH5 / WoR HUD mod). Install one or the other: the DE loads one menu music mod.
+
 DE menu music mod layout:
   menumusic.ini              [MenuMusicInfo] FSBName + Track=<name> lines, then one [<name>] Delay/Volume/Offset each
   Content/<FSBName>.dat.xen  u32 count, u32 qbkey(FSBName), count x {u32 qbkey(track), u32 index, 12 zero bytes} (BE)
   Content/<FSBName>.fsb.xen  FSB4, 80-byte sample headers, MPEG (mode 0x220), data back to back
 
-usage: python wor_menu_music.py <out folder>   (needs ffmpeg on PATH)
+usage: python wor_menu_music.py <out folder>   (needs ffmpeg on PATH; writes both mod folders there)
 """
 import glob, math, os, shutil, struct, subprocess, sys, tempfile, zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths  # noqa: E402
 
-MOD_DIR = 'Main Menu Music Collection'
-FSB_NAME = 'Menu_Music_Collection'
+# (folder, FSBName, mod list name, description): names and descriptions only in letters, digits, spaces and , . : /
+# (the DE's fonts lack the double quote, and some lack parentheses, underscore, hyphen, ...)
+COLLECTION = ('Main Menu Music Collection', 'Menu_Music_Collection', 'Main Menu Music Collection',
+              'Main menu music from several games, shuffled: GH5 songs from the Raccoon 333 mod and Warriors of Rock '
+              'songs from your own copy.')
+WOR_MOD = ('(GHWoR) Main Menu Music', 'GHWoR_Music_Menu', 'GHWoR Main Menu Music',
+           'Guitar Hero: Warriors of Rock main menu music, all 14 songs, shuffled.')
+MOD_DIR, FSB_NAME = COLLECTION[:2]
+VERSION = '1.0'
+SAFE_CHARS = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.:/')
 # WoR's menu_music_songs, in its order (each: delay 0.0, vol 3, offset 0 in WoR)
 WOR_TRACKS = ['gh6_mm_bodies', 'gh6_mm_jetcitywoman', 'gh6_mm_chemicalwarfare', 'gh6_mm_bloodlines', 'gh6_mm_ravenous',
               'gh6_mm_hardtosee', 'gh6_mm_waidmannsheil', 'gh6_mm_holywars', 'gh6_mm_imbroken', 'gh6_mm_indians',
               'gh6_mm_psychosocial', 'gh6_mm_reignition', 'gh6_mm_theoutsider', 'gh6_mm_childrenofthegrave']
 WOR_VOLUME = 6                               # the GH5 menu music mod's value
 MM_LUFS = -10.0                              # the GH5 mod's tracks are ~-9.5 (user: -14 was too quiet next to them)
-MP3_QUALITY = '2'                            # LAME VBR ~190 kb/s (the GH5 mod: ~166 kb/s VBR)
+MP3_QUALITY = '4'                            # LAME VBR ~165 kb/s, as the GH5 mod (~166); V2 made the WoR-only bank 92 MB
 
 
 def qbkey(s):
@@ -164,8 +177,11 @@ def source_wor():
     return clips
 
 
-def write_mod(out, clips):
-    mod = os.path.join(out, MOD_DIR)
+def write_mod(out, clips, spec=COLLECTION):
+    mod_dir, fsb_name, title, description = spec
+    for text in (title, description):
+        assert not set(text) - SAFE_CHARS, f'characters the DE fonts lack in {text!r}'
+    mod = os.path.join(out, mod_dir)
     shutil.rmtree(mod, ignore_errors=True)
     os.makedirs(os.path.join(mod, 'Content'))
     names = [c[0].lower() for c in clips]
@@ -177,31 +193,31 @@ def write_mod(out, clips):
                   struct.pack('<IIIII', nsamp, len(frames), 0, nsamp - 4, 0x220) +
                   struct.pack('<iHhHH', 48000, 255, 128, 128, 2) + struct.pack('<ff', 1.0, 10000.0) + bytes(8))
     size = sum(len(c[1]) for c in clips)
-    with open(os.path.join(mod, 'Content', FSB_NAME + '.fsb.xen'), 'wb') as f:
+    with open(os.path.join(mod, 'Content', fsb_name + '.fsb.xen'), 'wb') as f:
         f.write(struct.pack('<4sIIIII', b'FSB4', len(clips), len(shdrs), size, 0x40000, 0) + bytes(24) + shdrs)
         for c in clips:
             f.write(c[1])
-    dat = struct.pack('>II', len(clips), qbkey(FSB_NAME)) + b''.join(
+    dat = struct.pack('>II', len(clips), qbkey(fsb_name)) + b''.join(
         struct.pack('>II', qbkey(c[0]), i) + bytes(12) for i, c in enumerate(clips))
-    open(os.path.join(mod, 'Content', FSB_NAME + '.dat.xen'), 'wb').write(dat)
-    ini = ['[ModInfo]', f'Name={FSB_NAME}',
-           'Description=Main menu music from every game (GH5 mod by Raccoon_333 + Warriors of Rock from your own copy), shuffled',
-           'Author=WitchDoctoR', 'Version=1.0', '', '[MenuMusicInfo]', f'FSBName={FSB_NAME}']
+    open(os.path.join(mod, 'Content', fsb_name + '.dat.xen'), 'wb').write(dat)
+    ini = ['[ModInfo]', f'Name={title}', f'Description={description}',
+           'Author=WitchDoctoR', f'Version={VERSION}', '', '[MenuMusicInfo]', f'FSBName={fsb_name}']
     ini += [f'Track={c[0]}' for c in clips] + ['']
     for t, _, _, delay, vol, offset in clips:
         ini += [f'[{t}]', f'Delay={delay}', f'Volume={vol}', f'Offset={offset}', '']
     open(os.path.join(mod, 'menumusic.ini'), 'w', newline='\r\n').write('\n'.join(ini))
-    print(f'{MOD_DIR}: {len(clips)} tracks, {size / 1e6:.0f} MB')
+    print(f'{mod_dir}: {len(clips)} tracks, {size / 1e6:.0f} MB')
     return mod
 
 
 def build(out):
+    """Both mods into out; returns (collection folder, WoR-only folder)."""
     clips = []
     for folder in sorted(glob.glob(os.path.join(paths.MENU_MUSIC_SOURCES, '*'))):
         if os.path.exists(os.path.join(folder, 'menumusic.ini')):
             clips += source_menu_music_mod(folder)
-    clips += source_wor()
-    return write_mod(out, clips)
+    wor = source_wor()
+    return write_mod(out, clips + wor, COLLECTION), write_mod(out, wor, WOR_MOD)
 
 
 if __name__ == '__main__':

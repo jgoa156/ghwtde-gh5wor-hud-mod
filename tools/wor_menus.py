@@ -76,7 +76,9 @@ def popup_desc(kind, de_text):
         d = re.sub(rf'StructQBKey texture = {re.escape(tex)}\b', f'StructQBKey texture = {BLANK}', d)
     d = desc_edit.set_elem(d, 'dialog_bg', texture=FRAME, pos=(0, 0), dims=(980, 534))
     d = desc_edit.set_elem(d, 'title_text_container', pos=(640, BANNER_Y - 15))
-    d = desc_edit.set_elem(d, title, font=TITLE_FONT, dims=(560, 44), rgba=BROWN)
+    # v0.48 test: no shadow on the title, slightly bigger (fit to 52 high instead of 44)
+    d = desc_edit.set_elem(d, title, font=TITLE_FONT, dims=(600, 52), rgba=BROWN)
+    d = desc_edit.set_flag(d, title, 'use_shadow', 'false')
     d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, 232), dims=(720, 150), scale=(0.67, 0.67), rgba=CREAM)
     if menu_y is not None:
         d = desc_edit.set_elem(d, 'dlog_vmenu_container', pos=(0.13092, menu_y))
@@ -84,6 +86,13 @@ def popup_desc(kind, de_text):
 
 
 # ---- pause desc (ours; the DE pause scripts use: title_text, glow_alpha, alias_menu, alias_pause_fist_container)
+# The World Tour pause branch makes a centred generic menu in alias_menu: make_menu's vmenu sits at (640 - 400/2) +
+# centered_offset (-400, -275) = (40, -25) from the container's top-left, its items are selection_width (425) x 50 and,
+# the menu being centred, their children anchor at the item's centre. WoR_HUD_pause_style_items puts each text's right
+# edge on the item's right edge, so items end at MENU_LEFT + 40 + 425 = TITLE_RIGHT.
+TITLE_RIGHT = 1232
+ITEM_W = 425
+MENU_LEFT = TITLE_RIGHT - ITEM_W - 40
 
 
 def pause_desc():
@@ -95,9 +104,9 @@ def pause_desc():
           rgba=RED, font=TITLE_FONT, internal_just=(-1, -1)),
         E('WoR_artist', 'TextBlockElement', pos=(178, 146), dims=(900, 40), just=(-1, -1), scale=(0.63, 0.63), z=2,
           rgba=CREAM, font=TEXT_FONT, internal_just=(-1, -1)),
-        E('title', 'TextBlockElement', pos=(1232, 146), dims=(400, 60), just=(1, -1), scale=(0.76, 0.76), z=2,
+        E('title', 'TextBlockElement', pos=(TITLE_RIGHT, 146), dims=(400, 60), just=(1, -1), scale=(0.76, 0.76), z=2,
           rgba=GOLD, font=TITLE_FONT, internal_just=(1, -1)),
-        E('menu', 'ContainerElement', pos=(1212, 268), dims=(400, 300), just=(1, -1), z=3)])
+        E('menu', 'ContainerElement', pos=(MENU_LEFT, 268), dims=(400, 300), just=(-1, -1), z=3)])
     return desc_gen.desc('WoR_HUD_pause', root,
                          props=[('title_text', 'title', 'text'), ('glow_alpha', 'WoR_glow', 'alpha'),
                                 ('WoR_song_text', 'WoR_song', 'text'), ('WoR_artist_text', 'WoR_artist', 'text')],
@@ -187,19 +196,21 @@ SCRIPTS = (
     '\t\t\t:i :s{$pad_choose$(%GLOBAL%$option$->$func$)$params$ = %GLOBAL%$func_params$:s}\n'
     '\t\t:i :a}\n'
     '\t:i :s}\n'
+    '\t:i $text_id$ = %GLOBAL%$id$\n'
     '\t:i $CreateScreenElement$:s{\n'
     '\t\t:i $type$ = $SpriteElement$\n'
-    '\t\t:i $parent$ = %GLOBAL%$id$\n'
+    '\t\t:i $parent$ = %GLOBAL%$text_id$\n'
     '\t\t:i $local_id$ = $WoR_HUD_bar$\n'
     f'\t\t:i $texture$ = ${BAR}$\n'
     '\t\t:i $dims$ = %vec2(330.0,42.0)\n'
-    '\t\t:i $pos_anchor$ = :a{$center$$center$:a}\n'
+    # the text's children are placed from its top-left corner (v0.48 test: pos_anchor centre was ignored there)
+    '\t\t:i $Pos$ = (%GLOBAL%$dims$ * %f(0.5))\n'
     '\t\t:i $just$ = :a{$center$$center$:a}\n'
     '\t\t:i $alpha$ = %i(0)\n'
     '\t\t:i $z_priority$ = (%GLOBAL%$z$ + %i(1))\n'
     '\t:i :s}\n'
     '\t:i if $StructureContains$$structure$ = %GLOBAL%$option$$not_focusable$\n'
-    '\t\t:i %GLOBAL%$id$.$se_setprops$$non_focusable$$rgba$ = ((~$g_menu_colors$)->$alert_red$)\n'
+    '\t\t:i %GLOBAL%$text_id$.$se_setprops$$non_focusable$$rgba$ = ((~$g_menu_colors$)->$alert_red$)\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_menu_popup_focus [\n'
@@ -242,23 +253,47 @@ SCRIPTS = (
     '\t:i $FormatText$$textname$ = $WoR_line$%s("%a %b")$a$ = %GLOBAL%$song_artist_text$$b$ = %GLOBAL%$song_artist$\n'
     '\t:i $pausemenu_bg$.$se_setprops$$WoR_song_text$ = %GLOBAL%$song_title$$WoR_artist_text$ = %GLOBAL%$WoR_line$\n'
     '\t:i endfunction\n]\n\n'
-    # the generic menu's items (container + text child): WoR title font, gold, right-aligned
+    # the generic menu's items (container + text child): WoR title font, gold, the text's right edge on the item's
+    # right edge, and a hidden brush bar behind it (shown on focus). Text and bar are both placed from the item's
+    # child anchor, so they line up whatever that anchor is.
     'Script WoR_HUD_pause_style_items [\n'
     '\t:i if NOT $ScreenElementExists$$id$ = $current_menu$\n'
     '\t\t:i return\n'
     '\t:i endif\n'
     '\t:i $GetScreenElementChildren$$id$ = $current_menu$\n'
+    '\t:i if NOT $GotParam$$children$\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
     '\t:i $GetArraySize$%GLOBAL%$children$\n'
+    '\t:i if (%GLOBAL%$array_size$ = %i(0))\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
     '\t:i $i$ = %i(0)\n'
     '\t:i while\n'
     '\t\t:i $item$ = (%GLOBAL%$children$:a{%GLOBAL%$i$:a})\n'
     '\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $text$:s}\n'
     f'\t\t\t:i $SetScreenElementProps$$id$ = :s{{%GLOBAL%$item$$child$ = $text$:s}}$font$ = ${TITLE_FONT}$$rgba$ = {_rgba(GOLD)}'
-    '$just$ = :a{$right$$center$:a}$internal_just$ = :a{$right$$center$:a}\n'
+    f'$just$ = :a{{$right$$center$:a}}$internal_just$ = :a{{$right$$center$:a}}$Pos$ = %vec2({ITEM_W / 2:.1f},0.0)\n'
+    '\t\t\t:i if NOT $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $WoR_HUD_bar$:s}\n'
+    '\t\t\t\t:i $CreateScreenElement$:s{\n'
+    '\t\t\t\t\t:i $type$ = $SpriteElement$\n'
+    '\t\t\t\t\t:i $parent$ = %GLOBAL%$item$\n'
+    '\t\t\t\t\t:i $local_id$ = $WoR_HUD_bar$\n'
+    f'\t\t\t\t\t:i $texture$ = ${BAR}$\n'
+    '\t\t\t\t\t:i $dims$ = %vec2(330.0,46.0)\n'
+    '\t\t\t\t\t:i $just$ = :a{$right$$center$:a}\n'
+    f'\t\t\t\t\t:i $Pos$ = %vec2({ITEM_W / 2 + 14:.1f},0.0)\n'
+    '\t\t\t\t\t:i $alpha$ = %i(0)\n'
+    '\t\t\t\t\t:i $z_priority$ = %i(605)\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t\t:i $i$ = (%GLOBAL%$i$ + %i(1))\n'
     '\t:i loop_to %GLOBAL%$array_size$\n'
     '\t:i endfunction\n]\n\n'
+    # focus / unfocus: every element checked before SetScreenElementProps (on a missing element it crashes the game:
+    # v0.48 test, 0x63a133; CreateScreenElement had replaced the item's id with the new bar's). The DE passes the item
+    # as id.
     'Script WoR_HUD_menu_item_focus [\n'
     # two plain ifs: a ${...}$ struct argument inside a parenthesised AND crashed the game (QB reader, 0x5f0a8e)
     f'\t:i if NOT {IS_PAUSE}\n'
@@ -269,23 +304,19 @@ SCRIPTS = (
     '\t\t:i $WoR_HUD_menu_item_focus_orig$ isNull\n'
     '\t\t:i return\n'
     '\t:i endif\n'
-    f'\t:i $SetScreenElementProps$$id$ = :s{{%GLOBAL%$id$$child$ = $text$:s}}$font$ = ${TITLE_FONT}$$rgba$ = {_rgba(WHITE_C)}\n'
-    '\t:i if NOT $ScreenElementExists$$id$ = :s{%GLOBAL%$id$$child$ = $WoR_HUD_bar$:s}\n'
-    '\t\t:i $CreateScreenElement$:s{\n'
-    '\t\t\t:i $type$ = $SpriteElement$\n'
-    '\t\t\t:i $parent$ = %GLOBAL%$id$\n'
-    '\t\t\t:i $local_id$ = $WoR_HUD_bar$\n'
-    f'\t\t\t:i $texture$ = ${BAR}$\n'
-    '\t\t\t:i $dims$ = %vec2(330.0,46.0)\n'
-    '\t\t\t:i $pos_anchor$ = :a{$right$$center$:a}\n'
-    '\t\t\t:i $just$ = :a{$right$$center$:a}\n'
-    '\t\t\t:i $Pos$ = %vec2(10.0,0.0)\n'
-    '\t\t\t:i $z_priority$ = %i(1)\n'
-    '\t\t:i :s}\n'
+    '\t:i if NOT $GotParam$$id$\n'
+    '\t\t:i return\n'
     '\t:i endif\n'
-    '\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$id$$child$ = $WoR_HUD_bar$:s}$alpha$ = %i(1)\n'
+    '\t:i $item$ = %GLOBAL%$id$\n'
+    '\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $text$:s}\n'
+    f'\t\t:i $SetScreenElementProps$$id$ = :s{{%GLOBAL%$item$$child$ = $text$:s}}$font$ = ${TITLE_FONT}$$rgba$ = {_rgba(WHITE_C)}\n'
+    '\t:i endif\n'
+    '\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $WoR_HUD_bar$:s}\n'
+    '\t\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$item$$child$ = $WoR_HUD_bar$:s}$alpha$ = %i(1)\n'
+    '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_menu_item_unfocus [\n'
+    # two plain ifs: a ${...}$ struct argument inside a parenthesised AND crashed the game (QB reader, 0x5f0a8e)
     f'\t:i if NOT {IS_PAUSE}\n'
     '\t\t:i $WoR_HUD_menu_item_unfocus_orig$ isNull\n'
     '\t\t:i return\n'
@@ -294,9 +325,15 @@ SCRIPTS = (
     '\t\t:i $WoR_HUD_menu_item_unfocus_orig$ isNull\n'
     '\t\t:i return\n'
     '\t:i endif\n'
-    f'\t:i $SetScreenElementProps$$id$ = :s{{%GLOBAL%$id$$child$ = $text$:s}}$font$ = ${TITLE_FONT}$$rgba$ = {_rgba(GOLD)}\n'
-    '\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$id$$child$ = $WoR_HUD_bar$:s}\n'
-    '\t\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$id$$child$ = $WoR_HUD_bar$:s}$alpha$ = %i(0)\n'
+    '\t:i if NOT $GotParam$$id$\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $item$ = %GLOBAL%$id$\n'
+    '\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $text$:s}\n'
+    f'\t\t:i $SetScreenElementProps$$id$ = :s{{%GLOBAL%$item$$child$ = $text$:s}}$font$ = ${TITLE_FONT}$$rgba$ = {_rgba(GOLD)}\n'
+    '\t:i endif\n'
+    '\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$item$$child$ = $WoR_HUD_bar$:s}\n'
+    '\t\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$item$$child$ = $WoR_HUD_bar$:s}$alpha$ = %i(0)\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
     # placeholders: the plugin moves the DE scripts' data here

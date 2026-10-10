@@ -1252,3 +1252,31 @@
 - C: filled up: 476 leftover build temp folders (2.6 GB). build.py / wor_font / tests now clean up.
 - QB notes: `return$x$ = v` (not `return:s{`); `isNull` = all args; `continue` in while = break; printf lines DO
   reach debug.txt (tagged with the script checksum).
+
+## v0.48 WIP + plugin 1.27 (2026-10-10, evening): pause crash, popup fixes, gamertag pill, sharp loading, menu music release
+- v0.48 test: popup themed (WARNING / LOADING boxes) but its red bars sat up-left of the options; pause crashed at
+  0x63a133 = SetScreenElementProps (0x63a0e0) on a missing element (no null check after resolving `id`, 0x519620).
+  Cause: in WoR_HUD_menu_item_focus, CreateScreenElement (the bar) put the NEW element's id into `id`, so the next
+  SetScreenElementProps {id child=WoR_HUD_bar} looked under the bar. Lesson: CreateScreenElement overwrites the
+  caller's `id`; keep the parent id in another local, and check ScreenElementExists before every
+  SetScreenElementProps (it crashes on a missing element).
+- Pause items: WoR_HUD_pause_style_items now also creates each item's hidden bar; text (just right, Pos 212.5) and
+  bar (Pos 226.5) are both placed from the item's child anchor (centred menu), so they line up. Our desc's menu
+  container moved to x MENU_LEFT = 1232 - 425 - 40 (make_menu: vmenu at +40 from it, items 425 wide) so items end
+  under the PAUSED title. Focus / unfocus only touch elements that exist.
+- Popup bar: pos_anchor centre didn't take on a TextBlockElement parent (bars centred on its top-left corner), so the
+  bar gets Pos = dims * 0.5. Title: no shadow (use_shadow false, desc_edit.set_flag), fit height 44 -> 52.
+- Gamertag pill ("Controller 2"): add_user_control_helper hardcodes green (120,180,150) / grey text; plugin 1.27 wraps
+  it (0xf4d9a825 -> WoR_HUD_add_user_control_helper, orig 0xdb9c5de2): with the WoR pill theme the pill gets
+  user_control_pill_color / _text_color like the other pills.
+- Loading screen looked pixelated: WoR's art is 1024x512 and everything was DXT5, the ball 128 px with nearest
+  sampling. Now: art Lanczos x2 (2048x1024), ball 256 px and plate 512x128 rendered with bilinear sampling (numpy),
+  all stored as raw PNG in the .img (png2img --raw=wor_ui.RAW_TEX). wor_hud_ui.pak 3 -> 16.7 MB (~40 MB RAM, exe LAA).
+- Ultrawide add-on: loading screens are 16:9 with black side bars by default (user); LoadingFill=1 / overlay checkbox
+  brings back the cover (movie scaled, WoR picture/wheel/plate anchored).
+- Mod list text: the DE's fonts lack `"` (almost all), and some `( ) _ - ; ! &`: Mod.ini / menumusic.ini names and
+  descriptions now use letters, digits, spaces and `, . : /` only (build.py mod_ini() and wor_menu_music assert it).
+- Menu music: tools/wor_menu_music.py builds two mods from one decode: the Collection (installed here) and
+  "(GHWoR) Main Menu Music" (WoR only, FSB GHWoR_Music_Menu), LAME V4 (~165 kb/s like the GH5 mod; V2 made 92 MB).
+  Released: github.com/jgoa156/ghwtde-ghwor-menu-music-mod (releases/GHWoR-Main-Menu-Music_1.0.zip, 72 MB). The HUD
+  package now ships the WoR-only folder (DATA\MODS); install removes it from the game (one menu music mod loads).

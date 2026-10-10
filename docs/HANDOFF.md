@@ -35,6 +35,10 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
     and logs "missing parent" in wor_hud_fixes.log. Our QB printf lines DO reach debug.txt (tagged [0xd8b982c2]);
   - never put a $Func$${...}$ struct argument inside a parenthesised expression (AND/OR): it crashed the game
     (0x5f0a8e); use plain ifs or the $id$ = $x$ form;
+  - CreateScreenElement overwrites the calling script's `id` with the new element's; SetScreenElementProps on a
+    missing element crashes the game (0x63a133): keep ids in other locals and check ScreenElementExists first;
+  - mod list text (Mod.ini / menumusic.ini): only letters, digits, spaces and , . : / (the DE fonts lack the double
+    quote and others);
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
     `pluginuild.bat`;
@@ -42,9 +46,11 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Next steps
 
-1. **WoR menu look** (v0.48 WIP, MODLOG "v0.48 WIP"): helper pills done; loading screen needs rework (user video
-   pending); menu music built (tools/wor_menu_music.py), untested. Menu music = one mod per game, all installed so the
-   DE shuffles them; other games' menu music to be extracted the same way later. Then popup boxes, You Rock; pause parked.
+1. **WoR menu look** (v0.48 WIP + plugin 1.27, MODLOG "evening"): pills, menu music confirmed; to test: pause
+   (crash fixed), popup bars / title, gamertag pill, sharper 16:9 loading screen, You Rock, awarded SFX. **Release the
+   HUD 0.48 only once the pause menu fully works** (user). Its zip ships the WoR menu music (73 MB bank) + 16.7 MB UI
+   pak: the 0.48 package is 94 MB (GitHub refuses files over 100 MB).
+   Menu music: released on its own (github.com/jgoa156/ghwtde-ghwor-menu-music-mod, 1.0).
 2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
    frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
 3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.

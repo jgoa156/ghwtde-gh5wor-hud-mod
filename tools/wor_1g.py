@@ -322,7 +322,7 @@ SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of 
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
 SP_BALL_FPS = 20
-SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (canvas offset from the fill top, scale)
+SP_BURST = (((0.0, 0.0), 0.0), ((-6.0, -8.0), 0.0), ((5.0, -12.0), 0.0))   # (canvas offset from the fill top, scale): scale 0 = burst off (user 2026-10-09: pixelated; was 0.9 / 0.6 / 0.5)
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo

@@ -1099,3 +1099,14 @@
   stretch). Highway/gems are excluded (2D sprites too; narrowing them would put gems off the lanes). No effect at 16:9.
 - Risks to check: layered parts made of sprites with different anchors (tube art / fill / needles, score box) may
   drift by a few px; text blocks whose glyphs are child elements would narrow per glyph (letter-spaced).
+
+### Plugin 1.17 (2026-10-09, installed, NOT yet tested): ultrawide plan B probe; burst off
+- User test of 1.16: HUD changed but elements out of place and aspect not kept (rotated sprites skewed: the x factor is
+  applied after rotation, which also bent the neon needle's angle; layered parts misaligned). Leaf narrowing is
+  compiled out (WOR_LEAF_UNSTRETCH).
+- User's plan: render all 2D (HUD, menus) as the closest 16:9 picture (2560x1080 -> 1920x1080) centred, black sides in
+  menus; 3D gameplay untouched. In engine terms: canvas scale (1.5, 1.5) + 320 px x offset. The writer of the canvas
+  scale is outside the exe and the exe has no pointer to the struct, so 1.17 logs every distinct instruction that READS
+  or writes 0xd5ab7c / 0xd5ab80 / 0xd5ab60 (module+offset, caller) for ~70 s, then disarms. Next: hook the mapping there.
+- Star power ready burst (ball lightning, 32 px frames) off: sprite scale 0 (user: pixelated).
+- Release zip note: the packaged plugin is the probe build until the ultrawide fix lands.

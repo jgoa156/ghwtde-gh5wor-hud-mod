@@ -760,11 +760,30 @@ namespace
 		}
 	}
 
-	// ---- ultrawide probe (diagnostic, log only): who writes the 2D canvas scale and what the screen struct holds.
-	// Hardware write breakpoints on the canvas scale x/y (0xd5ab7c/80) and the screen width (0xb056a4); each hit logs
-	// the writing instruction, the caller and the new value (first 12 hits), then the values are dumped a few times.
-	constexpr uintptr_t kProbe[] = { 0xd5ab7c, 0xd5ab80, 0xb056a4 };
-	volatile LONG g_probe_hits = 0;
+	// ---- ultrawide probe (diagnostic, log only). 1.14: write breakpoints found the canvas scale (0xd5ab7c/80) written
+	// from outside the exe. 1.17: READ/write breakpoints on the canvas scale x/y and the screen width float (0xd5ab60)
+	// log every distinct instruction that touches them (module + offset, caller), for ~1 min, then disarm: the readers
+	// are the 2D renderer's canvas -> screen mapping, where the HUD/menus get drawn as a centred 16:9 picture.
+	constexpr uintptr_t kProbe[] = { 0xd5ab7c, 0xd5ab80, 0xd5ab60 };
+	constexpr int kProbeMaxSites = 48;
+	uintptr_t g_probe_sites[kProbeMaxSites] = {};
+	volatile LONG g_probe_count = 0;
+	volatile LONG g_probe_armed = 1;
+
+	void probe_where(uintptr_t a, char *out, size_t n)
+	{
+		HMODULE m = nullptr;
+		char name[MAX_PATH] = "?";
+		if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		                       reinterpret_cast<LPCSTR>(a), &m) && m)
+		{
+			GetModuleFileNameA(m, name, MAX_PATH);
+			const char *b = strrchr(name, '\\');
+			_snprintf_s(out, n, _TRUNCATE, "%s+0x%x", b ? b + 1 : name, static_cast<unsigned>(a - reinterpret_cast<uintptr_t>(m)));
+		}
+		else
+			_snprintf_s(out, n, _TRUNCATE, "0x%08x", static_cast<unsigned>(a));
+	}
 
 	LONG CALLBACK probe_veh(EXCEPTION_POINTERS *ep)
 	{
@@ -774,21 +793,34 @@ namespace
 		const DWORD hit = c->Dr6 & 0xf;
 		if (!hit)
 			return EXCEPTION_CONTINUE_SEARCH;
-		if (InterlockedIncrement(&g_probe_hits) <= 12)
-		{
-			for (int k = 0; k < 3; ++k)
-				if (hit & (1u << k))
-					log("ultrawide probe: write to 0x%08x = %f at eip 0x%08x, [esp] 0x%08x, ebp 0x%08x [ebp+4] 0x%08x",
-					    static_cast<unsigned>(kProbe[k]), *reinterpret_cast<const float *>(kProbe[k]),
-					    static_cast<unsigned>(c->Eip), *reinterpret_cast<const unsigned *>(c->Esp),
-					    static_cast<unsigned>(c->Ebp),
-					    c->Ebp > 0x10000 && !IsBadReadPtr(reinterpret_cast<void *>(c->Ebp + 4), 4) ? *reinterpret_cast<const unsigned *>(c->Ebp + 4) : 0u);
-		}
 		c->Dr6 = 0;
+		if (!g_probe_armed)
+		{
+			c->Dr7 = 0;                    // late hit after disarming: switch this thread's breakpoints off
+			return EXCEPTION_CONTINUE_EXECUTION;
+		}
+		const uintptr_t eip = c->Eip;
+		const LONG n = g_probe_count;
+		for (LONG i = 0; i < n && i < kProbeMaxSites; ++i)
+			if (g_probe_sites[i] == eip)
+				return EXCEPTION_CONTINUE_EXECUTION;
+		const LONG slot = InterlockedIncrement(&g_probe_count) - 1;
+		if (slot >= kProbeMaxSites)
+			return EXCEPTION_CONTINUE_EXECUTION;
+		g_probe_sites[slot] = eip;
+		char where[MAX_PATH + 32], caller[MAX_PATH + 32];
+		probe_where(eip, where, sizeof where);
+		const uintptr_t ret = !IsBadReadPtr(reinterpret_cast<void *>(c->Esp), 4) ? *reinterpret_cast<const uintptr_t *>(c->Esp) : 0;
+		probe_where(ret, caller, sizeof caller);
+		for (int k = 0; k < 3; ++k)
+			if (hit & (1u << k))
+				log("ultrawide probe: access 0x%08x (now %.3f) by eip %s (after the access), [esp] %s, thread %u",
+				    static_cast<unsigned>(kProbe[k]), *reinterpret_cast<const float *>(kProbe[k]), where, caller,
+				    static_cast<unsigned>(GetCurrentThreadId()));
 		return EXCEPTION_CONTINUE_EXECUTION;
 	}
 
-	void probe_arm_threads()
+	void probe_arm_threads(bool on)
 	{
 		const DWORD pid = GetCurrentProcessId(), me = GetCurrentThreadId();
 		HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
@@ -807,10 +839,10 @@ namespace
 			if (GetThreadContext(t, &c))
 			{
 				c.Dr0 = kProbe[0]; c.Dr1 = kProbe[1]; c.Dr2 = kProbe[2];
-				c.Dr7 = (1 << 0) | (1 << 2) | (1 << 4)          // local enable DR0-2
-				      | (0x1 << 16) | (0x3 << 18)                // DR0: write, 4 bytes
-				      | (0x1 << 20) | (0x3 << 22)                // DR1
-				      | (0x1 << 24) | (0x3 << 26);               // DR2
+				c.Dr7 = on ? ((1 << 0) | (1 << 2) | (1 << 4)       // local enable DR0-2
+				           | (0x3 << 16) | (0x3 << 18)             // DR0: read/write, 4 bytes
+				           | (0x3 << 20) | (0x3 << 22)             // DR1
+				           | (0x3 << 24) | (0x3 << 26)) : 0;       // DR2
 				if (SetThreadContext(t, &c))
 					++armed;
 			}
@@ -818,26 +850,20 @@ namespace
 			CloseHandle(t);
 		}
 		CloseHandle(snap);
-		log("ultrawide probe: write breakpoints armed on %d threads", armed);
+		log(on ? "ultrawide probe: read/write breakpoints armed on %d threads" : "ultrawide probe: disarmed on %d threads", armed);
 	}
 
 	DWORD WINAPI probe_thread(void *)
 	{
 		AddVectoredExceptionHandler(1, probe_veh);
-		for (int round = 0; round < 12; ++round)
+		for (int round = 0; round < 14; ++round)        // ~70 s: boot, menus, a song
 		{
-			if (round < 6)
-				probe_arm_threads();          // re-arm so threads created after boot (render thread) are covered
-			const float *s = reinterpret_cast<const float *>(0xd5ab60);
-			const unsigned *u = reinterpret_cast<const unsigned *>(0xd5ab60);
-			log("ultrawide probe t=%ds: screen %d x %d (0xe51440) | b056a4.. %.2f %.2f %.2f %.2f | d5ab60.. "
-			    "%.3f %.3f %08x %08x %08x %08x %08x %.4f %.4f %08x %08x | aspect 0xd9ef74 %.4f",
-			    round * 5, *reinterpret_cast<const int *>(0xe51440), *reinterpret_cast<const int *>(0xe51444),
-			    *reinterpret_cast<const float *>(0xb056a4), *reinterpret_cast<const float *>(0xb056a8),
-			    *reinterpret_cast<const float *>(0xb056ac), *reinterpret_cast<const float *>(0xb056b0),
-			    s[0], s[1], u[2], u[3], u[4], u[5], u[6], s[7], s[8], u[9], u[10], *reinterpret_cast<const float *>(0xd9ef74));
+			probe_arm_threads(true);                      // re-arm: threads created later (render thread) are covered
 			Sleep(5000);
 		}
+		g_probe_armed = 0;
+		probe_arm_threads(false);
+		log("ultrawide probe: %d distinct sites", static_cast<int>(g_probe_count));
 		return 0;
 	}
 
@@ -888,7 +914,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.16 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.17 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -910,8 +936,10 @@ namespace
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
 		g_particle_tramp = install_jmp(kParticleRead, 8, reinterpret_cast<void *>(&particle_hook));
 		// sub esp, 8; push esi; mov esi, ecx = 6 bytes of whole instructions
+#ifdef WOR_LEAF_UNSTRETCH   // 1.16 experiment: skewed rotated sprites and misaligned layers; replaced by the 16:9 plan
 		g_transform_update = reinterpret_cast<TransformUpdateFn>(install_jmp(kTransformUpdate, 6, reinterpret_cast<void *>(&transform_update_hook)));
 		log(g_transform_update ? "ultrawide: transform update hooked (2D elements keep their aspect)" : "ultrawide: hook failed");
+#endif
 		log(g_particle_tramp ? "star power burst: particle sizes hooked (WoR sizes)" : "star power burst: hook failed");
 		{
 			const uint8_t *call = reinterpret_cast<const uint8_t *>(kScoreFmtCall);
@@ -919,7 +947,7 @@ namespace
 			const bool ok = target == kSnwprintf && install_call(kScoreFmtCall, reinterpret_cast<void *>(&score_text_hook));
 			log(ok ? "score text: thousands separators hooked" : "score text: hook failed (unexpected call target)");
 		}
-#ifdef WOR_ULTRAWIDE_PROBE   // diagnostic of 1.14 (results in docs/ULTRAWIDE_RESEARCH.md); off in normal builds
+#ifndef WOR_NO_ULTRAWIDE_PROBE   // 1.17: read probe ON for one test run (finds the 2D canvas mapping)
 		if (HANDLE t = CreateThread(nullptr, 0, probe_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
 #endif

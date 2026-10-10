@@ -326,7 +326,7 @@ SP_BURST = (((0.0, 0.0), 0.9), ((-6.0, -8.0), 0.6), ((5.0, -12.0), 0.5))   # (ca
 SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo
-SP_GLOW_BOTTOM_LEVEL = 0.0                   # the bottom neon needle sits on the fill's bottom edge (like the cap on its top)
+SP_GLOW_BOTTOM_LEVEL = 0.035                 # bottom needle just inside the glass (at 0 the arch's ends hung out of the tube; user 2026-10-09, verify/mock_sp_bottom_neon.png)
 SP_NEON_X_K = 0.75                           # neon needles narrower than the half divider: fit the glass (user 2026-10-09)
 SP_NEON_BOTTOM_ROT = -5.0                    # the bottom needle turned a bit more than the divider (user 2026-10-09; the top one is right)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0

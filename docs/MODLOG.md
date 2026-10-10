@@ -1080,3 +1080,11 @@
   stray pixels cut) with a tight halo (blur 1.4, gain 1.8). Both needles 0.75x the divider's width; the bottom one is
   turned -5 deg more than the divider (SP_NEON_BOTTOM_ROT; user: the top one's angle is right). The dark arc under the
   top needle at 50% is the half divider (intended).
+- Bottom neon needle hung out of the tube (user screenshot): at level 0 the arch's ends dipped below the glass where the
+  base art narrows into its tail. Now at level 0.035 (SP_GLOW_BOTTOM_LEVEL), just inside the glass; the mock tool
+  (preview_hud) now shows the bottom needle while the meter has charge (verify/mock_sp_bottom_neon.png: 0 / 0.02 / 0.035).
+- Crowd selector idea (user): evaluated, parked. All 64 venues' <zone>_crowd_models (tb guitar_crowd_data.qb) use the
+  same six GHWT peds (crowd_ped_01..04, crowd_pedf_1/2) at different LODs, GH5/WoR-era venues included; only z_cabo
+  (Crowd_PedF/PedM_Cabo*, inside z_cabo.pak), z_Stone (+monk) and z_training (security) differ. The DE ships GH5 band
+  characters but no GH5/WoR crowd peds; a real GH5/WoR crowd needs their models extracted and converted (360 -> PC).
+  The option itself is feasible (options entry with an eb4f9555 change callback that $change$s the zone arrays).

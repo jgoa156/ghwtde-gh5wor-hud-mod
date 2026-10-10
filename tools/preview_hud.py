@@ -68,6 +68,8 @@ def state(health, sp, mult):
     v['songtime_fg'] = {'dims': ((wor_1g.prog_w() - wor_1g.PROG_FILL_INSET) * 0.7, wor_1g.PROG_H * wor_1g.SCORE_K)}   # DE: bg width x completion (70%: past the 50% tick)
     v['star_lead'] = {'alpha': 1.0}      # the plugin shows the tip dots and moves them to the tips (see walk)
     v['prog_lead'] = {'alpha': 1.0}
+    if sp > 0.001:                       # the plugin's neon needles: bottom (always while filled), cap (ready)
+        v['sp_glow_bottom'] = {'alpha': wor_1g.SP_GLOW_SPRITES[0][4]}
     if os.environ.get('MOCK_PLASMA'):    # the plugin's ready fill: a plasma frame on the full-length tube fill
         v['sp_feather_fill0'] = {'texture': os.environ['MOCK_PLASMA'], 'alpha': 1.0}
     v['Score'] = {'text': '45625'}

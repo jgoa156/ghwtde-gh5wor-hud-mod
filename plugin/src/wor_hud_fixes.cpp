@@ -646,6 +646,10 @@ namespace
 		  "pause: WoR item focus" },
 		{ 0x3e80db22 /* menu_item_unfocus */, 0xae35e188 /* wrapper */, 0x14eb4c76 /* _orig */,
 		  "pause: WoR item unfocus" },
+		{ 0x5a1e070c /* GuitarEvent_StarSequenceBonus */, 0xed70cd19 /* wor_hud_star_sequence_bonus */, 0xbf6c01bd /* _orig */,
+		  "star power awarded: Band Hero's sound (= WoR's) by default with the WoR theme" },
+		{ 0x513316d1 /* Create_HandsOfGod */, 0xc1862c7b /* wor_hud_create_handsofgod */, 0xba256701 /* _orig */,
+		  "you rock: WoR's exploding text, lightning and explosion with the WoR You Rock theme" },
 	};
 
 	uint8_t *find_symbol(uint32_t checksum)

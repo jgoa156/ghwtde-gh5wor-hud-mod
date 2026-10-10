@@ -1228,3 +1228,27 @@
   streams 13-26 of data/streams/streamall.fsb.xen (index: streamall.dat.xen = u32 count, u32 qbkey(bank), 20-byte
   entries {qbkey, index, 0}). Wrapped as XMA2 RIFF, decoded by ffmpeg, -14 LUFS + limiter, MP3 48 kHz -> FSB4 (80-byte
   headers, mode 0x220) as DATA\MODS\WoR Main Menu Music, the GH5 menu music mod's layout. Cached in build/menu_music.
+
+## v0.48 WIP + plugin 1.26 (2026-10-10, later): popup, pause, You Rock, awarded SFX, loading rework
+- Menu music: the DE loads ONE menu music mod ("ERROR: Exceeded limit of 1 menu music mod." in debug.txt), so
+  tools/wor_menu_music.py builds a "Main Menu Music Collection" (GH5 mod tracks copied + WoR's 14, WoR at -10 LUFS).
+  The GH5 mod lives in E:\Dev\ghwt\menu-music-sources (paths.MENU_MUSIC_SOURCES). User: works perfectly.
+  Not packaged (contains another modder's audio) until decided.
+- Loading (user video): the wheel is a ball (WoR's load_wheel strip wrapped on a sphere, 64 frames switched per game
+  frame by WoR_HUD_loading_anim); v0.48 test: ball right of the hole -> RING = the hole's dark-pixel centroid. Picture
+  back at WoR's 16:9 shape (2:1 looked stretched), plate painted out and redrawn as its own 64-frame sprite (moving
+  red mottle, plate-shaped alpha); add-on: picture/wheel cover anchored 0.298 (ring whole), plate 0.650 (whole).
+- Popup / pause (tools/wor_menus.py): desc globals of the DE branch an unknown value falls to (dialog_box*_wtde,
+  pause_menu) pointed at our descs while the WoR theme is on (saved DE ones restored otherwise); wrappers for options,
+  focus, title colour, pause song info, generic menu item style/focus (menu_item_focus, from menu_skate/menu.qb).
+  First pause test crashed at 0x5f0a8e (QB reader: inline struct with a null out pointer): a `${...}$` struct
+  argument inside a parenthesised AND. Rule: never put `$Func$${...}$` inside an expression; use plain ifs or the
+  `$id$ = $x$` form. Popup untested (pause crashed first).
+- Awarded SFX: WoR's sp_awarded1/2 ARE the DE's Band Hero ones (global_sfx_wtde; envelope correlation 0.96/0.85).
+  GuitarEvent_StarSequenceBonus wrapped: with the WoR HUD theme and the default (World Tour) it plays Band Hero's.
+- You Rock (tools/wor_yourock.py): Create_HandsOfGod wrapped; "ghwor" runs WoR's exploding text (DE's helpers, WoR
+  title font, light blue) + WoR's ported effects (glow, p2p lightning, explosion; AbsoluteValue/sqrt replaced, not DE
+  functions) + their 6 materials (AnimatedTexture_UI kept) and textures (gem paks). Untested.
+- C: filled up: 476 leftover build temp folders (2.6 GB). build.py / wor_font / tests now clean up.
+- QB notes: `return$x$ = v` (not `return:s{`); `isNull` = all args; `continue` in while = break; printf lines DO
+  reach debug.txt (tagged with the script checksum).

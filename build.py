@@ -15,7 +15,7 @@ import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_ui  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_ui, wor_yourock  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -392,11 +392,11 @@ def main():
                       f'\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[{key}]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
                       for key, _, dst, _ in wor_1g.BORDER_GEM_PAKS) +
             '\t:i $printf$%s("WoR_HUD: every stock gem theme repointed to its copy with the WoR highway border")\n' +
-            dark_load + SP_HIGHWAY_LOAD + wor_ui.load_script() + wor_menus.load_script() +
+            dark_load + SP_HIGHWAY_LOAD + wor_ui.load_script() + wor_menus.load_script() + wor_yourock.load_script() +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -500,6 +500,28 @@ SP_HIGHWAY_SCRIPTS = (
     '\t\t:i $change$$WoR_HUD_sp_sfx_set$ = %i(0)\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
+    # Star Power Awarded SFX: WoR's sound IS Band Hero's (WoR global_sfx sp_awarded1/2 vs the DE's: envelope
+    # correlation 0.96 / 0.85, 2026-10-10). With this theme the DE default (World Tour) plays Band Hero's, for this call
+    # only: GuitarEvent_StarSequenceBonus checks the setting right at its start; a helper puts it back a frame later
+    # (so a killed script can't leave it changed). A sound the player picked other than the default stays.
+    'Script WoR_HUD_star_sequence_bonus [\n'
+    '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+    '\t\t:i if (~$[c134dbe2]$ = $[09982fd5]$)\n'
+    '\t\t\t:i $change$$[c134dbe2]$ = $[aa840d4f]$\n'
+    '\t\t\t:i $spawnscriptnow$$WoR_HUD_awarded_sfx_restore$\n'
+    '\t\t:i endif\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_star_sequence_bonus_orig$ isNull\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_awarded_sfx_restore [\n'
+    '\t:i $wait$${\n\t\tStructInt 1\n\t\tStructQBKey gameframe\n\t}$\n'
+    '\t:i if (~$[c134dbe2]$ = $[aa840d4f]$)\n'
+    '\t\t:i $change$$[c134dbe2]$ = $[09982fd5]$\n'
+    '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_star_sequence_bonus_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: star sequence bonus placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n\n'
     # placeholders: plugin 1.23 moves the DE scripts' data here (their own bodies never run)
     'Script WoR_HUD_sp_verb_on_orig [\n'
     '\t:i $printf$%s("WoR_HUD: sp verb on placeholder ran, plugin swap missing")\n'
@@ -521,6 +543,8 @@ def wor_material_group(name):
     e_at = lst.index(f'StructQBKey name = {name}\n')
     entry = block(lst[lst.rfind('StructHeader', 0, e_at):], 'StructHeader')
     group = group.replace(lst, 'StructArray list\n{\nArrayStruct\n[\n' + entry + '\n]\n}', 1)
+    if 'StructQBKey template = AnimatedTexture_UI\n' in group:
+        return group                                     # the DE has OneShot_ZeroStart / loop under this template
     return group.replace('StructQBKey technique = OneShot_ZeroStart', 'StructQBKey technique = UI_Col_Tex_2D')
 
 
@@ -604,9 +628,9 @@ def dark_metal_sections(work):
         arr, found = darken_materials(arr, DARK_K)
         all_found += found
         if key == '0x345d04a2':
-            for name in SP_HIGHWAY_MATERIALS:
+            for name in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS:
                 assert f'StructQBKey name = {name}\n' not in text, f'{name} already in the DE materials'
-            groups = ''.join(wor_material_group(n) + '\n' for n in SP_HIGHWAY_MATERIALS)
+            groups = ''.join(wor_material_group(n) + '\n' for n in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS)
             end = arr.rindex(']')
             arr = arr[:end] + groups + arr[end:]
         secs.append(arr.replace(f'SectionArray {key}', f'SectionArray {new}', 1))
@@ -687,7 +711,7 @@ def build_border_gempak_one(work, src_name, dst_name, with_bolt):
     img = open(os.path.join(tdir, wor_1g.BORDER_TEX_NAME + '.img.xen'), 'rb').read()
     recs.append(texdict.record(int(qbkey(wor_1g.BORDER_TEX_NAME), 16), img[img.index(b'DDS '):]))
     # WoR's highway star power effect textures (SP_HIGHWAY_TEXTURES), keyed like the DE's highway textures
-    for key, src_png in SP_HIGHWAY_TEXTURES:
+    for key, src_png in SP_HIGHWAY_TEXTURES + tuple(wor_yourock.texture_pngs()):
         png_k = os.path.join(tdir, f'sphwy_{key:08x}.png')
         shutil.copy(src_png, png_k)
         run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png_k], TOOLS)

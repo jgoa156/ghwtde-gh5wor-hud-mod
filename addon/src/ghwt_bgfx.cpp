@@ -22,6 +22,7 @@
 #include <ctime>
 #include <mutex>
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 
@@ -418,6 +419,34 @@ namespace
 	uint32_t g_ui_mapped = 0, g_ui_mapped_last = 0;
 	bool g_ultrawide_logged = false;
 
+	RECT g_sc_set = {};
+	bool g_sc_valid = false;
+
+	// diagnostic (once per vertex shader, first 12): the UI vertex shaders' constants c0..c7, to find the 2D projection
+	// (canvas -> clip space) so the 16:9 mapping can move from the viewport (which also clips) into the projection
+	std::vector<uintptr_t> g_vs_logged;
+	void log_ui_constants(IDirect3DDevice9 *dev)
+	{
+		IDirect3DVertexShader9 *vs = nullptr;
+		dev->GetVertexShader(&vs);
+		const uintptr_t key = reinterpret_cast<uintptr_t>(vs);
+		const uint32_t hash = lookup_hash(vs);
+		if (vs != nullptr)
+			vs->Release();
+		if (g_vs_logged.size() >= 12 || std::find(g_vs_logged.begin(), g_vs_logged.end(), key) != g_vs_logged.end())
+			return;
+		g_vs_logged.push_back(key);
+		float c[8][4] = {};
+		dev->GetVertexShaderConstantF(0, &c[0][0], 8);
+		D3DVIEWPORT9 vp = {};
+		dev->GetViewport(&vp);
+		char msg[1024];
+		int n = sprintf_s(msg, "ghwt_bgfx: UI VS %08X (vp %lu,%lu %lux%lu)", hash, vp.X, vp.Y, vp.Width, vp.Height);
+		for (int r = 0; r < 8 && n > 0 && n < 900; ++r)
+			n += sprintf_s(msg + n, sizeof msg - n, " c%d=(%.4g %.4g %.4g %.4g)", r, c[r][0], c[r][1], c[r][2], c[r][3]);
+		reshade::log::message(reshade::log::level::info, msg);
+	}
+
 	void map_ui_viewport(command_list *cmd_list)
 	{
 		if (!g_ultrawide || !g_ui_phase || g_runtime == nullptr || g_cur_rt0 != g_runtime->get_current_back_buffer().handle)
@@ -430,26 +459,30 @@ namespace
 		D3DVIEWPORT9 vp = {};
 		if (FAILED(dev->GetViewport(&vp)))
 			return;
+		const float w169 = bh * 16.0f / 9.0f, k = w169 / bw, ox = (bw - w169) * 0.5f;
+		// scissor (window elements clip with it): mapped whenever the game changed it, independently of the viewport
+		DWORD scissor = FALSE;
+		if (SUCCEEDED(dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &scissor)) && scissor)
+		{
+			RECT r;
+			if (SUCCEEDED(dev->GetScissorRect(&r)) && !(g_sc_valid && memcmp(&r, &g_sc_set, sizeof r) == 0))
+			{
+				r.left = static_cast<LONG>(ox + r.left * k + 0.5f);
+				r.right = static_cast<LONG>(ox + r.right * k + 0.5f);
+				dev->SetScissorRect(&r);
+				g_sc_set = r;
+				g_sc_valid = true;
+			}
+		}
+		log_ui_constants(dev);
 		if (g_vp_valid && memcmp(&vp, &g_vp_set, sizeof vp) == 0)
 			return;                                   // still ours
-		const float w169 = bh * 16.0f / 9.0f, k = w169 / bw, ox = (bw - w169) * 0.5f;
 		D3DVIEWPORT9 m = vp;
 		m.X = static_cast<DWORD>(ox + vp.X * k + 0.5f);
 		m.Width = static_cast<DWORD>(vp.Width * k + 0.5f);
 		dev->SetViewport(&m);
 		g_vp_set = m;
 		g_vp_valid = true;
-		DWORD scissor = FALSE;
-		if (SUCCEEDED(dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &scissor)) && scissor)
-		{
-			RECT r;
-			if (SUCCEEDED(dev->GetScissorRect(&r)))
-			{
-				r.left = static_cast<LONG>(ox + r.left * k + 0.5f);
-				r.right = static_cast<LONG>(ox + r.right * k + 0.5f);
-				dev->SetScissorRect(&r);
-			}
-		}
 		++g_ui_mapped;
 		if (!g_ultrawide_logged)
 		{
@@ -631,6 +664,7 @@ namespace
 		g_draw_index = 0;
 		g_ui_phase = false;
 		g_vp_valid = false;
+		g_sc_valid = false;
 		g_ui_mapped_last = g_ui_mapped;
 		g_ui_mapped = 0;
 		g_injected_this_frame = false;

@@ -1135,3 +1135,13 @@
   after the composite draw g_composite_ps is 2D UI): each UI draw now gets its viewport (and scissor) mapped into the
   centred 16:9 area (x' = ox + x*k, width*k). Overlay: checkbox + "UI viewports mapped last frame"; ReShade.log line
   "ghwt_bgfx: ultrawide UI at 16:9". Frames without a composite (loading) are not mapped yet.
+
+### Add-on: scissor fix + UI projection probe (2026-10-09, installed, NOT yet tested)
+- User test: viewport mapping works (UI is a centred 16:9 picture; screens 9, 10, 14-16 right). SP tube fill cut by a
+  vertical edge: window elements clip with the SCISSOR, which was only re-mapped when the viewport changed. Now the
+  scissor is mapped whenever the game changes it.
+- User spec per screen (GHHUD screenshots): full-screen gradients/vignettes (1-8, 13) and backgrounds (1-3, 11, cover
+  fit) should span the full width; left-anchored panels (8 mode/instrument select, 13 song name) pinned to the real
+  left edge; 11 background split towards the sides; 12 black bars. Needs the mapping in the UI projection (a viewport
+  clips everything outside the 16:9 area) + per-element rules in the plugin. This build logs the UI vertex shaders'
+  constants c0-c7 once ("ghwt_bgfx: UI VS ...") to find the projection.

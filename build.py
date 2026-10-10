@@ -11,17 +11,17 @@ Output (build/):
 --package: ONE drop-in zip (mod, paks, HUD fixes plugin + ASI loader, ReShade + GHWoR preset + background-only add-on)
 usage: python build.py [--install] [--package]
 """
-import json, os, re, shutil, subprocess, sys, tempfile
+import hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_ui  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.47'
+VERSION = '0.48'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 ULTRAWIDE_ADDON = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix', 'build', 'ghwtde_ultrawide.addon32')   # its build.bat
@@ -368,6 +368,7 @@ def main():
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
     build_border_gempak(work)
+    build_ui_pak()
     dark_load, dark_secs = dark_metal_sections(work)
 
     # Register the pak with the HUD pak-links table through the DE's own AddToGlobalStruct helper (0x325bc724),
@@ -388,12 +389,12 @@ def main():
                       f'\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[{key}]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
                       for key, _, dst, _ in wor_1g.BORDER_GEM_PAKS) +
             '\t:i $printf$%s("WoR_HUD: every stock gem theme repointed to its copy with the WoR highway border")\n' +
-            dark_load + SP_HIGHWAY_LOAD +
+            dark_load + SP_HIGHWAY_LOAD + wor_ui.load_script() +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, themes2, choices2, *layouts,
-                       *descs, *dark_secs, sp_highway_colours()]) + '\n'
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, themes2, choices2, *layouts,
+                       *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc()]) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
@@ -425,7 +426,14 @@ def main():
         for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
             shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
             print('installed DATA\\PAK\\' + gem_pak + '.pak.xen')
+        shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
+        print('installed DATA\\PAK\\' + wor_ui.UI_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
+        mm = menu_music()
+        mm_dst = os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.MOD_DIR)
+        shutil.rmtree(mm_dst, ignore_errors=True)
+        shutil.copytree(mm, mm_dst)
+        print('installed', mm_dst)
 
     if '--package' in sys.argv:
         package()
@@ -594,6 +602,44 @@ def dark_metal_sections(work):
     return load, secs
 
 
+def menu_music():
+    """WoR's main menu music mod (tools/wor_menu_music.py), built once into build/menu_music (90 MB of audio,
+    ~1 minute): rebuilt only when the tool changes."""
+    root = os.path.join(ROOT, 'build', 'menu_music')
+    mod = os.path.join(root, wor_menu_music.MOD_DIR)
+    stamp = os.path.join(root, 'tool.sha1')
+    tool = hashlib.sha1(open(wor_menu_music.__file__, 'rb').read()).hexdigest()
+    if not (os.path.exists(stamp) and open(stamp).read() == tool and os.path.isdir(mod)):
+        os.makedirs(root, exist_ok=True)
+        wor_menu_music.build(root)
+        open(stamp, 'w').write(tool)
+    return mod
+
+
+def build_ui_pak():
+    """wor_hud_ui.pak (tools/wor_ui.py): WoR helper pill caps and the WoR loading screen, loaded at mod load."""
+    src = os.path.join(ROOT, 'build', 'pak_src', wor_ui.UI_PAK)
+    shutil.rmtree(src, ignore_errors=True)
+    os.makedirs(src)
+    pngs = wor_ui.pill_images(src)
+    art = os.path.join(src, wor_ui.LOAD_TEX + '.png')
+    wor_ui.loading_art().save(art)
+    pngs.append(art)
+    wheel = os.path.join(src, wor_ui.WHEEL_TEX + '.png')
+    wor_ui.wheel_image().save(wheel)
+    pngs.append(wheel)
+    for p in pngs:
+        shutil.copy(p, os.path.join(ROOT, 'build', 'preview'))
+    run(['node', os.path.join(TOOLS, 'png2img.js'), src, *pngs], TOOLS)
+    for p in pngs:
+        os.remove(p)                                   # only the .img.xen files go into the pak
+    wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
+    out = os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen')
+    sdk('createpak', src, '-out', out, cwd=os.path.dirname(SDK))
+    assert os.path.exists(out), 'createpak failed (UI pak)'
+    print('built', out, '|', len(pngs), 'textures + font', wor_ui.PILL_FONT)
+
+
 def build_border_gempak(work):
     """The border-carrying copy of every stock gem pak (wor_1g.BORDER_GEM_PAKS)."""
     for _, src, dst, bolt in wor_1g.BORDER_GEM_PAKS:
@@ -666,6 +712,8 @@ def package():
     shutil.copy(os.path.join(OUT, f'{PAK_NAME}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
         shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
+    shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
+    shutil.copytree(menu_music(), os.path.join(main, 'DATA', 'MODS', wor_menu_music.MOD_DIR))
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))

@@ -16,6 +16,7 @@ MOD = os.path.normpath(os.path.join(HERE, '..', 'build', 'WoR_HUD'))
 SRC = os.path.join(MOD, 'WoR_HUD.txt')
 sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
 import paths  # noqa: E402
+import wor_ui  # noqa: E402
 TOOLS, SDK, GAME = paths.GH_TOOLS, paths.SDK, paths.GAME
 GOLDEN = os.path.join(HERE, 'golden_textures.json')
 
@@ -198,16 +199,22 @@ def src_text():
 
 @test
 def integrity_textures_in_theme_pak():
-    """Every mod texture a desc uses must be an entry of the built theme pak (entry id = checksum of the name)."""
+    """Every mod texture a desc uses must be an entry of the pak that serves it (entry id = checksum of the name): the
+    HUD descs' textures are in the theme pak, the menu desc's (WoR loading screen) in the always-loaded UI pak."""
     s = src_text()
     used = set(re.findall(r'texture = (WoR_HUD_\w+)', s))
     assert used, 'no mod textures used'
-    pak = os.path.join(MOD, 'hud_ghwor.pak.xen')
-    work = tempfile.mkdtemp(prefix='pak_')
-    sdk('extract', pak, work, cwd=os.path.dirname(SDK))
-    entries = {f.split('.')[0].lower().replace('0x', '').zfill(8) for f in os.listdir(work)}
-    missing = [t for t in used if qbkey(t) not in entries]
+
+    def entries_of(pak_name):
+        work = tempfile.mkdtemp(prefix='pak_')
+        sdk('extract', os.path.join(MOD, pak_name + '.pak.xen'), work, cwd=os.path.dirname(SDK))
+        return {f.split('.')[0].lower().replace('0x', '').zfill(8) for f in os.listdir(work)}
+    ui = {wor_ui.LOAD_TEX, wor_ui.WHEEL_TEX}
+    missing = [t for t in used - ui if qbkey(t) not in entries_of('hud_ghwor')]
     assert not missing, f'textures used but not in the theme pak: {missing}'
+    ui_entries = entries_of(wor_ui.UI_PAK)
+    missing = [t for t in ui | set(wor_ui.PILL_IMAGE.values()) if qbkey(t) not in ui_entries]
+    assert not missing, f'menu textures not in the UI pak: {missing}'
     assert 'IH_AddImage' not in s and 'IH_LoadImage' not in s, 'image-handler textures are invisible to HUD sprites'
 
 

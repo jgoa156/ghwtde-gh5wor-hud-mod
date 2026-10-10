@@ -1209,3 +1209,22 @@
   Plugin 1.24 also guards SetParent: a missing parent (lookup 0x477c90 on manager [0xd62eb8]) goes to the root,
   hidden, logged as "missing parent". Confirmed in game (user: nailed it); no missing-parent lines in the log.
 - Note: our QB printf lines do not reach Logs\debug.txt; use the plugin log for diagnostics.
+
+## v0.48 WIP + plugin 1.25 (2026-10-10): WoR helper pills, loading screen, menu music
+- New always-loaded pak `DATA\PAK\wor_hud_ui.pak` (tools/wor_ui.py), loaded by WoR_HUD_Load with LoadPak like the DE's
+  wtde_gig_posters: WoR fret-cap pill icons, WoR's pill font (fontgrid_text_a1 as WoR_HUD_text_a1; never unloaded, so
+  no v0.19b font crash), WoR's loading art and load wheel (from the Xbox copy, data/compressed: CHNK + raw deflate).
+- Helper pills (user: good): "ghwor" entry in the DE pill theme table e8b85065 (AddToGlobalStruct) + choice in list
+  0x12ec77b9, ini re-read via 67da6f76(f26e4c1f->7d211cbc). helper_gamertag_pill layout: the icon SPRITE (62x62,
+  <colour>_scale) is centred in its CONTAINER (62x62 + <colour>_dims, scale 1.4) and the text follows the container:
+  square cap texture, scale 0.9, dims -28. The song list forced grey pills / black text through set_user_control_color
+  (ui_create_setlist_spawned); plugin 1.25 wraps it (WoR theme: theme colours only). Black 150-alpha pill, white text.
+- Loading screen (user: not right yet, video to come): loadtheme_add_struct (0x054f4a16) registers "ghwor" with desc
+  WoR_HUD_loading (art + additive spinning wheel sprite; the DE still plays the theme movie underneath, the smallest
+  one). Plugin 1.25 wraps create_loading_screen; when our desc is up (desc_resolvealias WoR_HUD_wheel_alias) it spawns
+  WoR_HUD_loading_spin (rot_angle -3 per frame). Ultrawide add-on: TexRule ay/aspect, cover at the art's 2:1, anchor 0.6.
+  QB notes: `isNull` = pass all args (0x2C); `continue` inside while = break.
+- WoR main menu music (tools/wor_menu_music.py, untested in game): WoR menu_music_songs (14 gh6_mm_* clips) are XMA
+  streams 13-26 of data/streams/streamall.fsb.xen (index: streamall.dat.xen = u32 count, u32 qbkey(bank), 20-byte
+  entries {qbkey, index, 0}). Wrapped as XMA2 RIFF, decoded by ffmpeg, -14 LUFS + limiter, MP3 48 kHz -> FSB4 (80-byte
+  headers, mode 0x220) as DATA\MODS\WoR Main Menu Music, the GH5 menu music mod's layout. Cached in build/menu_music.

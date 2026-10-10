@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-10, v0.46)
+# GH5 / WoR HUD mod: session handoff (2026-10-10, v0.47)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -13,21 +13,26 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini` (`HUDTheme=ghwor`,
   `GemTheme=ghwor`, `Preferred*Highway=GH5_Highway`, 2560x1080). The `GHWTDE.ini` in the game folder is not the live one.
-- **Installed = released 0.46** (`releases/GH5-WoR_HUD_0.46.zip`, Desktop copy): mod `WoR_HUD` + theme/gem paks +
-  `wor_hud_fixes.asi` **1.22** + ASI loader + ReShade (preset `GHWoRHudModPreset.ini`, `ghwt_bgfx.addon32`,
+- **Installed = released 0.47** (`releases/GH5-WoR_HUD_0.47.zip`, Desktop copy): mod `WoR_HUD` + theme/gem paks +
+  `wor_hud_fixes.asi` **1.24** + ASI loader + ReShade (preset `GHWoRHudModPreset.ini`, `ghwt_bgfx.addon32`,
   `ghwtde_ultrawide.addon32` 0.2 beta).
-- **Confirmed in game (2026-10-10):** career rock needle (plugin 1.22), the new preset, every ultrawide screen
+- **Confirmed in game (2026-10-10):** WoR star power highway effect (0.47 / plugin 1.24: cyan rail glows, stars up
+  the rails, strikeline rush; MODLOG "v0.47"), career rock needle (plugin 1.22), the new preset, every ultrawide screen
   (title, menus, song list, loading, YOU ROCK themes, song intro, left-pinned menus). User: the occasional crash
   seems gone.
 - **ReShade preset:** `GHWoRHudModPreset.ini` = Behon's GH5WORStyle v2 (Nexus guitarheroworldtour mod 2021, built on
   Ricochet27's GH5/WoR ReShade) + our GH5_Grade, AdaptiveTonemapper, vort_MotionBlur. qUINT (MXAO, ADOF, sharpen)
   is "all rights reserved": not shipped, users tick it in the ReShade installer. Credits in THIRD_PARTY_LICENSES.txt.
 - **Known issues:** face-off crashes (no dump yet: WER LocalDumps for GHWT_Definitive.exe not enabled); face-off /
-  battle HUDs not adjusted for ultrawide; the DE's SP highway glow leaks a little above/below the highway (minor).
+  battle HUDs not adjusted for ultrawide; the DE's SP highway glow leaks a little above/below the highway (minor);
+  the WoR star power highway effect is only checked with one player.
 - **Lessons (don't repeat):**
   - a mod cannot redefine a game script (the engine ignores it; `tests/run_offline.py` guards it). Workaround that
     works: ship the logic under a WoR_HUD_ name and let the plugin copy its QB symbol entry over the DE script's
-    (symbol table `[0xd48f5c]`, see MODLOG "plugin 1.22");
+    (symbol table `[0xd48f5c]`, see MODLOG "plugin 1.22"); to wrap a DE script, kScriptSwaps saves the original
+    into a placeholder first (MODLOG "v0.47");
+  - a CreateScreenElement whose parent doesn't exist crashed the game (SetParent 0x5a0240); plugin 1.24 guards it
+    and logs "missing parent" in wor_hud_fixes.log. Our QB printf lines don't reach debug.txt;
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
     `pluginuild.bat`;
@@ -35,8 +40,8 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Next steps
 
-1. **Star power highway animation** (next, user): stars up the highway and glowing blue side rails like GH5/WoR.
-   Plan and research in `docs/GH5_STAR_POWER_REFERENCE.md` (DE script 0x68e7427a is unfinished). Mock first.
+1. **WoR menus, loading screen, pill and helper themes** (next, user, 2026-10-10): research what the DE lets a mod
+   theme there and what WoR assets exist. Mock first.
 2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
    frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
 3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.

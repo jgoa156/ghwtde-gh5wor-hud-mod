@@ -1191,3 +1191,21 @@
 - The package's optional ReShade folder now includes `ghwtde_ultrawide.addon32` (built in ../ghwtde-ultrawide-fix,
   0.2 beta: per-element modes; see that repo's README). README: career known issue removed, ultrawide section.
 
+
+## v0.47 + plugin 1.24 (2026-10-10): WoR star power highway effect
+- The DE ships WoR's Create_Highway_Star_Power_Effect as 0x68e7427a (kill/fade 0xb2114e69, tb guitar_starpower.qb)
+  but never runs it. The mod now: sets the switch af5331bb to gh6_standard (0x8f24bf5c, also hides the DE's sidebar
+  lightning arcs in setup_highway); adds WoR's colour table Default_SP_FX_Color as 0x4eb4832b; appends WoR's
+  Mat_sidebar_GLOW_02 and Mat_Star03 material groups to its copy of the in-game material array 0x345d04a2 (fade group's
+  OneShot_ZeroStart technique -> UI_Col_Tex_2D); ships textures d96d3be3 (sidebar01_glow02) and 42235207 (Star03) in
+  every gem pak. Theme flag `WoR_HUD_sp_highway`.
+- Trigger: plugin 1.23's kScriptSwaps table wraps GH_Star_Power_Verb_On (df84b375) / _Off (4cb84f65), called from
+  guitar_events with the player: each DE script's symbol data moves to a WoR_HUD_sp_verb_*_orig placeholder, the mod's
+  WoR_HUD_sp_verb_on/off takes its place, spawns the effect (or its fade) and then calls the original (sounds intact).
+- 1.23 crashed on activation: access violation at 0x5a02ce in SetParent (0x5a0240, __thiscall element, parent id),
+  which reads the looked-up parent without a null check. The effect's strikeline rush (sidebar_Center_SPRushp<n>) is
+  parented to fretbar_containerp<n>, which only WoR's setup_highway created. Fix: the wrapper creates it (container in
+  gem_containerp<n> at (640, 0), centre/centre: the DE's gem container has the highway centred at x 640, WoR's at 0).
+  Plugin 1.24 also guards SetParent: a missing parent (lookup 0x477c90 on manager [0xd62eb8]) goes to the root,
+  hidden, logged as "missing parent". Confirmed in game (user: nailed it); no missing-parent lines in the log.
+- Note: our QB printf lines do not reach Logs\debug.txt; use the plugin log for diagnostics.

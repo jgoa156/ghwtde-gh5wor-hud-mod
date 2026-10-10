@@ -16,7 +16,7 @@ Install: extract this archive into the game folder (the one with GHWT_Definitive
   DATA\PAK\gems_ghwor_hud.pak.xen  the WoR highway border (+ WoR star power strike), Warriors of Rock gems
   DATA\PAK\gems_ghwt_hud.pak.xen, gems_gh3_hud.pak.xen, gems_flat_hud.pak.xen
                                 the WoR highway border for the other stock gem themes
-  wor_hud_fixes.asi             native fixes (smooth animated star power, note-streak lights)
+  wor_hud_fixes.asi             native fixes (smooth animated star power, WoR star power highway, note-streak lights)
   dinput8.dll                   Ultimate ASI Loader (MIT), loads the .asi
 Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock". Gem Theme = Warriors of Rock gives the full
 WoR look; the WoR highway border also shows with the other stock gem themes (custom gem-theme mods keep their own).

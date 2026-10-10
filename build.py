@@ -21,7 +21,7 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.46'
+VERSION = '0.47'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
 ULTRAWIDE_ADDON = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix', 'build', 'ghwtde_ultrawide.addon32')   # its build.bat
@@ -186,6 +186,8 @@ def main():
     extra += '\t\t\t\tStructInt 0x882f22a1 = 1\n'
     # our own flag: the side meter (rock needle) also runs in single-player career (CAREER_METER_SCRIPT)
     extra += '\t\t\t\tStructInt WoR_HUD_career_meter = 1\n'
+    # our own flag: WoR's highway star power effect runs with this theme (SP_HIGHWAY_SCRIPTS)
+    extra += '\t\t\t\tStructInt WoR_HUD_sp_highway = 1\n'
     # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
     sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'
@@ -386,11 +388,12 @@ def main():
                       f'\t:i $[325bc724]$$id$ = $[af130dc4]$$field$ = $[{key}]$$element$ = %GLOBAL%$WoR_HUD_gemlink$\n'
                       for key, _, dst, _ in wor_1g.BORDER_GEM_PAKS) +
             '\t:i $printf$%s("WoR_HUD: every stock gem theme repointed to its copy with the WoR highway border")\n' +
-            dark_load +
+            dark_load + SP_HIGHWAY_LOAD +
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, themes2, choices2, *layouts, *descs, *dark_secs]) + '\n'
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, themes2, choices2, *layouts,
+                       *descs, *dark_secs, sp_highway_colours()]) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
@@ -426,6 +429,81 @@ def main():
 
     if '--package' in sys.argv:
         package()
+
+
+# Star power highway effect (WoR's Create_Highway_Star_Power_Effect): the DE ports it as 0x68e7427a (cyan glow strips
+# along both rails, star outlines drifting up them, a glow rush at the strikeline; faded out by 0xb2114e69) but never
+# runs it, never sets its switch af5331bb (ghwt / gh6_standard 0x8f24bf5c / gh6_pandora) and lacks its colour table
+# 0x4eb4832b and materials. The mod supplies those; plugin 1.23 wraps GH_Star_Power_Verb_On / _Off (run at star power
+# on / off with the player) by moving each DE script's symbol data to the *_orig placeholder below and putting the
+# wrapper in its place, so the DE's own sound logic still runs untouched. The wrapper also creates the rush's parent
+# fretbar_containerp<n>, which only WoR's highway had (its absence crashed 1.23; plugin 1.24 guards missing parents).
+SP_HIGHWAY_MATERIALS = ('Mat_sidebar_GLOW_02', 'Mat_Star03')
+SP_HIGHWAY_TEXTURES = ((0xd96d3be3, os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', 'd96d3be3.png')),   # sidebar01_glow02
+                       (0x42235207, os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', '42235207.png')))   # Star03
+SP_HIGHWAY_LOAD = ('\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+                   '\t\t:i $change$$[af5331bb]$ = $[8f24bf5c]$\n'
+                   '\t\t:i $printf$%s("WoR_HUD: WoR highway star power effect on")\n'
+                   '\t:i endif\n')
+SP_HIGHWAY_SCRIPTS = (
+    'Script WoR_HUD_sp_verb_on [\n'
+    '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+    '\t\t:i $change$$[af5331bb]$ = $[8f24bf5c]$\n'
+    # the strikeline rush's parent: WoR's setup_highway made fretbar_containerp<n> (centred in the gem container); the
+    # DE doesn't, and a missing parent crashes the game. The DE's gem container has the highway centred at x 640.
+    '\t\t:i $FormatText$$checksumname$ = $fretbar_id$%s("fretbar_containerp%p")$p$ = %GLOBAL%$player$$addtostringlookup$ = $true$\n'
+    '\t\t:i $FormatText$$checksumname$ = $gem_id$%s("gem_containerp%p")$p$ = %GLOBAL%$player$$addtostringlookup$ = $true$\n'
+    '\t\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$fretbar_id$\n'
+    '\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$gem_id$\n'
+    '\t\t\t\t:i $CreateScreenElement$:s{\n'
+    '\t\t\t\t\t:i $type$ = $ContainerElement$\n'
+    '\t\t\t\t\t:i $id$ = %GLOBAL%$fretbar_id$\n'
+    '\t\t\t\t\t:i $parent$ = %GLOBAL%$gem_id$\n'
+    '\t\t\t\t\t:i $Pos$ = %vec2(640.0,0.0)\n'
+    '\t\t\t\t\t:i $just$ = :a{$center$$center$:a}\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i endif\n'
+    '\t\t:i $spawnscriptnow$$[68e7427a]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
+    '\t:i else \n'
+    '\t\t:i $change$$[af5331bb]$ = $[09982fd5]$\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_sp_verb_on_orig$$player$ = %GLOBAL%$player$\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_sp_verb_off [\n'
+    '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+    '\t\t:i $spawnscriptnow$$[b2114e69]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_sp_verb_off_orig$$player$ = %GLOBAL%$player$\n'
+    '\t:i endfunction\n]\n\n'
+    # placeholders: plugin 1.23 moves the DE scripts' data here (their own bodies never run)
+    'Script WoR_HUD_sp_verb_on_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: sp verb on placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_sp_verb_off_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: sp verb off placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n')
+
+
+def wor_material_group(name):
+    '''WoR's material group holding `name` (ghwor-extract matqb guitar_material), reduced to that one material.
+    The fade group's OneShot_ZeroStart technique only exists under AnimatedTexture_UI in the DE, so it becomes the
+    DE's UI_Col_Tex_2D (the glow is static anyway).'''
+    m = open(os.path.join(paths.WOR_EXTRACT, 'matqb', 'guitar_material.txt'), encoding='utf-8', errors='replace').read()
+    i = m.index(f'StructQBKey name = {name}\n')
+    g0 = m.rfind('StructHeader', 0, m.rfind('StructStruct base_data', 0, i))
+    group = block(m[g0:], 'StructHeader')
+    lst = block(group, 'StructArray list')
+    e_at = lst.index(f'StructQBKey name = {name}\n')
+    entry = block(lst[lst.rfind('StructHeader', 0, e_at):], 'StructHeader')
+    group = group.replace(lst, 'StructArray list\n{\nArrayStruct\n[\n' + entry + '\n]\n}', 1)
+    return group.replace('StructQBKey technique = OneShot_ZeroStart', 'StructQBKey technique = UI_Col_Tex_2D')
+
+
+def sp_highway_colours():
+    '''WoR's Default_SP_FX_Color under the name the DE's port reads (0x4eb4832b).'''
+    t = open(os.path.join(paths.WOR_EXTRACT, 'hudqb', 'scripts__guitar__guitar_starpower.txt'), encoding='utf-8', errors='replace').read()
+    return block(t, 'SectionStruct Default_SP_FX_Color').replace('SectionStruct Default_SP_FX_Color', 'SectionStruct 0x4eb4832b', 1)
 
 
 # The DE's 0x97e11003 ("no side meter in this mode") is true in face-off, pro face-off, battle and p1_career, so in
@@ -501,6 +579,12 @@ def dark_metal_sections(work):
         arr = block(text, f'SectionArray {key}')
         arr, found = darken_materials(arr, DARK_K)
         all_found += found
+        if key == '0x345d04a2':
+            for name in SP_HIGHWAY_MATERIALS:
+                assert f'StructQBKey name = {name}\n' not in text, f'{name} already in the DE materials'
+            groups = ''.join(wor_material_group(n) + '\n' for n in SP_HIGHWAY_MATERIALS)
+            end = arr.rindex(']')
+            arr = arr[:end] + groups + arr[end:]
         secs.append(arr.replace(f'SectionArray {key}', f'SectionArray {new}', 1))
     missing = [n for n in DARK_MATERIALS if n not in all_found]
     assert not missing and len(all_found) == len(DARK_MATERIALS), ('dark metal materials not found', missing, len(all_found))
@@ -534,6 +618,14 @@ def build_border_gempak_one(work, src_name, dst_name, with_bolt):
     run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png], TOOLS)
     img = open(os.path.join(tdir, wor_1g.BORDER_TEX_NAME + '.img.xen'), 'rb').read()
     recs.append(texdict.record(int(qbkey(wor_1g.BORDER_TEX_NAME), 16), img[img.index(b'DDS '):]))
+    # WoR's highway star power effect textures (SP_HIGHWAY_TEXTURES), keyed like the DE's highway textures
+    for key, src_png in SP_HIGHWAY_TEXTURES:
+        png_k = os.path.join(tdir, f'sphwy_{key:08x}.png')
+        shutil.copy(src_png, png_k)
+        run(['node', os.path.join(TOOLS, 'png2img.js'), tdir, png_k], TOOLS)
+        kimg = open(os.path.join(tdir, f'sphwy_{key:08x}.img.xen'), 'rb').read()
+        recs = [r for r in recs if r['checksum'] != key]
+        recs.append(texdict.record(key, kimg[kimg.index(b'DDS '):]))
     if with_bolt:
         # the star power strike on the gems: WoR's Tesla arc under the stock bolt texture's key (see wor_1g.BOLT_KEY)
         bolt = os.path.join(tdir, 'WoR_HUD_bolt.png')

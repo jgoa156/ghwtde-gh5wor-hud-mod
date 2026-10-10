@@ -92,6 +92,9 @@ namespace
 	constexpr uint32_t kFlagAlphaOnly = 0x80000;     // element flag: the update only recomputes alpha
 	constexpr size_t kElementId = 0x2c;              // element id checksum (the constructor sets 0xdeadbeef)
 	constexpr uint32_t kHudRoot = 0x39155705;        // hud_root
+	constexpr uintptr_t kSetParent = 0x5a0240;       // void __thiscall (element, parent id): 0 = root; a missing parent crashes
+	constexpr uintptr_t kElementManager = 0xd62eb8;  // [ ] -> the element manager the id lookups use
+	constexpr uintptr_t kFindElement = 0x477c90;     // void *__thiscall (manager, id): 0 when no element has that id
 
 	struct Site { uintptr_t addr; uint8_t bytes[16]; size_t len; const char *what; };
 	const Site kSites[] = {
@@ -126,6 +129,10 @@ namespace
 		{ 0x5a2e87, { 0x8B, 0x7F, 0x7C }, 3, "element update next sibling" },
 		{ kTransformUpdate, { 0x83, 0xEC, 0x08, 0x56, 0x8B, 0xF1, 0x8B, 0x46, 0x64 }, 9, "element transform update prologue" },
 		{ 0x5a06b6, { 0xF3, 0x0F, 0x11, 0x53, 0x2C }, 5, "transform update: world scale x store" },
+		{ kSetParent, { 0x64, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x6A, 0xFF, 0x68, 0x24, 0xDB, 0x96, 0x00 }, 13, "SetParent prologue" },
+		{ 0x5a02ce, { 0x8B, 0x81, 0xD4, 0x01, 0x00, 0x00 }, 6, "SetParent parent read" },
+		{ 0x517eec, { 0x8B, 0x0D, 0xB8, 0x2E, 0xD6, 0x00 }, 6, "element lookup manager" },
+		{ kFindElement, { 0x53, 0x56, 0x8B, 0xD9, 0x8B, 0x73, 0x08 }, 7, "element lookup by id" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -602,9 +609,22 @@ namespace
 	// script's type and data. QB symbol table: [kSymbolTable] -> buckets[checksum & 0x7fff], entry +2 type (7 = script),
 	// +4 checksum, +0xc value, +0x10 next (lookups in RunScript 0x4f1c20 and 0x4446bb).
 	constexpr uintptr_t kSymbolTable = 0xd48f5c;
-	constexpr uint32_t kNoSideMeter = 0x97e11003;
-	constexpr uint32_t kCareerSideMeter = 0x82d6743f;  // wor_hud_career_side_meter
-	bool g_career_meter_done = false;
+	bool g_script_swaps_done = false;
+
+	// Script swaps, done once the mod's QB is loaded: `target` (a DE script) takes the type and data of `with` (a mod
+	// script); when `save_to` is set, the DE script's own data first moves there, so the mod's wrapper can still call it.
+	struct ScriptSwap { uint32_t target, with, save_to; const char *what; };
+	const ScriptSwap kScriptSwaps[] = {
+		// Fix 12 (1.22): rock needle in single-player career
+		{ 0x97e11003, 0x82d6743f /* wor_hud_career_side_meter */, 0,
+		  "career rock needle: 0x97e11003 now runs WoR_HUD_career_side_meter (side meter in p1_career with the WoR theme)" },
+		// Fix 13 (1.23): WoR's highway star power effect (DE port 0x68e7427a, never spawned by the DE), started and
+		// faded out by wrappers around the star power on / off sound scripts, which still run afterwards
+		{ 0xdf84b375 /* GH_Star_Power_Verb_On */, 0xd4b7e2cc /* wor_hud_sp_verb_on */, 0x9c4c4383 /* _orig */,
+		  "star power highway: GH_Star_Power_Verb_On wrapped (WoR highway effect on)" },
+		{ 0x4cb84f65 /* GH_Star_Power_Verb_Off */, 0xfe0e771c /* wor_hud_sp_verb_off */, 0x3ac324fb /* _orig */,
+		  "star power highway: GH_Star_Power_Verb_Off wrapped (WoR highway effect off)" },
+	};
 
 	uint8_t *find_symbol(uint32_t checksum)
 	{
@@ -617,29 +637,64 @@ namespace
 		return nullptr;
 	}
 
-	void career_meter_try()
+	// a symbol's type and value: flags + type (+0..3), +8 and the script data (+0xc); +4 checksum, +0x10 next stay
+	void copy_symbol(uint8_t *dst, const uint8_t *src)
 	{
-		uint8_t *dst = find_symbol(kNoSideMeter), *src = find_symbol(kCareerSideMeter);
-		if (!dst || !src)
+		memcpy(dst, src, 4);
+		memcpy(dst + 8, src + 8, 8);
+	}
+
+	void script_swaps_try()
+	{
+		if (!find_symbol(kScriptSwaps[0].with))
 			return;                                       // the mod's QB isn't loaded yet
-		g_career_meter_done = true;
-		if (dst[2] != 7 || src[2] != 7)
+		g_script_swaps_done = true;
+		for (const ScriptSwap &s : kScriptSwaps)
 		{
-			log("career rock needle: unexpected symbol types (%u, %u), left alone", dst[2], src[2]);
-			return;
+			uint8_t *dst = find_symbol(s.target), *src = find_symbol(s.with), *save = s.save_to ? find_symbol(s.save_to) : nullptr;
+			if (!dst || !src || (s.save_to && !save) || dst[2] != 7 || src[2] != 7 || (save && save[2] != 7))
+			{
+				log("script swap %08x <- %08x skipped (missing or unexpected symbols)", s.target, s.with);
+				continue;
+			}
+			if (save)
+				copy_symbol(save, dst);
+			copy_symbol(dst, src);
+			log("%s", s.what);
 		}
-		memcpy(dst, src, 4);                              // flags + type
-		memcpy(dst + 8, src + 8, 8);                      // +8 and the script data at +0xc
-		log("career rock needle: 0x97e11003 now runs WoR_HUD_career_side_meter (side meter in p1_career with the WoR theme)");
 	}
 
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
 		if (element && element == g_sp.clip)
 			sp_frame();
-		if (!g_career_meter_done)
-			career_meter_try();
+		if (!g_script_swaps_done)
+			script_swaps_try();
 		g_element_update(element, edx);
+	}
+
+	// ---- Fix 14, missing parents (1.24): SetParent reads the parent it looked up without a null check, so a
+	// CreateScreenElement whose parent id doesn't exist crashes the game (star power with 1.23). Such an element goes to
+	// the root, hidden, and the ids are logged.
+	using SetParentFn = void(__fastcall *)(void *element, void *edx, uint32_t parent);
+	using FindElementFn = void *(__fastcall *)(void *manager, void *edx, uint32_t id);
+	SetParentFn g_set_parent = nullptr;
+	int g_missing_parents = 0;
+
+	void __fastcall set_parent_hook(void *element, void *edx, uint32_t parent)
+	{
+		void *manager = *reinterpret_cast<void **>(kElementManager);
+		if (parent && manager && !reinterpret_cast<FindElementFn>(kFindElement)(manager, nullptr, parent))
+		{
+			if (g_missing_parents++ < 64)
+				log("missing parent: element %08x asked for parent %08x (attached to the root, hidden)",
+				    *reinterpret_cast<uint32_t *>(field(element, kElementId)), parent);
+			g_set_parent(element, edx, 0);
+			*reinterpret_cast<float *>(field(element, kElementAlpha)) = 0.0f;
+			*reinterpret_cast<float *>(field(element, kElementAlpha + 0x44)) = 0.0f;
+			return;
+		}
+		g_set_parent(element, edx, parent);
 	}
 
 	void __fastcall tube_update_hook(void *widget, void *edx, void *value, void *event)
@@ -1121,7 +1176,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.22 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.24 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -1141,6 +1196,9 @@ namespace
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
+		// mov eax, fs:[0] = 6 bytes, one whole instruction
+		g_set_parent = reinterpret_cast<SetParentFn>(install_jmp(kSetParent, 6, reinterpret_cast<void *>(&set_parent_hook)));
+		log(g_set_parent ? "missing parents: SetParent guarded" : "missing parents: SetParent hook failed");
 		g_particle_tramp = install_jmp(kParticleRead, 8, reinterpret_cast<void *>(&particle_hook));
 		// sub esp, 8; push esi; mov esi, ecx = 6 bytes of whole instructions
 #ifdef WOR_LEAF_UNSTRETCH   // 1.16 experiment: skewed rotated sprites and misaligned layers; replaced by the 16:9 plan

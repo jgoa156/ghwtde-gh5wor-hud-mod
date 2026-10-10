@@ -296,8 +296,9 @@ def main():
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
     # bottom neon needle baked on the fill's bottom edge, charging and ready (exact alignment, clips with the fill)
     needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
-    wor_art.neon_bottom(Image.open(full).convert('RGBA'), needle, wor_1g.SP_NEON_RGB).save(full)
-    frames = [wor_art.neon_bottom(f, needle, wor_1g.SP_NEON_RGB) for f in frames]
+    # (traced along the fill's own bottom contour: lies exactly on the edge against the tube's end cap)
+    wor_art.neon_edge(Image.open(full).convert('RGBA'), wor_1g.SP_NEON_RGB).save(full)
+    frames = [wor_art.neon_edge(f, wor_1g.SP_NEON_RGB) for f in frames]
 
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')

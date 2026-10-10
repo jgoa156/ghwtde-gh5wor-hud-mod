@@ -1145,3 +1145,12 @@
   left edge; 11 background split towards the sides; 12 black bars. Needs the mapping in the UI projection (a viewport
   clips everything outside the 16:9 area) + per-element rules in the plugin. This build logs the UI vertex shaders'
   constants c0-c7 once ("ghwt_bgfx: UI VS ...") to find the projection.
+
+### SP tube bottom neon traced on the fill edge (2026-10-09, installed, NOT yet tested)
+- In game the baked needle arch (bulging up) floated above the edge against the dark end cap and was faint. The bottom
+  neon is now traced along the fill's own bottom contour (wor_art.neon_edge: per column the last opaque row, white core
+  + blue halo), so it lies exactly on that edge, charging and ready. verify/mock_neon_edge.png.
+- UI projection probe: the main 2D shader (4A1D3EAB) has no projection constants: the engine builds 2D vertices on the
+  CPU in screen space. Per-element modes therefore go through the VIEWPORT: centred (default), full (stretched
+  gradients/backgrounds), left (pinned panels); the per-element tag needs the engine's element draw method (element
+  vtable 0xa28534: 0x5a3620, 0x536e00, 0x5a0170, ...).

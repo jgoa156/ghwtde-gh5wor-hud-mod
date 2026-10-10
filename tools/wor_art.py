@@ -455,3 +455,31 @@ def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.
     halo = Image.new('RGBA', nd.size, tuple(rgb) + (255,))
     halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * halo_gain))))
     halo.save(out_halo)
+
+
+def neon_edge(img, rgb, core_px=1.6, halo_blur=1.6, halo_gain=2.2, inset=0.6):
+    """A neon line traced exactly along the fill's bottom contour (per column, the last opaque row), so it lies on
+    the edge where the fill meets the tube's end cap: white core + `rgb` halo, both inside the fill's own alpha
+    footprint plus the halo's soft spill."""
+    import numpy as np
+    from PIL import ImageFilter
+    a = np.asarray(img.split()[3]).astype(float) / 255.0
+    h, w = a.shape
+    line = np.zeros((h, w))
+    yy = np.arange(h)
+    for x in range(w):
+        ys = np.where(a[:, x] > 0.5)[0]
+        if len(ys) < 3:
+            continue
+        yb = ys[-1] + 0.5 - inset                   # sub-pixel edge, slightly inside the fill
+        line[:, x] = np.clip(1.0 - np.abs(yy - yb) / core_px, 0, 1)
+    core = Image.fromarray((line * 255).astype('uint8'), 'L')
+    halo = core.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * halo_gain)))
+    out = img.copy()
+    hl = Image.new('RGBA', img.size, tuple(rgb) + (255,))
+    hl.putalpha(halo)
+    out.alpha_composite(hl)
+    cl = Image.new('RGBA', img.size, (255, 255, 255, 255))
+    cl.putalpha(core)
+    out.alpha_composite(cl)
+    return out

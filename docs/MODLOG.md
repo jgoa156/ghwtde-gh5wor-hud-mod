@@ -1175,3 +1175,19 @@
   scissor mapping). Removed from ghwt_bgfx.addon32 (two add-ons would map the UI twice); plugin 1.21 compiles out the
   1.20 DrawPrimitiveUP remap.
 - Release zips are committed under releases/ (no GitHub API access for release assets here).
+
+## v0.46 + plugin 1.22 (2026-10-10): career rock needle, new ReShade preset, ultrawide bundled
+- Career needle (user: no rock needle in single-player career). The DE's 0x97e11003 ("no side meter in this game
+  mode") returns true in p1_career, faceoff, pro faceoff and battle, so the health widget never attached to
+  BAND_side_meter in career. A mod can't redefine a DE script (ignored), so the mod ships the same logic as
+  `WoR_HUD_career_side_meter` (p1_career counts as a normal mode while the theme struct has our flag
+  `WoR_HUD_career_meter`), and plugin 1.22 copies that script's QB symbol entry (flags/type +0..3, +8..+0xf incl. the
+  script data at +0xc) over 0x97e11003's once the mod QB is loaded. QB symbol table: `[0xd48f5c]` -> buckets
+  `[checksum & 0x7fff]`, entry +2 type (7 = QB script, 8 cfunc, 9 member func, 0x1a alias), +4 checksum, +0xc value,
+  +0x10 next (lookups in RunScript 0x4f1c20 and at 0x4446bb). Confirmed in game. Face-off / battle unchanged.
+- ReShade preset renamed `GHWoRHudModPreset.ini`: user's mix of Behon's GH5WORStyle v2 with our GH5_Grade,
+  AdaptiveTonemapper and motion blur. Ships FXAA + FilmGrain (SweetFX, notices added); qUINT not redistributed.
+  Credits: Behon (nexusmods guitarheroworldtour/mods/2021), Ricochet27.
+- The package's optional ReShade folder now includes `ghwtde_ultrawide.addon32` (built in ../ghwtde-ultrawide-fix,
+  0.2 beta: per-element modes; see that repo's README). README: career known issue removed, ultrawide section.
+

@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-09, v0.45)
+# GH5 / WoR HUD mod: session handoff (2026-10-10, v0.46)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -6,67 +6,46 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Where things stand
 
-- **Dev folders:** everything lives under `E:\Dev\ghwt`: this repo, `ghwt-bg-shader`, `tools` (Guitar Hero SDK, NodeROQ),
-  `ghwor-extract`, `ghwt-extract`, `reference-video`, `reshade-6.8.0`, `asi-loader-9.7.4`, `game-backup-2026-10-06`.
-  Defaults in `tools/paths.py`. User reference clips: `C:\Users\rockb\OneDrive\Videos\GH\WOR.mp4` (WoR), `GH5.mp4`;
-  test recordings land in `C:\Users\rockb\Downloads\Video Project N.mp4` and `C:\Users\rockb\OneDrive\Videos`.
-- **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config `...\Guitar Hero World Tour Definitive Edition\GHWTDE.ini`
-  (`HUDTheme=ghwor`, `GemTheme=ghwor`, 2560x1080).
-- **Installed now:** HUD v0.43 (one mod `WoR_HUD`: no-messages layout + dark metal built in) + `gems_ghwor_hud` (border +
-  WoR Tesla arc bolt) + `wor_hud_fixes.asi` **1.13** + `dinput8.dll` (ASI loader) + ReShade.
-- **Confirmed in game (2026-10-07):** layout, shaders, streak lights, SP fill, WoR Tesla arc gem strike, score commas
-  ("6,705", plugin 1.12), white aura balls on both score bars at the bar tips, song line glued to the box, star back to
-  the v0.40 look.
-- **Installed, NOT yet tested:** plugin 1.13: star power phrase burst particles at WoR size (Create2DParticleSystem hook,
-  see MODLOG). Check the log line "star power burst: particle sizes hooked" and the size of the blue/white stars when a SP
-  phrase completes.
-- **Known issues:** the game still crashes SOMETIMES (not only on theme switch), no fix yet; the DE's SP highway glow
-  leaks a little above/below the highway (user: minor, leave it); burst particles keep the DE textures (WoR's Star03
-  sliver would need a material swap: the DE textures live in z_in_game, which reloads per song and shadows ours).
+- **Dev folders:** everything lives under `E:\Dev\ghwt`: this repo, `ghwtde-ultrawide-fix` (separate repo, bundled
+  in our package), `ghwt-bg-shader`, `tools` (Guitar Hero SDK, NodeROQ), `ghwor-extract`, `ghwt-extract`,
+  `reference-video`, `reshade-6.8.0`, `asi-loader-9.7.4`, `game-backup-2026-10-06`, `reshade-backup-2026-10-10`.
+  Defaults in `tools/paths.py`.
+- **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
+  `OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini` (`HUDTheme=ghwor`,
+  `GemTheme=ghwor`, `Preferred*Highway=GH5_Highway`, 2560x1080). The `GHWTDE.ini` in the game folder is not the live one.
+- **Installed = released 0.46** (`releases/GH5-WoR_HUD_0.46.zip`, Desktop copy): mod `WoR_HUD` + theme/gem paks +
+  `wor_hud_fixes.asi` **1.22** + ASI loader + ReShade (preset `GHWoRHudModPreset.ini`, `ghwt_bgfx.addon32`,
+  `ghwtde_ultrawide.addon32` 0.2 beta).
+- **Confirmed in game (2026-10-10):** career rock needle (plugin 1.22), the new preset, every ultrawide screen
+  (title, menus, song list, loading, YOU ROCK themes, song intro, left-pinned menus). User: the occasional crash
+  seems gone.
+- **ReShade preset:** `GHWoRHudModPreset.ini` = Behon's GH5WORStyle v2 (Nexus guitarheroworldtour mod 2021, built on
+  Ricochet27's GH5/WoR ReShade) + our GH5_Grade, AdaptiveTonemapper, vort_MotionBlur. qUINT (MXAO, ADOF, sharpen)
+  is "all rights reserved": not shipped, users tick it in the ReShade installer. Credits in THIRD_PARTY_LICENSES.txt.
+- **Known issues:** face-off crashes (no dump yet: WER LocalDumps for GHWT_Definitive.exe not enabled); face-off /
+  battle HUDs not adjusted for ultrawide; the DE's SP highway glow leaks a little above/below the highway (minor).
 - **Lessons (don't repeat):**
-  - a mod cannot redefine a game script (the engine ignores it; `tests/run_offline.py` guards it);
+  - a mod cannot redefine a game script (the engine ignores it; `tests/run_offline.py` guards it). Workaround that
+    works: ship the logic under a WoR_HUD_ name and let the plugin copy its QB symbol entry over the DE script's
+    (symbol table `[0xd48f5c]`, see MODLOG "plugin 1.22");
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
-    `plugin\build.bat` (v0.42 shipped with stale ball offsets);
+    `pluginuild.bat`;
   - send mocks to the user with SendUserFile (writing them to `verify/` is not enough).
-- **Desktop zip is stale** (0.40): rebuild with `python build.py --package` and copy it to the Desktop after the next test.
-
-## Latest (2026-10-09): v0.45 + plugin 1.21 installed, release zip in releases/ (MODLOG last sections)
-- WoR border now ships in a copy of every stock gem pak (any gem theme). Untested in game with non-WoR gems.
-- Ultrawide is a separate repo/mod: E:\Dev\ghwt\ghwtde-ultrawide-fix (github.com/jgoa156/ghwtde-ultrawide-fix).
-  Next there: per-element viewport modes (full-width gradients/backgrounds, left-pinned panels, black bars for the
-  loading screen 12) using a per-element tag from the HUD plugin (element vtable 0xa28534).
-- SP tube bottom neon: computed in screen space (wor_1g.bake_screen_needle); awaiting in-game check.
-- Confirmed in game: WoR theme loads at boot and on every theme switch; song line dot follows the fill; neon needles.
-- Installed, not yet tested: single-arc neon needles (0.75x width, bottom one -5 deg).
-- Pending ideas (user, not started): WoR highway lines (fret gradient, lighter border bottom, line above the strikeline,
-  strings fading halfway; feasibility table in this session's notes: frets/border textures live in gems_ghwt, strings'
-  material sys_String01 in z_in_game); crowd selector option (evaluating).
-- Test: boot with HUDTheme=ghwor (log line "WoR_HUD: HUD Theme re-read..."), textures must load; theme switches
-  both ways; song line (track = gold bar span, 50% tick); SP tube (flat bottom, lighter blue ready, neon needles).
-- Ultrawide: plugin 1.16 narrows HUD leaf elements' world x scale by sy/sx after the transform update 0x5a05e0
-  (MODLOG). Check the log line "ultrawide: un-stretching ..." and layered parts for drift.
-- Highway SP effect (stars up the highway, glowing rails): researched only, plan in docs/GH5_STAR_POWER_REFERENCE.md.
 
 ## Next steps
 
-1. **Next test** (ask before launching): SP burst particle size (plugin 1.13); regression-check the rest.
-2. Rebuild the single zip (`--package`), update `docs/RELEASE_NOTES.md`, copy the zip to the Desktop.
-3. Optional polish: WoR's Star03 sliver texture for the burst (material swap in the same hook: config +0x44 is the
-   material checksum; needs a material whose texture lives in a pak we control). Star: user chose "regress to 0.40";
-   mocks A/B are in `verify/mock_star_v043_x2.png` if it is revisited.
-4. Multiplayer / vocals layouts (only 1 player is WoR-styled); drums gem theme check against WoR footage.
-5. **Native ultrawide fix as an ASI plugin** (user: at 2560x1080 the WHOLE game is stretched). Leads (GHWT_Definitive.exe, 2026-10-08):
-   the engine's screen aspect is a global float at 0xd9ef74, written at boot by the setter 0x5c7c20 (called from 0x4fce6f with the
-   only 16/9 float constant, .rdata 0xa24eec); readers: 0x5546b0, 0x5c1538 / 0x5c1574 (FOV adjust, already aspect dependent),
-   0x6371b2, 0x7501cb, 0x75cb70. Plan: hook 0x5c7c20 to pass the real window aspect (3D un-stretch / Hor+), then find the 2D canvas
-   mapping (1280x720 canvas stretched to the window; refs 0x52a51a..0x52a562) and keep the canvas at 16:9 centred or anchor the
-   sides; our border / tubes / score are placed in canvas space, so they would need re-checking. Also videos/menus.
-6. Helper Pill / Menu Popup themes (later); crowd models and drummer animations (optional, need Xbox 360 converters).
+1. **Star power highway animation** (next, user): stars up the highway and glowing blue side rails like GH5/WoR.
+   Plan and research in `docs/GH5_STAR_POWER_REFERENCE.md` (DE script 0x68e7427a is unfinished). Mock first.
+2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
+   frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
+3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.
+4. Song list side art: the user is remastering `4b93dd1e` / `b19ce07d` (256x2048, setlist_wtde.pak) for higher res.
+5. Multiplayer / vocals layouts (only 1 player is WoR-styled); crowd selector (parked: no GH5/WoR crowd peds in the DE).
 
 ## How to work on it
 
-- `python build.py [--install] [--package]`; `python tests/run_offline.py` (24/24).
+- `python build.py [--install] [--package]`; `python tests/run_offline.py` (25/25).
 - Mocks: `python tools/mock.py <out.png> --crop tubes|tube-ends|score|full --variant "label: NAME=expr" ...`
   (base `verify/mock_inputs/base.png`, rebuilt by `tools/mock_base.py`).
 - Plugin: `plugin\build.bat`; after changing star power geometry in `tools/wor_1g.py` run

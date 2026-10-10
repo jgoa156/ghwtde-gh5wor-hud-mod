@@ -21,9 +21,10 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.45'
+VERSION = '0.46'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
+ULTRAWIDE_ADDON = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix', 'build', 'ghwtde_ultrawide.addon32')   # its build.bat
 RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
 
@@ -183,6 +184,8 @@ def main():
     extra = '\t\t\t\tStructInt d38da2b2 = 1\n\t\t\t\tStructInt d5045305 = 1\n'
     # 882f22a1: the DE's danger blinker (flashes the side meter's red light below 1/3 rock)
     extra += '\t\t\t\tStructInt 0x882f22a1 = 1\n'
+    # our own flag: the side meter (rock needle) also runs in single-player career (CAREER_METER_SCRIPT)
+    extra += '\t\t\t\tStructInt WoR_HUD_career_meter = 1\n'
     # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
     sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'
@@ -387,7 +390,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, themes2, choices2, *layouts, *descs, *dark_secs]) + '\n'
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, themes2, choices2, *layouts, *descs, *dark_secs]) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write('[ModInfo]\nName=GH5 / Warriors of Rock HUD\n'
         'Description=Adds "Guitar Hero: Warriors of Rock" to the HUD Theme options (GH5 / WoR style HUD, no in-play '
@@ -425,7 +428,24 @@ def main():
         package()
 
 
-DARK_K = 0.58          # colour multiplier for the highway's metal (user-approved mock verify/mock_metal_v021.png)
+# The DE's 0x97e11003 ("no side meter in this mode") is true in face-off, pro face-off, battle and p1_career, so in
+# single-player career the sliding rock needle never got its health widget (user: no needle in career). A mod can't
+# redefine a DE script, so this is the same logic under our own name, except that p1_career counts as a normal mode
+# while the HUD theme has WoR_HUD_career_meter (only ours does); the plugin (1.22) points 0x97e11003's symbol at it.
+CAREER_METER_SCRIPT = ('Script WoR_HUD_career_side_meter [\n'
+                       '\t:i if (~$game_mode$ = $p2_faceoff$ OR ~$game_mode$ = $p2_pro_faceoff$ OR ~$game_mode$ = $p2_battle$)\n'
+                       '\t\t:i return$true$\n'
+                       '\t:i endif\n'
+                       '\t:i if (~$game_mode$ = $p1_career$)\n'
+                       '\t\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_career_meter$\n'
+                       '\t\t\t:i return$false$\n'
+                       '\t\t:i endif\n'
+                       '\t\t:i return$true$\n'
+                       '\t:i endif\n'
+                       '\t:i return$false$\n'
+                       '\t:i endfunction\n]\n')
+
+DARK_K = 0.58         # colour multiplier for the highway's metal (user-approved mock verify/mock_metal_v021.png)
 # Highway metal materials (scripts/guitar/guitar_material.qb): border, fret bars, strikeline neck and silver cups.
 # Coloured ring edges (col_now_*_dark), lit caps and gems are left alone.
 DARK_MATERIALS = ['sys_sidebar2D_sys_sidebar2D', 'sys_fretbar_large_sys_fretbar_large',
@@ -563,11 +583,12 @@ def package():
     opt = os.path.join(main, 'Optional - ReShade (WoR shaders)')
     os.makedirs(opt)
     shutil.copy(os.path.join(paths.RESHADE, 'd3d9.dll'), opt)
-    for f in ('ReShade.ini', 'GHWoR.ini'):
+    for f in ('ReShade.ini', 'GHWoRHudModPreset.ini'):
         shutil.copy(os.path.join(RESHADE_DIR, f), opt)
     shutil.copytree(os.path.join(RESHADE_DIR, 'reshade-shaders'), os.path.join(opt, 'reshade-shaders'))
     shutil.copy(GH5_GRADE, os.path.join(opt, 'reshade-shaders', 'Shaders'))
     shutil.copy(BGFX_ADDON, opt)
+    shutil.copy(ULTRAWIDE_ADDON, opt)          # GHWT:DE Ultrawide Fix ships with the HUD mod (built in its own repo)
     shutil.copy(os.path.join(ROOT, 'extras', 'README_main.txt'), os.path.join(main, 'README - GH5-WoR HUD.txt'))
     shutil.make_archive(main, 'zip', main)
     print('packaged:', os.path.basename(main) + '.zip')

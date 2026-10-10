@@ -595,10 +595,50 @@ namespace
 		}
 	}
 
+	// ---- Fix 12, career rock needle (1.22): the DE's script 0x97e11003 ("no side meter in this game mode") is true in
+	// p1_career, so single-player career never attached the health widget to our sliding needle. A mod can't redefine a
+	// DE script, so the mod ships the same logic as WoR_HUD_career_side_meter (p1_career is a normal mode while the HUD
+	// theme has the WoR_HUD_career_meter flag) and, once the mod's QB is loaded, 0x97e11003's symbol entry takes that
+	// script's type and data. QB symbol table: [kSymbolTable] -> buckets[checksum & 0x7fff], entry +2 type (7 = script),
+	// +4 checksum, +0xc value, +0x10 next (lookups in RunScript 0x4f1c20 and 0x4446bb).
+	constexpr uintptr_t kSymbolTable = 0xd48f5c;
+	constexpr uint32_t kNoSideMeter = 0x97e11003;
+	constexpr uint32_t kCareerSideMeter = 0x82d6743f;  // wor_hud_career_side_meter
+	bool g_career_meter_done = false;
+
+	uint8_t *find_symbol(uint32_t checksum)
+	{
+		uint8_t **buckets = *reinterpret_cast<uint8_t ***>(kSymbolTable);
+		if (!buckets)
+			return nullptr;
+		for (uint8_t *e = buckets[checksum & 0x7fff]; e; e = *reinterpret_cast<uint8_t **>(e + 0x10))
+			if (*reinterpret_cast<uint32_t *>(e + 4) == checksum)
+				return e;
+		return nullptr;
+	}
+
+	void career_meter_try()
+	{
+		uint8_t *dst = find_symbol(kNoSideMeter), *src = find_symbol(kCareerSideMeter);
+		if (!dst || !src)
+			return;                                       // the mod's QB isn't loaded yet
+		g_career_meter_done = true;
+		if (dst[2] != 7 || src[2] != 7)
+		{
+			log("career rock needle: unexpected symbol types (%u, %u), left alone", dst[2], src[2]);
+			return;
+		}
+		memcpy(dst, src, 4);                              // flags + type
+		memcpy(dst + 8, src + 8, 8);                      // +8 and the script data at +0xc
+		log("career rock needle: 0x97e11003 now runs WoR_HUD_career_side_meter (side meter in p1_career with the WoR theme)");
+	}
+
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
 		if (element && element == g_sp.clip)
 			sp_frame();
+		if (!g_career_meter_done)
+			career_meter_try();
 		g_element_update(element, edx);
 	}
 
@@ -1081,7 +1121,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.21 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.22 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

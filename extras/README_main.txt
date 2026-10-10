@@ -27,18 +27,23 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
   Copy its CONTENTS next to GHWT_Definitive.exe:
     d3d9.dll           ReShade 6.8.0 (BSD-3, crosire)
     ReShade.ini        points ReShade at the preset and shaders below
-    GHWoR.ini          the Warriors of Rock preset (F5 SSDO, F6 motion blur, F7 GH5 grade)
-    reshade-shaders\   the shaders the preset uses (licenses in THIRD_PARTY_LICENSES.txt)
+    GHWoRHudModPreset.ini  the Warriors of Rock preset (based on Behon's GH5WORStyle v2, built on Ricochet27's
+                       GH5 / WoR ReShade; credits in THIRD_PARTY_LICENSES.txt)
+    reshade-shaders\   the shaders the preset uses (licenses in THIRD_PARTY_LICENSES.txt). Not included:
+                       qUINT (MXAO, depth of field, sharpen): tick "qUINT" in the ReShade installer for those
     ghwt_bgfx.addon32  background-only add-on: effects apply to the venue, never the HUD or highway
-  Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoR.ini, ghwt_bgfx.addon32 and the
-  shaders, then pick GHWoR.ini in the ReShade overlay (Home key).
+    ghwtde_ultrawide.addon32  GHWT:DE Ultrawide Fix (beta): on screens wider than 16:9 the HUD and menus are drawn
+                       unstretched (see ULTRAWIDE SCREENS below); does nothing at 16:9
+  Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, the two .addon32
+  files and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
 
 KNOWN ISSUES (beta)
   - Switching HUD theme in the options can crash the game. Pick the theme and restart if needed.
-  - The theme does not apply in Career mode yet.
   - Band, multiplayer and microphone layouts still use the stock layouts.
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
 
 ULTRAWIDE SCREENS
-  The HUD and menus are stretched on ultrawide screens by the game itself. The separate "GHWT:DE Ultrawide Fix"
-  (ReShade add-on, https://github.com/jgoa156/ghwtde-ultrawide-fix) draws them as a centred 16:9 picture.
+  The game stretches the HUD and menus on ultrawide screens. ghwtde_ultrawide.addon32 (in the optional folder,
+  needs the included ReShade) draws them as a centred 16:9 picture, with full-screen backgrounds filling the
+  screen and side panels pinned to the screen edges. Toggle it in the ReShade overlay, Add-ons tab. Source and
+  standalone release: https://github.com/jgoa156/ghwtde-ultrawide-fix

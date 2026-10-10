@@ -12,9 +12,12 @@ vort shaders (vort_MotionBlur and includes) - Copyright (c) 2023 vortigern11. MI
 
 PPFX_SSDO - Pascal Gilcher / Euda (PPFX). Creative Commons Attribution (CC BY).
 
-SweetFX shaders (Curves, Vibrance, AdaptiveTonemapper ...) - Christian Cann Schuldt Jensen (CeeJay.dk) and
+SweetFX shaders (Curves, Vibrance, FilmGrain, FXAA ...) - Christian Cann Schuldt Jensen (CeeJay.dk) and
   contributors. SweetFX license: free to use, modify and share with credit.
   https://github.com/CeeJayDK/SweetFX
+
+FXAA 3.11 (SweetFX\FXAA.fxh) - Timothy Lottes, Copyright (C) 2010, 2011 NVIDIA Corporation. Provided "as is";
+  the full notice is in the file header.
 
 SurfaceBlur - Ioxa. Free to use with credit.
 
@@ -24,5 +27,13 @@ FXShaders includes - Lucas Melo (luluco250). MIT License.
 Ultimate ASI Loader (dinput8.dll) - ThirteenAG. MIT License.
   https://github.com/ThirteenAG/Ultimate-ASI-Loader
 
-GH5_Grade.fx, ghwt_bgfx.addon32 and wor_hud_fixes.asi are part of this mod.
+Not included: qUINT (MXAO, ADOF depth of field, DELC_Sharpen) by Pascal Gilcher / Marty McFly is "all rights
+  reserved", so it isn't redistributed here. Tick "qUINT" in the ReShade installer to get it; without it the
+  preset simply skips those three effects.
+
+The GHWoRHudModPreset.ini preset is based on "GH5WORStyle v2" from "GHWT Remastered And GH5-WOR Style ReShades" by Behon
+  (https://www.nexusmods.com/guitarheroworldtour/mods/2021), itself built on Ricochet27's GH5 / WoR-styled
+  ReShade, with this mod's GH5_Grade, AdaptiveTonemapper and motion blur added.
+
+GH5_Grade.fx, ghwt_bgfx.addon32, ghwtde_ultrawide.addon32 and wor_hud_fixes.asi are part of this mod.
 Each shader file keeps its original header; see it for the full license text.

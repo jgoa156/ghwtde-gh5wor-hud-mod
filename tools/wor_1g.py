@@ -330,7 +330,7 @@ SP_GLOW_BOTTOM_LEVEL = 0.011                 # bottom needle masks the fill's bo
 SP_NEON_X_K = 0.75                           # neon needles narrower than the half divider: fit the glass (user 2026-10-09)
 SP_NEON_BOTTOM_ROT = -5.0                    # the bottom needle turned a bit more than the divider (user 2026-10-09; the top one is right)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
-SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.7),    # (id, scale, rot vs tube, rgba,
+SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.0),   # bottom neon now baked in the fill;    # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
                    ('sp_cap_c', None, None, (255, 255, 255, 255), 1.0))           #  needle uses the divider's rot/scale
 SP_FEATHER_H = 12.0                          # soft fill top: canvas units above the level faded in bands

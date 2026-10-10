@@ -1110,3 +1110,11 @@
   or writes 0xd5ab7c / 0xd5ab80 / 0xd5ab60 (module+offset, caller) for ~70 s, then disarms. Next: hook the mapping there.
 - Star power ready burst (ball lightning, 32 px frames) off: sprite scale 0 (user: pixelated).
 - Release zip note: the packaged plugin is the probe build until the ultrawide fix lands.
+
+### Plugin 1.18 + HUD (2026-10-09, installed, NOT yet tested)
+- 1.17 probe: the screen struct 0xd5ab60 is written/copied by MSVCR80 memcpy (the renderer reads copies); fields:
+  +0x1c/+0x20 canvas scale x/y, +0x24/+0x28 pixel offsets x/y (the exe's letterbox 0x668cc0 changes +0x20 and +0x28).
+- Ultrawide (user's plan): a plugin thread keeps scale x = scale y and offset x = (w - 1280*k)/2 whenever the screen is
+  wider than 16:9, so all 2D (HUD, menus) draws as a centred 16:9 picture. Probe compiled out.
+- Bottom neon needle baked into the fill textures (charging + every ready frame) on the fill's bottom edge: exact
+  alignment, clips with the fill; the bottom sprite is hidden (alpha 0).

@@ -907,6 +907,35 @@ namespace
 			log("ultrawide: un-stretching 2D elements, width factor %.4f (canvas scale %.3f x %.3f)", sy / sx, sx, sy);
 	}
 
+	// ---- Fix 10, ultrawide (1.18): the 2D layer (HUD, menus) is drawn as the closest 16:9 picture, centred. The screen
+	// struct at 0xd5ab60 holds the canvas -> screen mapping: scale x/y (+0x1c/+0x20) and pixel offsets x/y (+0x24/+0x28;
+	// the exe's own letterbox at 0x668cc0 changes +0x20 and +0x28). It is copied around by memcpy, so it is kept at the
+	// 16:9 values: scale x = scale y, offset x = (width - 16/9 * height) / 2. 3D is not affected.
+	DWORD WINAPI canvas_thread(void *)
+	{
+		float *sc = reinterpret_cast<float *>(0xd5ab7c);
+		int *off = reinterpret_cast<int *>(0xd5ab84);
+		bool logged = false;
+		for (;;)
+		{
+			const float w = *reinterpret_cast<const float *>(0xd5ab60), h = *reinterpret_cast<const float *>(0xd5ab64);
+			if (w > 0.0f && h > 0.0f && w / h > 16.0f / 9.0f + 0.01f && sc[1] > 0.0f)
+			{
+				const float k = sc[1];                                   // the y scale (1.5 at 1080 lines)
+				const int ox = static_cast<int>((w - 1280.0f * k) * 0.5f + 0.5f);
+				if (sc[0] != k || off[0] != ox)
+				{
+					sc[0] = k;
+					off[0] = ox;
+					if (!logged)
+						log("ultrawide: 2D canvas drawn at 16:9, scale %.3f, x offset %d px (screen %.0f x %.0f)", k, ox, w, h);
+					logged = true;
+				}
+			}
+			Sleep(50);
+		}
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -914,7 +943,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.17 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.18 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -947,10 +976,12 @@ namespace
 			const bool ok = target == kSnwprintf && install_call(kScoreFmtCall, reinterpret_cast<void *>(&score_text_hook));
 			log(ok ? "score text: thousands separators hooked" : "score text: hook failed (unexpected call target)");
 		}
-#ifndef WOR_NO_ULTRAWIDE_PROBE   // 1.17: read probe ON for one test run (finds the 2D canvas mapping)
+#ifdef WOR_ULTRAWIDE_PROBE   // 1.17 read probe (results in MODLOG); off in normal builds
 		if (HANDLE t = CreateThread(nullptr, 0, probe_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
 #endif
+		if (HANDLE t = CreateThread(nullptr, 0, canvas_thread, nullptr, 0, nullptr))
+			CloseHandle(t);
 		(void)self;
 	}
 }

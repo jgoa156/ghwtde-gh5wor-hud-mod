@@ -294,6 +294,10 @@ def main():
                                    core_k=wor_1g.SP_PLASMA_CORE_K,
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
+    # bottom neon needle baked on the fill's bottom edge, charging and ready (exact alignment, clips with the fill)
+    needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
+    wor_art.neon_bottom(Image.open(full).convert('RGBA'), needle, wor_1g.SP_NEON_RGB).save(full)
+    frames = [wor_art.neon_bottom(f, needle, wor_1g.SP_NEON_RGB) for f in frames]
 
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')

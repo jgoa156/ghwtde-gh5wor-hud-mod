@@ -38,6 +38,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tlhelp32.h>
+#include <d3d9.h>
+#pragma comment(lib, "user32.lib")
 #include <cmath>
 #include <cstdarg>
 #include <cstdint>
@@ -936,6 +938,142 @@ namespace
 		}
 	}
 
+	// ---- Fix 11, ultrawide (1.20): all 2D (HUD, menus, text, the 2D highway) is drawn with pre-transformed screen-space
+	// vertices (FVF XYZRHW / decl POSITIONT) through DrawPrimitiveUP / DrawIndexedPrimitiveUP. On a screen wider than
+	// 16:9 those vertices are remapped x' = off + x * k (k = 16/9 * h / w, off = (w - 16/9 * h) / 2): the 2D becomes a
+	// centred 16:9 picture, unstretched; 3D (transformed vertices) is untouched. Hooked in the system d3d9's device
+	// vtable (shared by every device, ReShade forwards to it).
+	using DrawUPFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *, D3DPRIMITIVETYPE, UINT, const void *, UINT);
+	using DrawIdxUPFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *, D3DPRIMITIVETYPE, UINT, UINT, UINT, const void *, D3DFORMAT, const void *, UINT);
+	DrawUPFn g_draw_up = nullptr;
+	DrawIdxUPFn g_draw_idx_up = nullptr;
+	volatile LONG g_remapped = 0;
+
+	UINT prim_vertices(D3DPRIMITIVETYPE t, UINT n)
+	{
+		switch (t)
+		{
+		case D3DPT_POINTLIST: return n;
+		case D3DPT_LINELIST: return n * 2;
+		case D3DPT_LINESTRIP: return n + 1;
+		case D3DPT_TRIANGLELIST: return n * 3;
+		case D3DPT_TRIANGLESTRIP: case D3DPT_TRIANGLEFAN: return n + 2;
+		default: return 0;
+		}
+	}
+
+	// byte offset of the screen-space position in the current vertex format, or -1 if the draw isn't pre-transformed
+	int rhw_offset(IDirect3DDevice9 *dev)
+	{
+		DWORD fvf = 0;
+		if (SUCCEEDED(dev->GetFVF(&fvf)) && fvf)
+			return (fvf & D3DFVF_POSITION_MASK) == D3DFVF_XYZRHW ? 0 : -1;
+		IDirect3DVertexDeclaration9 *decl = nullptr;
+		if (FAILED(dev->GetVertexDeclaration(&decl)) || !decl)
+			return -1;
+		D3DVERTEXELEMENT9 el[MAXD3DDECLLENGTH + 1];
+		UINT n = MAXD3DDECLLENGTH + 1;
+		int off = -1;
+		if (SUCCEEDED(decl->GetDeclaration(el, &n)))
+			for (UINT i = 0; i < n && el[i].Stream != 0xff; ++i)
+				if (el[i].Stream == 0 && el[i].Usage == D3DDECLUSAGE_POSITIONT && el[i].Type == D3DDECLTYPE_FLOAT4)
+					off = el[i].Offset;
+		decl->Release();
+		return off;
+	}
+
+	// remapped copy of the vertices, or nullptr to draw unchanged
+	const void *remap(IDirect3DDevice9 *dev, const void *data, UINT count, UINT stride)
+	{
+		static thread_local uint8_t *buf = nullptr;
+		static thread_local size_t cap = 0;
+		if (!data || !count || stride < 16)
+			return nullptr;
+		D3DVIEWPORT9 vp;
+		if (FAILED(dev->GetViewport(&vp)) || vp.Height == 0 || vp.Width * 9 <= vp.Height * 16 + 9)
+			return nullptr;                                  // 16:9 or narrower
+		const int off = rhw_offset(dev);
+		if (off < 0)
+			return nullptr;
+		const float w169 = vp.Height * 16.0f / 9.0f, k = w169 / vp.Width, ox = vp.X + (vp.Width - w169) * 0.5f;
+		const size_t bytes = static_cast<size_t>(count) * stride;
+		if (bytes > cap)
+		{
+			delete[] buf;
+			cap = bytes * 2;
+			buf = new uint8_t[cap];
+		}
+		memcpy(buf, data, bytes);
+		for (UINT i = 0; i < count; ++i)
+		{
+			float *x = reinterpret_cast<float *>(buf + static_cast<size_t>(i) * stride + off);
+			*x = ox + (*x - vp.X) * k;
+		}
+		if (InterlockedIncrement(&g_remapped) == 1)
+			log("ultrawide: remapping 2D draws to 16:9 (k %.4f, offset %.1f px, viewport %lu x %lu)", k, ox, vp.Width, vp.Height);
+		return buf;
+	}
+
+	HRESULT STDMETHODCALLTYPE draw_up_hook(IDirect3DDevice9 *dev, D3DPRIMITIVETYPE t, UINT n, const void *data, UINT stride)
+	{
+		const void *r = remap(dev, data, prim_vertices(t, n), stride);
+		return g_draw_up(dev, t, n, r ? r : data, stride);
+	}
+
+	HRESULT STDMETHODCALLTYPE draw_idx_up_hook(IDirect3DDevice9 *dev, D3DPRIMITIVETYPE t, UINT minv, UINT nv, UINT n,
+	                                           const void *idx, D3DFORMAT fmt, const void *data, UINT stride)
+	{
+		const void *r = remap(dev, data, minv + nv, stride);
+		return g_draw_idx_up(dev, t, minv, nv, n, idx, fmt, r ? r : data, stride);
+	}
+
+	DWORD WINAPI d3d_hook_thread(void *)
+	{
+		char path[MAX_PATH];
+		GetSystemDirectoryA(path, MAX_PATH);
+		strcat_s(path, "\\d3d9.dll");                     // the system one (ReShade's d3d9.dll forwards to it)
+		HMODULE d3d = LoadLibraryA(path);
+		auto create = d3d ? reinterpret_cast<IDirect3D9 *(WINAPI *)(UINT)>(GetProcAddress(d3d, "Direct3DCreate9")) : nullptr;
+		IDirect3D9 *d = create ? create(D3D_SDK_VERSION) : nullptr;
+		if (!d)
+		{
+			log("ultrawide: no system d3d9");
+			return 0;
+		}
+		HWND wnd = CreateWindowExA(0, "STATIC", "wor_hud_fixes", WS_POPUP, 0, 0, 16, 16, nullptr, nullptr, nullptr, nullptr);
+		D3DPRESENT_PARAMETERS pp = {};
+		pp.Windowed = TRUE;
+		pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+		pp.hDeviceWindow = wnd;
+		pp.BackBufferFormat = D3DFMT_UNKNOWN;
+		IDirect3DDevice9 *dev = nullptr;
+		HRESULT hr = d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_NULLREF, wnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &pp, &dev);
+		if (FAILED(hr) || !dev)
+			hr = d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &pp, &dev);
+		if (FAILED(hr) || !dev)
+		{
+			log("ultrawide: dummy device failed (0x%08lx)", hr);
+			d->Release();
+			DestroyWindow(wnd);
+			return 0;
+		}
+		void **vt = *reinterpret_cast<void ***>(dev);
+		DWORD old = 0;
+		if (VirtualProtect(&vt[83], 2 * sizeof(void *), PAGE_EXECUTE_READWRITE, &old))
+		{
+			g_draw_up = reinterpret_cast<DrawUPFn>(vt[83]);
+			g_draw_idx_up = reinterpret_cast<DrawIdxUPFn>(vt[84]);
+			vt[83] = reinterpret_cast<void *>(&draw_up_hook);
+			vt[84] = reinterpret_cast<void *>(&draw_idx_up_hook);
+			VirtualProtect(&vt[83], 2 * sizeof(void *), old, &old);
+			log("ultrawide: DrawPrimitiveUP / DrawIndexedPrimitiveUP hooked in the d3d9 device vtable");
+		}
+		dev->Release();          // the vtable lives in d3d9.dll, which stays loaded
+		d->Release();
+		DestroyWindow(wnd);
+		return 0;
+	}
+
 	void init(HMODULE self)
 	{
 		char path[MAX_PATH] = {};
@@ -943,7 +1081,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.19 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.20 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -984,6 +1122,8 @@ namespace
 		if (HANDLE t = CreateThread(nullptr, 0, canvas_thread, nullptr, 0, nullptr))
 			CloseHandle(t);
 #endif
+		if (HANDLE t = CreateThread(nullptr, 0, d3d_hook_thread, nullptr, 0, nullptr))
+			CloseHandle(t);
 		(void)self;
 	}
 }

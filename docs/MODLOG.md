@@ -1122,3 +1122,9 @@
 ### Plugin 1.19 (2026-10-09)
 - 1.18 canvas struct writes: logged, no visible effect (the renderer uses copies made at boot); menus got slow/glitchy.
   Compiled out (WOR_CANVAS_STRUCT). Next candidate: remap pre-transformed (XYZRHW) 2D vertices at the D3D9 level.
+
+### Plugin 1.20 (2026-10-09, installed, NOT yet tested): ultrawide via pre-transformed 2D vertices
+- Hooks DrawPrimitiveUP / DrawIndexedPrimitiveUP (vtable 83/84 of the system d3d9 device, found with a dummy
+  device). Draws with FVF XYZRHW or a POSITIONT declaration are remapped x' = off + x*k (k = 16/9*h/w): all 2D
+  (HUD, menus, text, likely the 2D highway too) becomes a centred 16:9 picture; 3D untouched. Log: "remapping 2D draws".
+  Not covered yet: 2D drawn from vertex buffers (DrawPrimitive); menu side bars not blacked out.

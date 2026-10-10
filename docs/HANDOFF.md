@@ -32,7 +32,9 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
     (symbol table `[0xd48f5c]`, see MODLOG "plugin 1.22"); to wrap a DE script, kScriptSwaps saves the original
     into a placeholder first (MODLOG "v0.47");
   - a CreateScreenElement whose parent doesn't exist crashed the game (SetParent 0x5a0240); plugin 1.24 guards it
-    and logs "missing parent" in wor_hud_fixes.log. Our QB printf lines don't reach debug.txt;
+    and logs "missing parent" in wor_hud_fixes.log. Our QB printf lines DO reach debug.txt (tagged [0xd8b982c2]);
+  - never put a $Func$${...}$ struct argument inside a parenthesised expression (AND/OR): it crashed the game
+    (0x5f0a8e); use plain ifs or the $id$ = $x$ form;
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
     `pluginuild.bat`;

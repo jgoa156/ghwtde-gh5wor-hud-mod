@@ -645,6 +645,10 @@ def build_ui_pak():
         wheel = os.path.join(src, f'{wor_ui.WHEEL_TEX}{k}.png')
         im.save(wheel)
         pngs.append(wheel)
+    for k, im in enumerate(wor_ui.plate_frames()):
+        plate = os.path.join(src, f'{wor_ui.PLATE_TEX}{k}.png')
+        im.save(plate)
+        pngs.append(plate)
     for p in pngs:
         shutil.copy(p, os.path.join(ROOT, 'build', 'preview'))
     run(['node', os.path.join(TOOLS, 'png2img.js'), src, *pngs], TOOLS)

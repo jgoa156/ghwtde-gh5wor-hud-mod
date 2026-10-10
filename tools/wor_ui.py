@@ -13,7 +13,7 @@ unloaded, it avoids the v0.19b crash (a font unloaded with a theme pak).
   500000); it gets the smallest one.
 """
 import math, os, struct, sys, zlib
-from PIL import Image
+from PIL import Image, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import desc_gen, paths, wor_1g  # noqa: E402
@@ -90,8 +90,18 @@ LOAD_TEX = 'WoR_HUD_loading'
 LOAD_DESC = 'WoR_HUD_loading'                          # uidesc_WoR_HUD_loading
 LOAD_MOVIE = 'loading_flipbook_ghm'                    # smallest DE loading movie (hidden under the desc)
 LOAD_DIR = ('data', 'compressed', 'UI_IMAGES', 'LOADING')
-# the ring's hole in the 1024x512 art (centre, radius): WoR spins load_wheel at (1015,192) of 1280x720
-RING = (815.0, 140.5, 50.0)
+# the ring's hole in the 1024x512 art (centre = centroid of its dark pixels, radius): WoR spins load_wheel at
+# (1015,192) of 1280x720. v0.48 test: (815, 140.5) put the ball a few pixels right.
+RING = (811.9, 139.1, 50.0)
+# the LOADING plate (frame included) in the art: its own sprite (WoR animates the red with a slow moving mottle), so
+# on ultrawide it can sit whole at the bottom while the picture is anchored for the ring (both can't fit at WoR's
+# 16:9 shape); the picture has the plate painted out
+PLATE_BOX = (682, 399, 938, 463)
+PLATE_TEX = 'WoR_HUD_load_plate_'                              # + frame number 0..PLATE_FRAMES-1
+PLATE_FRAMES = 64                                              # 4 px of mottle apart, with the wheel's frame counter
+PLATE_ALIAS = 'WoR_HUD_plate_alias'
+PLATE_POS = (PLATE_BOX[0] * 1280 / 1024, PLATE_BOX[1] * 720 / 512)
+PLATE_DIMS = ((PLATE_BOX[2] - PLATE_BOX[0]) * 1280 / 1024, (PLATE_BOX[3] - PLATE_BOX[1]) * 720 / 512)
 # the load wheel (user video 2026-10-10): a ball in the ring's hole (0.83 of it, a dark gap around), brown, lit from
 # above, with WoR's load_wheel strip (256x128: lightning across a brown background) wrapped round it and turning, so the
 # thick lightning flows sideways and bulges with the ball. Pre-rendered frames (sphere projection of a WHEEL_WIN window
@@ -115,10 +125,70 @@ def wor_xbox_img(*parts):
 
 
 def loading_art():
-    """WoR's ingame_loading as it is (the hole is filled by the load wheel sprite)."""
+    """WoR's ingame_loading with the LOADING plate painted out (the band just above it, feathered over 10 px); the
+    hole is filled by the load wheel sprite, the plate is its own sprite (plate_frames)."""
     bg = wor_xbox_img(*LOAD_DIR, 'ingame_loading.img.xen')
     assert bg.size == (1024, 512), bg.size
+    x0, y0, x1, y1 = PLATE_BOX
+    h = y1 - y0
+    patch = bg.crop((x0, y0 - h, x1, y0))
+    mask = Image.new('L', patch.size, 255)
+    mp = mask.load()
+    f = 10
+    for y in range(h):
+        for x in range(x1 - x0):
+            d = min(x, x1 - x0 - 1 - x, y, h - 1 - y)
+            mp[x, y] = min(255, round(255 * d / f)) if d < f else 255
+    bg.paste(patch, (x0, y0), mask)
     return bg
+
+
+def plate_frames():
+    """PLATE_FRAMES frames of the LOADING plate (as in the art), its red area (not the letters or their glow) with a
+    dark-red mottle drifting left: WoR's load_wheel strip background (the same grain) as the noise, tileable."""
+    art = wor_xbox_img(*LOAD_DIR, 'ingame_loading.img.xen').convert('RGBA')
+    plate = art.crop(PLATE_BOX)
+    strip = wor_xbox_img(*LOAD_DIR, 'load_wheel.img.xen').convert('L')
+    w, h = plate.size
+    noise = strip.resize((256, 128)).load()                  # 256 px period (the strip tiles sideways)
+    lo, hi = 255, 0
+    for x in range(0, 256, 2):
+        for y in range(0, 128, 2):
+            lo, hi = min(lo, noise[x, y]), max(hi, noise[x, y])
+    pp = plate.load()
+    red = [[pp[x, y][0] > 120 and pp[x, y][1] < 70 and pp[x, y][2] < 60 for y in range(h)] for x in range(w)]
+    # the plate's own shape (not the background around it): saturated (red, gold) or near-black (outline) pixels,
+    # each row filled between its outermost ones, edge feathered 1 px
+    shape = Image.new('L', (w, h), 0)
+    sp_ = shape.load()
+    for y in range(h):
+        hits = []
+        for x in range(w):
+            r, g, b = pp[x, y][:3]
+            mx, mn = max(r, g, b), min(r, g, b)
+            if (mx > 0 and (mx - mn) / mx > 0.38 and mx > 90) or mx < 45:
+                hits.append(x)
+        if len(hits) > 4:
+            for x in range(hits[0], hits[-1] + 1):
+                sp_[x, y] = 255
+    shape = shape.filter(ImageFilter.GaussianBlur(0.8))
+    plate.putalpha(shape)
+    pp = plate.load()
+    frames = []
+    for k in range(PLATE_FRAMES):
+        out = plate.copy()
+        op = out.load()
+        off = k * 256 // PLATE_FRAMES
+        for x in range(w):
+            for y in range(h):
+                if not red[x][y]:
+                    continue
+                n = (noise[(x * 2 + off) % 256, (y * 2) % 128] - lo) / max(1, hi - lo)
+                r, g, b, a = op[x, y]
+                k_ = 0.62 + 0.55 * n                               # darker and lighter flecks
+                op[x, y] = (min(255, round(r * k_)), min(255, round(g * k_)), min(255, round(b * k_)), a)
+        frames.append(out)
+    return frames
 
 
 def wheel_frames():
@@ -165,8 +235,11 @@ def loading_desc():
     root = E('WoR_HUD_loading_root', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
         E('WoR_HUD_loading_bg', 'SpriteElement', dims=(1280, 720), just=(-1, -1), texture=LOAD_TEX),
         E('WoR_HUD_loading_wheel', 'SpriteElement', pos=WHEEL_POS, dims=WHEEL_DIMS, just=(0, 0), z=1.0,
-          texture=WHEEL_TEX + '0')])
-    return desc_gen.desc(LOAD_DESC, root, aliases=[(WHEEL_ALIAS, 'WoR_HUD_loading_wheel')])
+          texture=WHEEL_TEX + '0'),
+        E('WoR_HUD_loading_plate', 'SpriteElement', pos=PLATE_POS, dims=PLATE_DIMS, just=(-1, -1), z=1.0,
+          texture=PLATE_TEX + '0')])
+    return desc_gen.desc(LOAD_DESC, root, aliases=[(WHEEL_ALIAS, 'WoR_HUD_loading_wheel'),
+                                                   (PLATE_ALIAS, 'WoR_HUD_loading_plate')])
 
 
 # Wrappers (plugin 1.25 kScriptSwaps moves each DE script to its *_orig placeholder and puts the wrapper in its place)
@@ -198,6 +271,11 @@ SCRIPTS = (
     '\t\t:i endif\n'
     f'\t\t:i $FormatText$$checksumname$ = $wheel_tex$%s("{WHEEL_TEX}%f")$f$ = %GLOBAL%$frame$\n'
     '\t\t:i %GLOBAL%$resolved_id$.$se_setprops$$texture$ = %GLOBAL%$wheel_tex$\n'
+    # the plate: same frame counter (its mottle drifts 2 plate px a frame)
+    f'\t\t:i if $loading_screen_container$.$desc_resolvealias$$name$ = ${PLATE_ALIAS}$\n'
+    f'\t\t\t:i $FormatText$$checksumname$ = $plate_tex$%s("{PLATE_TEX}%f")$f$ = %GLOBAL%$frame$\n'
+    '\t\t\t:i %GLOBAL%$resolved_id$.$se_setprops$$texture$ = %GLOBAL%$plate_tex$\n'
+    '\t\t:i endif\n'
     f'\t\t:i {WAIT_FRAME}\n'
     '\t:i loop_to\n'
     '\t:i endfunction\n]\n\n'

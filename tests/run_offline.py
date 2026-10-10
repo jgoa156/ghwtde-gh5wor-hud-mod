@@ -212,6 +212,7 @@ def integrity_textures_in_theme_pak():
             sdk('extract', os.path.join(MOD, pak_name + '.pak.xen'), work, cwd=os.path.dirname(SDK))
             return {f.split('.')[0].lower().replace('0x', '').zfill(8) for f in os.listdir(work)}
     ui = ({wor_ui.LOAD_TEX} | {f'{wor_ui.WHEEL_TEX}{k}' for k in range(wor_ui.WHEEL_FRAMES)} |
+          {f'{wor_ui.PLATE_TEX}{k}' for k in range(wor_ui.PLATE_FRAMES)} |
           {wor_menus.FRAME, wor_menus.BAR, wor_menus.BLANK, wor_menus.WHITE})
     missing = [t for t in used - ui if qbkey(t) not in entries_of('hud_ghwor')]
     assert not missing, f'textures used but not in the theme pak: {missing}'

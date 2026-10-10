@@ -1157,3 +1157,9 @@
 - User: the edge-traced line (and the needle before it) had the wrong slant; wants the needle arc mirrored. Back to
   the needle arc baked on the fill bottom (neon_bottom), MIRRORED left-right, cropped to its bright line so it spans the
   fill width; charging and ready. verify/mock_neon_mirrored.png.
+- Root cause of every wrong bottom arc: the star power fill sprite is drawn MIRRORED (x scale -0.7, kFillSX) and
+  rotated with the rail, so arcs drawn in texture space came out flipped/turned on screen. Now the bottom neon is
+  computed in SCREEN space: the approved fill-top cap needle (rotation SP_MARKER_ROT, scale (k*0.75, k)) placed at the
+  fill bottom and mapped back through the fill sprite transform into the texture (wor_1g.bake_screen_needle), slid
+  along the tube until its lowest point is on the fill's last row. verify/mock_cap_vs_bottom.png: top cap (left) vs
+  baked bottom arc (right), same shape and slant. Mock tool: MOCK_CAPS=1 shows the cap sprites.

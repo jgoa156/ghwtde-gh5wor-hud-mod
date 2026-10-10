@@ -70,6 +70,9 @@ def state(health, sp, mult):
     v['prog_lead'] = {'alpha': 1.0}
     if sp > 0.001:                       # the plugin's neon needles: bottom (always while filled), cap (ready)
         v['sp_glow_bottom'] = {'alpha': wor_1g.SP_GLOW_SPRITES[0][4]}
+    if os.environ.get('MOCK_CAPS'):      # the plugin's fill-top cap needle, shown at its desc position (50%)
+        v['sp_cap_w'] = {'alpha': 1.0}
+        v['sp_cap_c'] = {'alpha': 1.0}
     if os.environ.get('MOCK_PLASMA'):    # the plugin's ready fill: a plasma frame on the full-length tube fill
         v['sp_feather_fill0'] = {'texture': os.environ['MOCK_PLASMA'], 'alpha': 1.0}
     v['Score'] = {'text': '45625'}

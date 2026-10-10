@@ -296,9 +296,15 @@ def main():
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
     # bottom neon needle baked on the fill's bottom edge, charging and ready (exact alignment, clips with the fill)
     needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
-    # (the needle arc mirrored left-right: its tilt follows the tube end; user 2026-10-09)
-    wor_art.neon_bottom(Image.open(full).convert('RGBA'), needle, wor_1g.SP_NEON_RGB, mirror=True).save(full)
-    frames = [wor_art.neon_bottom(f, needle, wor_1g.SP_NEON_RGB, mirror=True) for f in frames]
+    # Drawn in SCREEN space: the approved fill-top cap needle (divider rotation/scale) placed at the fill's bottom
+    # edge and mapped back through the fill sprite's transform (mirrored x scale + rail rotation). Texture-space arcs
+    # came out flipped/rotated on screen.
+    nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB)
+    neon = Image.open(nh).convert('RGBA')
+    neon.alpha_composite(Image.open(nc).convert('RGBA'))
+    wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon).save(full)
+    frames = [wor_1g.bake_screen_needle(f, neon) for f in frames]
 
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')

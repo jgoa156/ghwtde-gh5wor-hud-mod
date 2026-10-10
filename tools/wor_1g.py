@@ -837,3 +837,57 @@ BOLT_KEY = 0x9d12571c                # checksum of tex\models\highway\big_lighni
 BOLT_SRC = paths.wor('basic_gems_png', '0c30522c.png')
 BORDER_X_SCALE = 2.6
 BORDER_OFFSET = 17.4
+
+
+def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3):
+    """The fill-top cap needle (drawn like the half divider: rotation SP_MARKER_ROT, scale (k*SP_NEON_X_K, k)) as it
+    appears ON SCREEN at the fill's bottom edge, baked into the star power fill texture (64x256, drawn through RIGHT:
+    mirrored x scale and the rail rotation). Each fill texel is mapped to the canvas, then through the inverse of the
+    needle sprite's transform into the needle texture; the needle is slid along the tube axis until its lowest point
+    lies on the fill's last row. Returns the composited fill (PIL RGBA)."""
+    import numpy as np
+    from PIL import Image
+    k = RAIL_SX * 1.1 * SP_MARKER_K
+    sxn, syn = scale if scale else (k * SP_NEON_X_K, k)
+    rn = math.radians(SP_MARKER_ROT if rot_deg is None else rot_deg)
+    nd = np.asarray(needle_rgba.convert('RGBA')).astype(float)
+    fa = np.asarray(fill.split()[3])
+    rows = np.where(fa.max(1) > 128)[0]
+    yb = int(rows[-1])
+    cx = TEX_CENTER[0] + TEX_CENTER[1] * yb
+    C = RIGHT.tex((cx, yb))
+
+    def render(C, ss=3):
+        out = np.zeros((256, 64, 4))
+        for sy_ in range(ss):
+            for sx_ in range(ss):
+                ys, xs = np.mgrid[0:256, 0:64].astype(float)
+                qx, qy = xs + (sx_ + 0.5) / ss, ys + (sy_ + 0.5) / ss
+                dx, dy = (qx - 32.0) * RIGHT.sx, (qy - 256.0) * RAIL_SY
+                a = math.radians(RIGHT.rot)
+                px = RIGHT.pos[0] + dx * math.cos(a) - dy * math.sin(a) - C[0]
+                py = RIGHT.pos[1] + dx * math.sin(a) + dy * math.cos(a) - C[1]
+                ux = px * math.cos(rn) + py * math.sin(rn)          # inverse rotation
+                uy = -px * math.sin(rn) + py * math.cos(rn)
+                nx, ny = ux / sxn + 32.0, uy / syn + 32.0
+                ix, iy = np.floor(nx).astype(int), np.floor(ny).astype(int)
+                inside = (ix >= 0) & (ix < 64) & (iy >= 0) & (iy < 64)
+                ixc, iyc = np.clip(ix, 0, 63), np.clip(iy, 0, 63)
+                out += np.where(inside[..., None], nd[iyc, ixc], 0.0)
+        return out / (ss * ss)
+
+    for _ in range(iters):
+        arc = render(C)
+        hit = np.where(arc[..., 3] > 128)
+        if len(hit[0]) == 0:
+            break
+        low = int(hit[0].max())                      # the arc's lowest texture row
+        d = yb - low                                 # rows to move it down (texture y grows downwards)
+        if abs(d) < 0.5:
+            break
+        p1, p0 = RIGHT.tex((cx, yb)), RIGHT.tex((cx, yb - d))
+        C = (C[0] + p1[0] - p0[0], C[1] + p1[1] - p0[1])
+    arc = Image.fromarray(np.clip(render(C) + 0.5, 0, 255).astype('uint8'), 'RGBA')
+    out = fill.copy()
+    out.alpha_composite(arc)
+    return out

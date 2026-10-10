@@ -1081,7 +1081,7 @@
   turned -5 deg more than the divider (SP_NEON_BOTTOM_ROT; user: the top one's angle is right). The dark arc under the
   top needle at 50% is the half divider (intended).
 - Bottom neon needle hung out of the tube (user screenshot): at level 0 the arch's ends dipped below the glass where the
-  base art narrows into its tail. Now at level 0.035 (SP_GLOW_BOTTOM_LEVEL), just inside the glass; the mock tool
+  base art narrows into its tail. Now at level 0.011 (SP_GLOW_BOTTOM_LEVEL; 0.035 sat ~5 px too high), masking the fill's bottom end; the mock tool
   (preview_hud) now shows the bottom needle while the meter has charge (verify/mock_sp_bottom_neon.png: 0 / 0.02 / 0.035).
 - Crowd selector idea (user): evaluated, parked. All 64 venues' <zone>_crowd_models (tb guitar_crowd_data.qb) use the
   same six GHWT peds (crowd_ped_01..04, crowd_pedf_1/2) at different LODs, GH5/WoR-era venues included; only z_cabo

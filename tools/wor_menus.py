@@ -57,6 +57,11 @@ DLG = {   # ours -> (DE desc global, file in ui_shared_wtde, title id, message i
 }
 HIDE_TEX = ('0x7aa12d50', 'mixer_glow_64', 'dialog_side_chain', 'dialog_chain', 'dialog_bg_menu')
 MSG_SCALE = 0.42                                          # popup message text (was 0.67, fit-shrunk when long)
+# 2026-10-11 test: the box was 720 x 180 at 0.42 (302 x 76 canvas: two lines), so 3-4 line messages were fit-shrunk to
+# about 0.55 of the size; a wider, taller box keeps every message at full size (5 lines of ~33 units), wraps
+# "Overwrite successful" on one line, and sits a little lower under the banner
+MSG_DIMS = (1600.0, 400.0)
+MSG_Y = 248.0
 BANNER_Y = 168.0                                          # the frame's gold banner middle (canvas units)
 
 
@@ -86,7 +91,7 @@ def popup_desc(kind, de_text):
     # scaled down to fit): smaller, with room for ~5 lines so none gets scaled down
     if kind == 'fail':
         return fail_desc(d)
-    d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, 232), dims=(720, 180), scale=(MSG_SCALE, MSG_SCALE),
+    d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, MSG_Y), dims=MSG_DIMS, scale=(MSG_SCALE, MSG_SCALE),
                            rgba=CREAM)
     # all-black screen behind the box (user: like the Metallica theme's full-screen background): the DE's dim layer
     # (gradient_256, 35% subtract) made opaque black, below the frame

@@ -1339,3 +1339,11 @@
   letters floated ~7 s (WoR's `$apply_gravity$ = $true$` isn't read by the DE: bare flags now), text "YOU ROCK!"
   passed as is (GetUpperCaseString left the localised "You Rock!"), fit width 640 -> 755 (WoR ~1.2x ours), glow cells
   upscaled to 128 px (the glow had shrunk 4x with 32 px cells). Lightning confirmed thick and electric in the video.
+
+## v0.48 WIP (2026-10-11, test round 4)
+- User test: pause works, title flashes fine, needle better (a few px left: needs a screenshot), YOU ROCK letters should
+  burst and fall faster, popup messages too small / too high.
+- Popups: the message box was 720 x 180 at 0.42 (302 x 76 canvas = 2 lines), so 3-4 line messages were fit-shrunk to
+  ~0.55. Now 1600 x 400 (MSG_DIMS, full size up to 5 lines, "Overwrite successful" on one line) at y 248 (was 232).
+- YOU ROCK: burst force 13500000 (WoR 9000000) and g_GRAVITY 2000 (DE 1000.0; QB global 0x6a831c8f read by the screen
+  element physics at 0x75c1a4, set by WoR_HUD_do_exploding_text_physics).

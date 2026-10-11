@@ -82,6 +82,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
 
 
+YR_EXPLODE, YR_GRAVITY = 13500000, 2000.0     # burst force (WoR 9000000), g_GRAVITY (DE 1000.0)
+
+
 def _cells(key):
     from PIL import Image
     prefix, nx, ny = SHEETS[key]
@@ -245,6 +248,12 @@ def ported_scripts():
             a = '$apply_gravity$ = $true$$apply_drag$ = $true$'
             assert body.count(a) == 1, 'do_exploding_text_physics: gravity line changed'
             body = body.replace(a, '$apply_gravity$$apply_drag$')
+            # 2026-10-11 test: the letters should burst and fall faster: a 1.5x push (WoR 9000000) and double gravity.
+            # The engine's screen element physics reads the global g_GRAVITY (DE value 1000.0, qb.pab); only exploding
+            # text uses it in practice, set here for each burst
+            a = '%GLOBAL%$explode_const$ = %i(9000000)'
+            assert body.count(a) == 1, 'do_exploding_text_physics: explode_const changed'
+            body = body.replace(a, f'%GLOBAL%$explode_const$ = %i({YR_EXPLODE})\n\t:i $change$$[6a831c8f]$ = %f({YR_GRAVITY:.1f})')
         if name == 'create_exploding_text':
             # WoR's text is ~1.2x ours (v0.48 videos, same canvas scale: 741 x 90 vs 630 x 72): the splitter scales
             # the word to fit_dims' width, so that is what sets the size

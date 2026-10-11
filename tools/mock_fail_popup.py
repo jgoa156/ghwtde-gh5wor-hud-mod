@@ -77,7 +77,7 @@ def main():
     # after WoR's own fail box (user reference, 2026-10-11): FAILED in the banner, the song in the title font (white),
     # COMPLETED / % ON in the text font (cream), the percent and difficulty large in red, gold options + brush
     centre(img, text(TITLE, title, 40, BROWN), 640, 168)
-    centre(img, text(TITLE, song, 34, WHITE, shadow=True), 640, 262)
+    centre(img, text(TITLE, song, 27, WHITE, shadow=True), 640, 264)                   # ~ the options' size (user)
     row(img, [text(TEXT, 'COMPLETED', 26, CREAM), text(TEXT, percent, 46, RED), text(TEXT, '%', 26, CREAM), text(TEXT, 'ON', 26, CREAM),
               text(TEXT, difficulty, 46, RED)], 640, 318, gap=12)
     bar = Image.open(os.path.join(PREVIEW, 'WoR_HUD_light_bar.png')).convert('RGBA').resize((420, 40), Image.LANCZOS)

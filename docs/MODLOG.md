@@ -1325,3 +1325,8 @@
   exists first); the glow's particle systems get static one-cell materials (WoR_HUD_Mat_ball_0/5/10/15, built on WoR's
   spark material: ImmediateMode_UI / UI_Col_Tex_2D / Add; textures tex\models\highway\wor_hud_ball_cellN.dds, tinted,
   in the gem paks). Highway, vocal highways and HUD fade out (0.2 s) as the text comes in, like WoR.
+- Failed / song ended box (user approved mock v2 with a smaller song title; docs/mocks/mock_fail_popup_v3.png): the
+  DE's dialog_box_fail_wtde (073f047c, ui_shared_wtde 0x2fd78a6f) restyled and swapped like the other popups
+  (DLG 'fail'): WoR frame and banner title (brown, no shadow), song title in WoR's title font, white, level, fit to
+  40 high; COMPLETED / ON in the text font, cream, capitals; percent and difficulty in the text font, red; practice row
+  the same; the venue stays visible (dim 0.2). Options already WoR-styled by the option wrapper.

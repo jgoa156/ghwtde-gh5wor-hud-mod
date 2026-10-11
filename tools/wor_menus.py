@@ -52,6 +52,8 @@ DLG = {   # ours -> (DE desc global, file in ui_shared_wtde, title id, message i
     'main': ('3de6e82d', '0xc5233a7c.qb.xen', 'dlog_title', 'dlog_message', 137.0),
     'long': ('64c0d8c0', '0x8914e320.qb.xen', 'dlog_title', 'dlog_message', 150.0),
     'none': ('a26a853d', '0x0d1e6a8a.qb.xen', 'alert_title', 'alert_message', None),
+    # the failed / song ended box (create_popup_warning_menu with fail_song_props): uidesc_dialog_box_fail_wtde
+    'fail': ('073f047c', '0x2fd78a6f.qb.xen', 'dlog_title', None, None),
 }
 HIDE_TEX = ('0x7aa12d50', 'mixer_glow_64', 'dialog_side_chain', 'dialog_chain', 'dialog_bg_menu')
 MSG_SCALE = 0.42                                          # popup message text (was 0.67, fit-shrunk when long)
@@ -82,6 +84,8 @@ def popup_desc(kind, de_text):
     d = desc_edit.set_flag(d, title, 'use_shadow', 'false')
     # v0.48 test: one message size for every box (a one-line message showed at full 0.67 while longer ones were
     # scaled down to fit): smaller, with room for ~5 lines so none gets scaled down
+    if kind == 'fail':
+        return fail_desc(d)
     d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, 232), dims=(720, 180), scale=(MSG_SCALE, MSG_SCALE),
                            rgba=CREAM)
     # all-black screen behind the box (user: like the Metallica theme's full-screen background): the DE's dim layer
@@ -89,6 +93,22 @@ def popup_desc(kind, de_text):
     d = desc_edit.set_elem(d, 'gradient_256', texture=WHITE, rgba=(0, 0, 0, 255), alpha=1.0, blend='Blend', z=490)
     if menu_y is not None:
         d = desc_edit.set_elem(d, 'dlog_vmenu_container', pos=(0.13092, menu_y))
+    return d
+
+
+def fail_desc(d):
+    """The failed / song ended box after WoR's (user reference 2026-10-11; mock docs/mocks/mock_fail_popup_v2.png,
+    approved with a smaller song title): the venue stays visible (light dim), the song in WoR's title font in white
+    (about the options' size), COMPLETED / ON in the text font (cream, capitals), the percent and difficulty large in
+    red; the practice row the same. The DE's own positions are kept (its info row is a menu element)."""
+    d = desc_edit.set_elem(d, 'gradient_256', alpha=0.2)
+    d = desc_edit.set_elem(d, 'dlog_fail_song_title', font=TITLE_FONT, dims=(580, 40), rot=0.0, rgba=WHITE_C)
+    for lid in ('dlog_fail_song_completed', 'dlog_fail_song_on', 'dlog_fail_song_completed_prac', 'dlog_fail_song_on_prac'):
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=CREAM)
+        d = desc_edit.set_flag(d, lid, 'text_case', 'upper')
+    for lid in ('dlog_fail_song_percent', 'dlog_fail_song_difficulty', 'dlog_fail_song_percent_prac',
+                'dlog_fail_song_difficulty_prac'):
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=RED)
     return d
 
 

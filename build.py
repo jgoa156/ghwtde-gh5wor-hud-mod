@@ -396,7 +396,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, needle_script(work), SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -568,6 +568,26 @@ CAREER_METER_SCRIPT = ('Script WoR_HUD_career_side_meter [\n'
                        '\t:i endif\n'
                        '\t:i return$false$\n'
                        '\t:i endfunction\n]\n')
+
+def needle_script(work):
+    """The DE's rock needle script (0x3205f550, tb.pak) as WoR_HUD_side_meter_needle: with the WoR HUD theme (its own
+    flag WoR_HUD_career_meter) one non-vocal player gets wor_1g.needle_knots(); otherwise the DE's path. The plugin
+    points 0x3205f550's symbol at it."""
+    _, qb = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'tb.pak.xen'), work, only={'0x29ebe78e.qb.xen'})
+    text = next(v for k, v in qb.items() if k.endswith('0x29ebe78e.qb.xen')).replace('\r\n', '\n')
+    i = text.index('Script 0x3205f550 ')
+    j = text.index('\n]\n', i) + 2
+    sc = text[i:j]
+    sc = sc[:sc.index('[')].replace('Script 0x3205f550 babeface ', 'Script WoR_HUD_side_meter_needle ') + sc[sc.index('['):]
+    a = ':i $pos_range$ = :a{%vec2(0.0,0.0)%vec2(11.0,-24.0)%vec2(28.0,-57.0)%vec2(41.0,-80.0):a}\n'
+    assert sc.count(a) == 1, 'needle script: 1-player path changed'
+    pts = ''.join(f'%vec2({x:.3f},{y:.3f})' for x, y in wor_1g.needle_knots())
+    k = sc.index(a) + len(a)
+    ind = sc[sc.rindex('\n', 0, sc.index(a)) + 1:sc.index(a)]
+    sc = (sc[:k] + f'{ind}:i if $[4c1beb8d]$$value$ = $WoR_HUD_career_meter$\n{ind}\t:i $pos_range$ = :a{{{pts}:a}}\n'
+          f'{ind}:i endif\n' + sc[k:])
+    return sc
+
 
 DARK_K = 0.58         # colour multiplier for the highway's metal (user-approved mock verify/mock_metal_v021.png)
 # Highway metal materials (scripts/guitar/guitar_material.qb): border, fret bars, strikeline neck and silver cups.

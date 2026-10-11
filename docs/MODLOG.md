@@ -1352,3 +1352,9 @@
   (audio_ui_gameplay_play_you_rock_sfx). Mixed to a 44.1 kHz stereo 320 kb/s MP3 = the DE sound format, shipped as
   WoR_HUD_you_rock.wav.xen in wor_hud_ui.pak, registered by LoadSound in WoR_HUD_Load, played by
   WoR_HUD_create_exploding_text ($playsound$, buss front_end). g_GRAVITY raised to 3500 (user). Popup box 3 lines at full size.
+
+- Rock needle (plugin 1.28): the DE needle script 0x3205f550 puts health 0.667 / 1.333 at 30% / 71% of its path, so on
+  our linear anchor the needle lagged the LEDs, failed mid-red and overshot the top. WoR_HUD_side_meter_needle = the DE
+  script with wor_1g.needle_knots() (tube heights 31 / 120.5 / 188.5 / 238) for one non-vocal player when the HUD theme
+  has WoR_HUD_career_meter; the plugin swaps its symbol in. Mock verify/mock_needle_v4.png (approved). Earlier needle
+  mocks were wrong: variants set ZONE_* but NEEDLE_H0/H2 had already been computed from them.

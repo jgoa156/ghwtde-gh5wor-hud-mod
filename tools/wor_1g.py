@@ -46,6 +46,20 @@ LED_BOTTOM, LED_TOP = 19.0, 242.0   # LED span along the tube, px from the textu
 ZONE_RY, ZONE_YG = 120.5, 188.5
 NEEDLE_H0 = ZONE_RY - (ZONE_YG - ZONE_RY)      # 52.5
 NEEDLE_H2 = ZONE_YG + (ZONE_YG - ZONE_RY)      # 256.5 (the top cap at full health)
+# 2026-10-11 test: the DE's 1-player needle path (script 0x3205f550) is piecewise with knots at 30% / 71% of its
+# length for health 0.667 / 1.333, not thirds, so on our linear anchor the needle sat in the red art with yellow lit,
+# reached the green art before green lit, failed mid-red and went past the top at full health. With the WoR theme
+# our copy of that script (plugin swap) uses its own knots: health 0 / 0.667 / 1.333 / 2 -> these tube heights.
+NEEDLE_STOPS = (31.0, ZONE_RY, ZONE_YG, 238.0)   # LED art: red from 31, green to 238 (texture px from the bottom)
+
+
+def needle_knots():
+    """The needle path points (the DE path's units: the anchor maps (0,0) -> NEEDLE_H0, DE_NEEDLE_END -> NEEDLE_H2)."""
+    out = []
+    for h in NEEDLE_STOPS:
+        g = (h - NEEDLE_H0) / (NEEDLE_H2 - NEEDLE_H0)
+        out.append((DE_NEEDLE_END[0] * g, DE_NEEDLE_END[1] * g))
+    return out
 # WoR's placement (guitar_tweaks highway_guitar1 + setup_sidebar_rockmeter + the sidebar meter descs): the sidebar
 # container sits on the edge line 25% of the highway height below the playline, rotated by the edge angle; the
 # meter desc goes in it at (-5,-130), scale 0.7 (star power mirrored). The tube sprite's bottom-centre sits at

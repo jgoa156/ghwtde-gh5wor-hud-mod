@@ -624,6 +624,9 @@ namespace
 		  "star power highway: GH_Star_Power_Verb_On wrapped (WoR highway effect on)" },
 		{ 0x4cb84f65 /* GH_Star_Power_Verb_Off */, 0xfe0e771c /* wor_hud_sp_verb_off */, 0x3ac324fb /* _orig */,
 		  "star power highway: GH_Star_Power_Verb_Off wrapped (WoR highway effect off)" },
+		// 1.28: rock needle on the WoR LED art (our copy of the DE's needle path script, WoR theme only)
+		{ 0x3205f550, 0x0a2dfb46 /* wor_hud_side_meter_needle */, 0,
+		  "rock needle: 0x3205f550 now runs WoR_HUD_side_meter_needle (WoR LED stops with the WoR theme)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)
 		{ 0x74d55bee /* create_loading_screen */, 0x16420b70 /* wor_hud_create_loading_screen */, 0xa8cfacd3 /* _orig */,
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
@@ -1205,7 +1208,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.27 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.28 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

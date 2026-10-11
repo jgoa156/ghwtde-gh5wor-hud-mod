@@ -52,7 +52,7 @@ def state(health, sp, mult):
     for k, on in lights.items():
         v[k] = {'alpha': 1.0 if on else 0.0}
     # side meter needle: piecewise path of script 0x3205f550 (1 non-vocal player)
-    pts = [(0, 0), (11, -24), (28, -57), (41, -80)]
+    pts = wor_1g.needle_knots()          # our copy of the script (WoR theme)
     seg = min(2, int(health / 0.6667))
     f = min(1.0, max(0.0, (health - seg * 0.6667) / 0.6667))
     a, b = pts[seg], pts[seg + 1]

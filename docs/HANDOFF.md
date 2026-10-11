@@ -62,6 +62,8 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
    (no GH5/WoR crowd peds in the DE). Post-song stats box (WoR song_summary_mini): skipped, other DE themes don't
    customise it either (user).
 
+6. WoR / GH5 drum animations: plan saved in `docs/DRUM_ANIMS_PLAN.md` (researched 2026-10-11, not started).
+
 ## How to work on it
 
 - `python build.py [--install] [--package]`; `python tests/run_offline.py` (25/25).

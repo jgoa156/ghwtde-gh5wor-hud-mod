@@ -7,7 +7,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 ## Start here (next session, from 2026-10-11)
 
 State: everything built from HEAD is installed in the game; all three repos are pushed (this one, ghwtde-ultrawide-fix,
-ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in game yet.
+ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; the old ghwtde-ghwor-menu-music-mod repo is being deleted). Nothing from the last round has been tested in game yet.
 
 1. **Ask for one test run** (rule: ask before launching): fail a song (fail box vs WoR, overlay method in MODLOG
    "Round 3"), finish one (YOU ROCK: letters fall, bigger "YOU ROCK!", glow size), watch the rock needle at the colour

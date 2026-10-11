@@ -20,7 +20,7 @@ One drop-in zip, `GH5-WoR_HUD_0.48.zip` (plugin `wor_hud_fixes.asi` 1.31). New s
 - Menu music is no longer in this zip: get the GHWoR Main Menu Music mod or the All Menu Songs Installer (below).
 
 **Recommended (separate):**
-[GHWoR Main Menu Music](https://github.com/jgoa156/ghwtde-ghwor-menu-music-mod),
+[GHWoR Main Menu Music](https://github.com/jgoa156/ghwtde-all-menu-songs-installer/tree/main/ghwor-menu-music),
 [All Menu Songs Installer](https://github.com/jgoa156/ghwtde-all-menu-songs-installer).
 
 ### Known issues

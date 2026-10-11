@@ -12,7 +12,7 @@ More games: add a source function returning clips.
 
 build() writes two mods from one decode:
   - COLLECTION ("Main Menu Music Collection"): every source, for your own install;
-  - WOR_MOD ("(GHWoR) Main Menu Music"): Warriors of Rock only, the one released (repo ghwtde-ghwor-menu-music-mod,
+  - WOR_MOD ("(GHWoR) Main Menu Music"): Warriors of Rock only, the one released (repo ghwtde-all-menu-songs-installer, folder ghwor-menu-music,
     also shipped with the GH5 / WoR HUD mod). Install one or the other: the DE loads one menu music mod.
 
 DE menu music mod layout:

@@ -39,7 +39,7 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
 
 RECOMMENDED (separate downloads, by WitchDoctoR)
   - GHWoR Main Menu Music: Warriors of Rock's 14 menu songs in the DE's menus.
-    https://github.com/jgoa156/ghwtde-ghwor-menu-music-mod
+    https://github.com/jgoa156/ghwtde-all-menu-songs-installer/tree/main/ghwor-menu-music
   - GHWT:DE All Menu Songs Installer: merges the menu music of every game you have into one menu music mod.
     https://github.com/jgoa156/ghwtde-all-menu-songs-installer
 

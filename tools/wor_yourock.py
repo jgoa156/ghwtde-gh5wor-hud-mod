@@ -68,6 +68,8 @@ PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
 # stayed in the centred 16:9 picture while the other YOU ROCK themes fill the screen): ours go under FX_CONTAINER, a
 # full-screen container the add-on covers like the other YOU ROCK layouts (as it does you_rock_physics).
 FX_CONTAINER = 'WoR_HUD_yourock_fx'
+YOU_ROCK_FIT_W = 755.0           # WoR 640 (our font's metrics fit it smaller)
+YOU_ROCK_TEXT = 'YOU ROCK!'      # WoR's (the DE passes "You Rock!", a localised string GetUpperCaseString leaves as is)
 # the gameplay 2D (the DE's toggle_highway / hide_hud ids): highways, vocal highways, HUD
 HIDE_ON_YOU_ROCK = ('gem_containerp1', 'gem_containerp2', 'gem_containerp3', 'gem_containerp4', 'vocals_highway_p1',
                     'vocals_highway_p2', 'hud_root')
@@ -111,7 +113,8 @@ def texture_pngs():
     out = [(k, os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{k:08x}.png')) for k in TEXTURES]
     cells = _cells(0x249c3fc1)
     for c in GLOW_CELLS:
-        r, g, b, a = cells[c].split()
+        # 128 px like WoR's whole sheet (a particle's size follows its texture: 32 px cells made the glow 4x smaller)
+        r, g, b, a = cells[c].resize((128, 128), Image.LANCZOS).split()
         im = Image.merge('RGBA', [ch.point(lambda v, m=m: v * m // 255) for ch, m in zip((r, g, b), GLOW_TINT)] + [a])
         path = os.path.join(_OUT, f'ball_cell{c}.png')
         im.save(path)
@@ -236,6 +239,18 @@ def ported_scripts():
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])
+        if name == 'do_exploding_text_physics':
+            # v0.48 test: the letters floated around for ~7 s (WoR: they burst and drop off the bottom in ~1.5 s):
+            # WoR's `$apply_gravity$ = $true$` form isn't read by the DE; its own scripts use the bare flags
+            a = '$apply_gravity$ = $true$$apply_drag$ = $true$'
+            assert body.count(a) == 1, 'do_exploding_text_physics: gravity line changed'
+            body = body.replace(a, '$apply_gravity$$apply_drag$')
+        if name == 'create_exploding_text':
+            # WoR's text is ~1.2x ours (v0.48 videos, same canvas scale: 741 x 90 vs 630 x 72): the splitter scales
+            # the word to fit_dims' width, so that is what sets the size
+            a = '$fit_dims$ = %vec2(640.0,120.0)'
+            assert body.count(a) == 1, 'create_exploding_text: fit_dims changed'
+            body = body.replace(a, f'$fit_dims$ = %vec2({YOU_ROCK_FIT_W:.1f},120.0)')
         if name == 'You_Rock_Text_Glow':
             body = _glow_materials(body)
         if name in ('p2p_lightning_create_fx', 'UROK_FX_XPLOSION01'):
@@ -283,7 +298,7 @@ WRAPPER = (
     '\t\t\t:i $dims$ = %vec2(1280.0,720.0)\n\t\t\t:i $just$ = :a{$left$$top$:a}\n\t\t\t:i $Pos$ = %vec2(0.0,0.0)\n'
     '\t\t:i :s}\n'
     '\t:i endif\n'
-    '\t:i $spawnscriptnow$$WoR_HUD_create_exploding_text$$params$ = :s{$text$ = %GLOBAL%$text$:s}\n'
+    f'\t:i $spawnscriptnow$$WoR_HUD_create_exploding_text$$params$ = :s{{$text$ = %s("{YOU_ROCK_TEXT}"):s}}\n'
     '\t:i if $ScreenElementExists$$id$ = $HandsOfGod$\n'
     '\t\t:i $DestroyScreenElement$$id$ = $HandsOfGod$\n'
     '\t:i endif\n'

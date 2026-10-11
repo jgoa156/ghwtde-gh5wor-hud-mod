@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-10, v0.47)
+# GH5 / WoR HUD mod: session handoff (2026-10-11, v0.48 WIP)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -13,9 +13,23 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini` (`HUDTheme=ghwor`,
   `GemTheme=ghwor`, `Preferred*Highway=GH5_Highway`, 2560x1080). The `GHWTDE.ini` in the game folder is not the live one.
-- **Installed = released 0.47** (`releases/GH5-WoR_HUD_0.47.zip`, Desktop copy): mod `WoR_HUD` + theme/gem paks +
-  `wor_hud_fixes.asi` **1.24** + ASI loader + ReShade (preset `GHWoRHudModPreset.ini`, `ghwt_bgfx.addon32`,
-  `ghwtde_ultrawide.addon32` 0.2 beta).
+- **Released: 0.47** (`releases/GH5-WoR_HUD_0.47.zip`). **Installed: 0.48 WIP** (built from HEAD): mod `WoR_HUD` +
+  theme / gem / UI paks (`wor_hud_ui.pak.xen`, 16.7 MB: raw-PNG loading art) + `wor_hud_fixes.asi` **1.27** + ASI
+  loader + ReShade (preset, `ghwt_bgfx.addon32`, `ghwtde_ultrawide.addon32` from the ultrawide repo HEAD) + the
+  "Main Menu Music Collection" (GH5 mod + WoR; the WoR-only mod is the released one).
+- **0.48 WoR menu look** (MODLOG "v0.48 WIP" sections), all choosable as "Guitar Hero: Warriors of Rock":
+  helper pills (+ gamertag pill), loading screen (ball, animated plate, raw 2x art; ultrawide: 16:9 + black bars),
+  menu popups (WoR frame, black background, one message size, brush bar), failed / song ended box (calibrated on the
+  user's WoR screenshot, verify/fail_overlay_v1.jpg), pause menu (black above the gameplay at z 598, title-cased song
+  info, right-aligned items), You Rock (WoR's whole exploding-text sequence, lightning / ball / explosion as per-frame
+  flipbooks, static glow materials, highway + HUD fade, "YOU ROCK!" fit width 755), star power awarded / activation
+  = Band Hero's sounds by default, rock needle travel calibrated to the LED art (wor_1g ZONE_RY / ZONE_YG).
+- **Confirmed by the user in game:** pills, menu music, pause (no crash, layout), popup look, loading ball.
+  **Awaiting a test (installed):** fail box calibration, You Rock round 3 (gravity, size, glow 128 px), rock needle,
+  title-screen flashes (ultrawide), gameplay hidden under pause.
+- **Other repos:** ultrawide fix (loading bars default, YOU ROCK / title flash groups, catalog off by default; not
+  released since 0.2 beta); GHWoR menu music (released 1.0); menu music collection installer (untracked in the menu
+  music repo `installer/`, package in `E:\Dev\ghwt\menu-music-all\dist`, not published: the user decides).
 - **Confirmed in game (2026-10-10):** WoR star power highway effect (0.47 / plugin 1.24: cyan rail glows, stars up
   the rails, strikeline rush; MODLOG "v0.47"), career rock needle (plugin 1.22), the new preset, every ultrawide screen
   (title, menus, song list, loading, YOU ROCK themes, song intro, left-pinned menus). User: the occasional crash
@@ -39,6 +53,12 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
     missing element crashes the game (0x63a133): keep ids in other locals and check ScreenElementExists first;
   - mod list text (Mod.ini / menumusic.ini): only letters, digits, spaces and , . : / (the DE fonts lack the double
     quote and others);
+  - the DE doesn't animate AnimatedTexture_UI flipbook materials (WoR's lightning / ball / explosion): it draws the
+    whole sheet. Use one texture per frame switched by WoR_HUD_flipbook (sprites) or static one-cell materials built
+    on an ImmediateMode_UI / UI_Col_Tex_2D material (particles; a particle's size follows its texture size);
+  - WoR scripts can use forms the DE ignores (`$apply_gravity$ = $true$`): prefer the DE's own spelling; DE strings
+    are localised keys (GetUpperCaseString leaves them as they are);
+  - a desc text whose fit_height is "clip top lines" vanishes when the font is taller than its box;
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
     `pluginuild.bat`;
@@ -46,11 +66,11 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 
 ## Next steps
 
-1. **WoR menu look** (v0.48 WIP + plugin 1.27, MODLOG "evening"): pills, menu music confirmed; to test: pause
-   (crash fixed), popup bars / title, gamertag pill, sharper 16:9 loading screen, You Rock, awarded SFX. **Release the
-   HUD 0.48 only once the pause menu fully works** (user). Its zip ships the WoR menu music (73 MB bank) + 16.7 MB UI
-   pak: the 0.48 package is 94 MB (GitHub refuses files over 100 MB).
-   Menu music: released on its own (github.com/jgoa156/ghwtde-ghwor-menu-music-mod, 1.0).
+1. **Finish 0.48** (installed, awaiting the user's test, see "Awaiting a test" above). Then calibrate from the
+   screenshots (overlay tools: verify/fail_overlay_v1.jpg made by aligning on the frame; YOU ROCK side by side in
+   verify/yourock_compare.jpg). **Release the HUD 0.48 only once the pause menu fully works** (user): `python build.py
+   --package` (94 MB zip with the WoR menu music; GitHub refuses files over 100 MB), copy to releases/.
+   Open: popup up/down arrows (WoR fail box shows them); the WoR fail box's section line ("Fast Solo D", practice).
 2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
    frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
 3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.

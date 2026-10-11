@@ -39,6 +39,13 @@ RIGHT_EDGE = ((640.0 + HW_BOTTOM_W / 2, HW_PLAYLINE), (640.0 + HW_TOP_W / 2, HW_
 # Tube textures (RM_Base / SP_Base, 64x256): the art carries a perspective lean and widens towards its curled end.
 TEX_CENTER = (51.86, -0.040)      # tube centre line: x = a + b*y (texture px)
 LED_BOTTOM, LED_TOP = 19.0, 242.0   # LED span along the tube, px from the texture bottom
+# The rock needle's travel (health 0 -> 2, px from the texture bottom). The DE lights red below health 0.667, green
+# above 1.333, and slides the needle linearly with health; WoR's LED art isn't in thirds (red 31-119, yellow 122-187,
+# green 190-238 px). Over the LED span the needle sat in the red art when yellow lit and in the yellow art when green
+# lit (user, 2026-10-11): the travel now puts health 0.667 / 1.333 on the art's red/yellow and yellow/green edges.
+ZONE_RY, ZONE_YG = 120.5, 188.5
+NEEDLE_H0 = ZONE_RY - (ZONE_YG - ZONE_RY)      # 52.5
+NEEDLE_H2 = ZONE_YG + (ZONE_YG - ZONE_RY)      # 256.5 (the top cap at full health)
 # WoR's placement (guitar_tweaks highway_guitar1 + setup_sidebar_rockmeter + the sidebar meter descs): the sidebar
 # container sits on the edge line 25% of the highway height below the playline, rotated by the edge angle; the
 # meter desc goes in it at (-5,-130), scale 0.7 (star power mirrored). The tube sprite's bottom-centre sits at
@@ -735,13 +742,13 @@ def player_meter():
 # ---------------------------------------------------------------- sliding rock needle (BAND_side_meter)
 def needle_anchor_scale():
     """Anchor scale that stretches the DE's needle path onto the left tube's LED span."""
-    a, b = LEFT.at(LED_BOTTOM), LEFT.at(LED_TOP)
+    a, b = LEFT.at(NEEDLE_H0), LEFT.at(NEEDLE_H2)
     return ((b[0] - a[0]) / DE_NEEDLE_END[0], (b[1] - a[1]) / DE_NEEDLE_END[1])
 
 
 def side_meter():
     ax, ay = needle_anchor_scale()
-    anchor = add(LEFT.at(LED_BOTTOM), (-G1[0], -G1[1]))
+    anchor = add(LEFT.at(NEEDLE_H0), (-G1[0], -G1[1]))
     nd = 40.0                    # needle size on screen (WoR's glowing slider)
     needle = E('side_meter_needle', 'SpriteElement', dims=(nd / ax, nd / ay), just=(0, 0), z=20.0,
                rot=LEFT.angle, texture='WoR_HUD_needle_glow', blend='Add')

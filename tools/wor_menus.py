@@ -101,15 +101,66 @@ def fail_desc(d):
     approved with a smaller song title): the venue stays visible (light dim), the song in WoR's title font in white
     (about the options' size), COMPLETED / ON in the text font (cream, capitals), the percent and difficulty large in
     red; the practice row the same. The DE's own positions are kept (its info row is a menu element)."""
+    # v0.48 test, our box laid over WoR's on the frame (verify/fail_overlay_v1.jpg; 1.335 ref px per canvas unit):
+    # the banner title was missing (this desc clips a title taller than its box: "clip top lines"), the song title
+    # 7 px low and x1.07, the info row 42 px high with COMPLETED / ON x1.56 and the red figures x1.29, the options at
+    # a 35 px pitch (WoR 49.5) and x1.07, WoR's brush about twice as wide (FAIL_* below).
     d = desc_edit.set_elem(d, 'gradient_256', alpha=0.2)
-    d = desc_edit.set_elem(d, 'dlog_fail_song_title', font=TITLE_FONT, dims=(580, 40), rot=0.0, rgba=WHITE_C)
+    d = _set_line(d, 'dlog_title', 'fit_height', 'scale down if larger')
+    d = desc_edit.set_elem(d, 'dlog_fail_song_title', font=TITLE_FONT, dims=(580, FAIL_TITLE_H), rot=0.0, rgba=WHITE_C,
+                           pos=(-1.43616, -2.0 - FAIL_TITLE_UP))
     for lid in ('dlog_fail_song_completed', 'dlog_fail_song_on', 'dlog_fail_song_completed_prac', 'dlog_fail_song_on_prac'):
-        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=CREAM)
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=CREAM, scale=(FAIL_WORD_S, FAIL_WORD_S))
         d = desc_edit.set_flag(d, lid, 'text_case', 'upper')
     for lid in ('dlog_fail_song_percent', 'dlog_fail_song_difficulty', 'dlog_fail_song_percent_prac',
                 'dlog_fail_song_difficulty_prac'):
-        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=RED)
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=RED, scale=(FAIL_FIG_S, FAIL_FIG_S))
+    # the info rows (two menu elements; the normal one shares its local_id with its container): lower, wider gaps
+    d = desc_edit.set_elem(d, 'dlog_fail_song_info_prac', pos=(0.0, 20.0 + FAIL_ROW_DOWN))
+    d = _set_nth(d, 'dlog_fail_song_info', 1, pos=(0.0, 20.0 + FAIL_ROW_DOWN))
+    for lid, nth in (('dlog_fail_song_info_prac', 0), ('dlog_fail_song_info', 1)):
+        d = _set_int(d, lid, nth, 'spacing_between', FAIL_ROW_GAP)
+    # options: smaller text, WoR's pitch (item 50 x container scale + spacing)
+    d = desc_edit.set_elem(d, 'dlog_vmenu_container', scale=(FAIL_MENU_S, FAIL_MENU_S))
+    d = _set_int(d, 'dlog_vmenu', 0, 'spacing_between', FAIL_MENU_GAP)
     return d
+
+
+FAIL_TITLE_H, FAIL_TITLE_UP = 37.0, 5.0          # song title: fit height (was 40), raised (canvas units)
+FAIL_WORD_S, FAIL_FIG_S = 0.64, 1.56             # COMPLETED / ON (was 1.0), percent / difficulty (was 2.0)
+FAIL_ROW_DOWN, FAIL_ROW_GAP = 31.0, 10           # info row: lower (canvas units: its Pos is in its container, scale 1), spacing (was 5)
+FAIL_MENU_S, FAIL_MENU_GAP = 0.69, 4             # options: container scale (was 0.74), spacing (was -10): 49.5 ref px
+
+
+def _blocks(d, local_id):
+    import re as _re
+    return [m.start() for m in _re.finditer(rf'StructQBKey local_id = {_re.escape(local_id)}\s*\n', d)]
+
+
+def _set_nth(d, local_id, nth, pos):
+    """set_elem's Pos for the nth element with this local_id (set_elem refuses ambiguous ids)."""
+    a, b = desc_edit._block_bounds(d, _blocks(d, local_id)[nth])
+    import re as _re
+    blk, n = _re.subn(r'(StructFloatX2 Pos\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{pos[0]:.5f}, {pos[1]:.5f}\g<2>', d[a:b], count=1)
+    assert n == 1, f'{local_id}[{nth}]: no Pos'
+    return d[:a] + blk + d[b:]
+
+
+def _set_int(d, local_id, nth, key, value):
+    import re as _re
+    a, b = desc_edit._block_bounds(d, _blocks(d, local_id)[nth])
+    blk, n = _re.subn(rf'StructInt {key} = -?\d+', f'StructInt {key} = {value}', d[a:b], count=1)
+    assert n == 1, f'{local_id}[{nth}]: no {key}'
+    return d[:a] + blk + d[b:]
+
+
+def _set_line(d, local_id, key, value):
+    """A StructQBKey whose value has spaces ("clip top lines"), replaced to the end of its line."""
+    import re as _re
+    a, b = desc_edit._block_bounds(d, _blocks(d, local_id)[0])
+    blk, n = _re.subn(rf'StructQBKey {key} = [^\n]*', f'StructQBKey {key} = {value}', d[a:b], count=1)
+    assert n == 1, f'{local_id}: no {key}'
+    return d[:a] + blk + d[b:]
 
 
 # ---- pause desc (ours; the DE pause scripts use: title_text, glow_alpha, alias_menu, alias_pause_fist_container)
@@ -236,7 +287,8 @@ SCRIPTS = (
     '\t\t:i $parent$ = %GLOBAL%$text_id$\n'
     '\t\t:i $local_id$ = $WoR_HUD_bar$\n'
     f'\t\t:i $texture$ = ${BAR}$\n'
-    '\t\t:i $dims$ = %vec2(330.0,42.0)\n'
+    # WoR's brush runs about twice the option's width (v0.48 fail box overlay: ~560 ref px vs our ~290)
+    '\t\t:i $dims$ = %vec2(600.0,44.0)\n'
     # the text's children are placed from its top-left corner (v0.48 test: pos_anchor centre was ignored there)
     '\t\t:i $Pos$ = (%GLOBAL%$dims$ * %f(0.5))\n'
     '\t\t:i $just$ = :a{$center$$center$:a}\n'

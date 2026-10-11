@@ -1330,3 +1330,12 @@
   (DLG 'fail'): WoR frame and banner title (brown, no shadow), song title in WoR's title font, white, level, fit to
   40 high; COMPLETED / ON in the text font, cream, capitals; percent and difficulty in the text font, red; practice row
   the same; the venue stays visible (dim 0.2). Options already WoR-styled by the option wrapper.
+- Round 3 after the user's test (2026-10-11): (1) rock needle ahead of the LEDs (green lit with the needle on yellow,
+  red lit late): WoR's LED art isn't in thirds (red 31-119, yellow 122-187, green 190-238 px); the needle travel now
+  puts health 0.667 / 1.333 on the art's edges (NEEDLE_H0 52.5 -> NEEDLE_H2 256.5 px). (2) Fail box laid over WoR's
+  on the frame (verify/fail_overlay_v1.jpg): banner title missing (this desc's dlog_title clips: "clip top lines" ->
+  "scale down if larger"), song title x0.93 and 5 up, COMPLETED / ON x0.64, figures x0.78, row 31 down + gap 10,
+  options container 0.69 + spacing 4 (WoR's 49.5 px pitch), popup brush 600 x 44 (WoR's is ~2x wider). (3) You Rock:
+  letters floated ~7 s (WoR's `$apply_gravity$ = $true$` isn't read by the DE: bare flags now), text "YOU ROCK!"
+  passed as is (GetUpperCaseString left the localised "You Rock!"), fit width 640 -> 755 (WoR ~1.2x ours), glow cells
+  upscaled to 128 px (the glow had shrunk 4x with 32 px cells). Lightning confirmed thick and electric in the video.

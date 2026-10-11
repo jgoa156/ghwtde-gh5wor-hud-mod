@@ -62,6 +62,7 @@ def main():
     out += ['};', '']
     ax, ay = wor_1g.needle_anchor_scale()
     out += ['// rock needle: its anchor container scale (finds it), the DE path knots (1 non-vocal player) and ours',
+            f'static const uint32_t kNeedleTex = 0x{qbkey("WoR_HUD_needle_glow"):08x};',
             f'static const float kNeedleAX = {ax:.6f}f, kNeedleAY = {ay:.6f}f;',
             'static const float kNeedleDE[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_1g.DE_NEEDLE_KNOTS) + ' };',
             'static const float kNeedleWoR[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_1g.needle_knots()) + ' };', '']

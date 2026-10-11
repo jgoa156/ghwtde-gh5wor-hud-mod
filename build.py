@@ -720,6 +720,7 @@ def build_ui_pak():
     wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
     wor_font.convert(wor_menus.TITLE_FONT_SRC, os.path.join(src, wor_menus.TITLE_FONT + '.fnt.xen'))
     out = os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen')
+    wor_yourock.you_rock_sound(src)
     sdk('createpak', src, '-out', out, cwd=os.path.dirname(SDK))
     assert os.path.exists(out), 'createpak failed (UI pak)'
     print('built', out, '|', len(pngs), 'textures + font', wor_ui.PILL_FONT)

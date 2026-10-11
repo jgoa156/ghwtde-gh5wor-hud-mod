@@ -699,28 +699,32 @@ namespace
 	// of its length, our tube's LED art at other points. Swapping that script froze the game (1.28), so the needle's
 	// position (set by the script every frame) is remapped here: DE path -> health segment -> our knots. The needle is
 	// the only child of the anchor container whose scale is kNeedleAX / kNeedleAY (unique in the HUD).
-	float g_needle_last[2] = { 1e9f, 1e9f };
+	bool g_needle_logged = false;
 
 	void needle_remap(void *anchor)
 	{
 		if (fabsf(f32(anchor, kElementScale) - kNeedleAX) > 1e-3f || fabsf(f32(anchor, kElementScale + 4) - kNeedleAY) > 1e-3f)
 			return;
-		void *needle = *reinterpret_cast<void **>(field(anchor, kElementFirstChild));
-		if (!needle || !g_sp.star_bar)
+		void *needle = nullptr, *src = nullptr;
+		for (void *c = *reinterpret_cast<void **>(field(anchor, kElementFirstChild)); c;
+		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+			(texture_of(c) == kNeedleTex ? needle : src) = c;
+		if (!needle || !src)
 			return;
-		float &x = f32(needle, kElementPos), &y = f32(needle, kElementPos + 4);
-		if (x == g_needle_last[0] && y == g_needle_last[1])
-			return;                                          // already ours (the script didn't set it again)
+		const float y = f32(src, kElementPos + 4);       // where the DE put its (invisible) needle
 		int i = 0;
 		while (i < 2 && y < kNeedleDE[i + 1][1])
 			++i;
 		const float dy = kNeedleDE[i + 1][1] - kNeedleDE[i][1];
 		float t = dy != 0.0f ? (y - kNeedleDE[i][1]) / dy : 0.0f;
 		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
-		x = kNeedleWoR[i][0] + (kNeedleWoR[i + 1][0] - kNeedleWoR[i][0]) * t;
-		y = kNeedleWoR[i][1] + (kNeedleWoR[i + 1][1] - kNeedleWoR[i][1]) * t;
-		g_needle_last[0] = x;
-		g_needle_last[1] = y;
+		f32(needle, kElementPos) = kNeedleWoR[i][0] + (kNeedleWoR[i + 1][0] - kNeedleWoR[i][0]) * t;
+		f32(needle, kElementPos + 4) = kNeedleWoR[i][1] + (kNeedleWoR[i + 1][1] - kNeedleWoR[i][1]) * t;
+		if (!g_needle_logged)
+		{
+			g_needle_logged = true;
+			log("rock needle: remapped on the WoR LED art (DE y %.1f -> segment %d)", y, i);
+		}
 	}
 
 	void __fastcall element_update_hook(void *element, void *edx)
@@ -1237,7 +1241,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.30 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.31 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

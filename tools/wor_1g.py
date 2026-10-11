@@ -770,15 +770,19 @@ def side_meter():
     needle = E('side_meter_needle', 'SpriteElement', dims=(nd / ax, nd / ay), just=(0, 0), z=20.0,
                rot=LEFT.angle, texture='WoR_HUD_needle_glow', blend='Add')
     root = E('side_meter_band', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
-        E('needle_anchor', 'ContainerElement', pos=anchor, just=(-1, -1), scale=(ax, ay), z=20.0, children=[needle]),
+        # the DE drives an invisible stand-in (needle_src); the HUD fixes plugin places the visible needle from it on
+        # the WoR LED stops (wor_1g.needle_knots) every frame, so the DE never overwrites the shown position
+        E('needle_anchor', 'ContainerElement', pos=anchor, just=(-1, -1), scale=(ax, ay), z=20.0, children=[
+            E('needle_src', 'SpriteElement', dims=(4, 4), just=(0, 0), z=20.0, alpha=0.0, texture='WoR_HUD_blank'),
+            needle]),
         E('side_meter_red_ON', 'SpriteElement', pos=add(LEFT.pos, (-G1[0], -G1[1])), dims=(64, 256),
           just=(0, 1), scale=(LEFT.sx, RAIL_SY), rot=LEFT.rot, z=19.0, alpha=0.0, texture='WoR_HUD_rm_red',
           blend='Add'),
         *[dummy(f'side_meter_{c}_ON') for c in ('yellow', 'green')],
         dummy('side_meter_red_glow'),
     ])
-    props = [('side_meter_needle_pos', 'side_meter_needle', 'Pos'),
-             ('side_meter_needle_scale', 'side_meter_needle', 'Scale'),
+    props = [('side_meter_needle_pos', 'needle_src', 'Pos'),
+             ('side_meter_needle_scale', 'needle_src', 'Scale'),
              ('SIDE_meter_red_ON_alpha', 'side_meter_red_ON', 'alpha'),
              ('SIDE_meter_green_ON_alpha', 'side_meter_green_ON', 'alpha'),
              ('SIDE_meter_yellow_ON_alpha', 'side_meter_yellow_ON', 'alpha'),

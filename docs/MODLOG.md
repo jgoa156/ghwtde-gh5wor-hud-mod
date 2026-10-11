@@ -1367,3 +1367,9 @@
   kNeedleAX/AY, its child needle pos DE path -> health segment -> wor_1g.needle_knots()); the script copy no longer ships.
 - YOU ROCK freeze (user: YOU ROCK freezes the game now): the new $playsound$ of WoR_HUD_you_rock is off, and the sound
   file / LoadSound are out of the build until understood. Popup title 2 px lower (BANNER_Y - 13).
+
+- Plugin 1.31: the 1.30 per-frame remap did nothing visible (the DE script writes the needle after our update). Now the
+  DE drives an invisible stand-in (needle_src, props side_meter_needle_pos/scale) and the plugin sets the visible needle
+  from it through needle_knots every frame (log: "rock needle: remapped"). Health 1.0 stays mid-yellow (user: start is right).
+- YOU ROCK sound back: the MP3 had an ID3v2 tag (DE sounds start with the MPEG frame); now -id3v2_version 0 etc.,
+  checked by an assert. Likely cause of the YOU ROCK freeze.

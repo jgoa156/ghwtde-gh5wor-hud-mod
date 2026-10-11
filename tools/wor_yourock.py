@@ -107,7 +107,10 @@ def you_rock_sound(out_dir):
     for w in pcm:
         args += ['-i', w]
     mm.ffmpeg('-y', *args, '-filter_complex', f'amix=inputs={len(pcm)}:normalize=0,alimiter=limit=0.95:level=false',
-              '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '320k', '-f', 'mp3', out)
+              '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '320k', '-joint_stereo', '1',
+              # like the DE's own sounds: MPEG frames from byte 0 (the ID3 tag froze the game at YOU ROCK)
+              '-id3v2_version', '0', '-write_id3v1', '0', '-map_metadata', '-1', '-f', 'mp3', out)
+    assert open(out, 'rb').read(2) == bytes((0xff, 0xfb)), 'YOU ROCK sound: not starting with an MPEG frame'
     shutil.rmtree(work, ignore_errors=True)
     return out
 
@@ -270,7 +273,7 @@ def ported_scripts():
             assert body.count('$fontgrid_title_a1$') == 1, 'create_exploding_text: font changed'
             body = body.replace('$fontgrid_title_a1$', f'${TITLE_FONT}$')
             # WoR plays its YOU ROCK sound as the sequence starts (audio_ui_gameplay_play_you_rock_sfx)
-            # (2026-10-11: the $playsound$ here froze the game at YOU ROCK; off until understood)
+            body = f'\n\t:i $playsound$${YR_SOUND}$$vol$ = %f({YR_SOUND_VOL:.1f})$buss$ = $front_end$' + body
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])

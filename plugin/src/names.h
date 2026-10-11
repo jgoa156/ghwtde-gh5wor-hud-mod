@@ -82,6 +82,7 @@ static const uint32_t kStarFire[24] = {
 };
 
 // rock needle: its anchor container scale (finds it), the DE path knots (1 non-vocal player) and ours
+static const uint32_t kNeedleTex = 0x813b360d;
 static const float kNeedleAX = 1.697040f, kNeedleAY = 1.560412f;
 static const float kNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 11.0000f, -24.0000f }, { 28.0000f, -57.0000f }, { 41.0000f, -80.0000f } };
 static const float kNeedleWoR[4][2] = { { -4.3211f, 8.4314f }, { 13.6667f, -26.6667f }, { 27.3333f, -53.3333f }, { 37.2819f, -72.7451f } };

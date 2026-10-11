@@ -21,11 +21,24 @@ import paths, wor_ui  # noqa: E402
 
 THEME, THEME_TITLE = wor_ui.THEME, wor_ui.THEME_TITLE
 TITLE_FONT = 'WoR_HUD_title_a1'
-MATERIALS = ('Mat_Lightning_Arc_Anim01', 'Mat_Lightning_Arc_Anim02', 'Mat_Lightning_ball_anim01',
-             'Mat_Lightning_ball_anim02', 'Mat_UROK_Xplosion1', 'sys_Particle_Spark01_sys_Particle_Spark01')
-# their textures (WoR basic_gems, keyed by tex\models\highway\<name>.dds): lightining_arc_anim01, ball_lightning01,
-# note_hit_xplosion1, lil_spark, spark02, lil_star
-TEXTURES = (0x0c30522c, 0x249c3fc1, 0xeaa76a98, 0x44e7b154, 0xadbdbfa2, 0x45c726d2)
+# v0.48 video comparison: WoR's lightning, glow balls and explosion are AnimatedTexture_UI flipbooks (bolts 1x16
+# cells, balls 4x4 of 32 px at 20 fps, explosion 4x4 of 128 px played once at 30 fps). The DE doesn't animate them:
+# it draws the whole sheet squashed (thin lines, a soft fog, a weak burst). So:
+#   - sprites (bolts, the balls at their ends, the explosion) get one texture per frame (FLIPBOOKS, in the UI pak),
+#     switched by WoR_HUD_flipbook, like the loading screen's wheel;
+#   - the glow's particles (a particle system takes one material) get static one-cell materials built like WoR's
+#     spark material (ImmediateMode_UI / UI_Col_Tex_2D / Add, which the DE draws): GLOW_MATS.
+MATERIALS = ('sys_Particle_Spark01_sys_Particle_Spark01',)
+# their textures (WoR basic_gems, keyed by tex\models\highway\<name>.dds): lil_spark, spark02, lil_star
+TEXTURES = (0x44e7b154, 0xadbdbfa2, 0x45c726d2)
+SHEETS = {   # WoR sheet (basic_gems key) -> (frame texture prefix, cells across, down)
+    0x0c30522c: ('WoR_HUD_bolt_', 1, 16),        # lightining_arc_anim01
+    0x249c3fc1: ('WoR_HUD_ball_', 4, 4),         # ball_lightning01
+    0xeaa76a98: ('WoR_HUD_urok_', 4, 4),         # note_hit_xplosion1
+}
+GLOW_CELLS = (0, 5, 10, 15)                      # ball cells for the glow's static materials
+GLOW_MATS = tuple(f'WoR_HUD_Mat_ball_{c}' for c in GLOW_CELLS)
+GLOW_TEX_PATH = 'tex\\models\\highway\\wor_hud_ball_cell{}.dds'
 PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
     'You_Rock_Text_Glow': 'scripts/guitar/menu/yourock.qb.xen',
     'You_Rock_Text_Glow_Cleanup': 'scripts/guitar/menu/yourock.qb.xen',
@@ -49,34 +62,72 @@ PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
 }
 
 
-# v0.48 test: the glow and the bolts came out white: the DE doesn't apply the scripts' particle / sprite colours with
-# these animated materials, so WoR's colours are baked into the (greyscale) textures: bolts in You_Rock_lightning_01's
-# rgba1 / rgba2 average, the lightning balls between You_Rock_Text_Glow's start (123 grey) and end (0,64,255) colours.
-TINT = {0x0c30522c: (154, 190, 255), 0x249c3fc1: (90, 140, 255)}
 
 
 # WoR's lightning bolts are created under root_window (no group the ultrawide add-on can rescale: v0.48 test, they
 # stayed in the centred 16:9 picture while the other YOU ROCK themes fill the screen): ours go under FX_CONTAINER, a
 # full-screen container the add-on covers like the other YOU ROCK layouts (as it does you_rock_physics).
 FX_CONTAINER = 'WoR_HUD_yourock_fx'
+# the gameplay 2D (the DE's toggle_highway / hide_hud ids): highways, vocal highways, HUD
+HIDE_ON_YOU_ROCK = ('gem_containerp1', 'gem_containerp2', 'gem_containerp3', 'gem_containerp4', 'vocals_highway_p1',
+                    'vocals_highway_p2', 'hud_root')
+
+
+# the glow's cells: WoR's colours baked in (the particle colours may not apply): between You_Rock_Text_Glow's start
+# (123 grey) and end (0,64,255) colours
+GLOW_TINT = (90, 140, 255)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
+
+
+def _cells(key):
+    from PIL import Image
+    prefix, nx, ny = SHEETS[key]
+    sheet = Image.open(os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{key:08x}.png')).convert('RGBA')
+    w, h = sheet.size[0] // nx, sheet.size[1] // ny
+    return [sheet.crop((x * w, y * h, (x + 1) * w, (y + 1) * h)) for y in range(ny) for x in range(nx)]
+
+
+def ui_images(out_dir):
+    """One PNG per flipbook frame (UI pak; sprites tint them with their rgba): returns the paths."""
+    out = []
+    for key, (prefix, _, _) in SHEETS.items():
+        for i, cell in enumerate(_cells(key)):
+            path = os.path.join(out_dir, f'{prefix}{i}.png')
+            cell.save(path)
+            out.append(path)
+    return out
+
+
+def _qbkey(s):
+    import zlib
+    return ~zlib.crc32(s.lower().encode()) & 0xffffffff
 
 
 def texture_pngs():
-    """[(texture key, png path)]: WoR's effect textures, the tinted ones written to build/pak_src/wor_yourock."""
+    """[(texture key, png path)] for the gem paks (material textures): WoR's spark textures + the glow's tinted cells."""
     from PIL import Image
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'build', 'pak_src', 'wor_yourock')
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(_OUT, exist_ok=True)
+    out = [(k, os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{k:08x}.png')) for k in TEXTURES]
+    cells = _cells(0x249c3fc1)
+    for c in GLOW_CELLS:
+        r, g, b, a = cells[c].split()
+        im = Image.merge('RGBA', [ch.point(lambda v, m=m: v * m // 255) for ch, m in zip((r, g, b), GLOW_TINT)] + [a])
+        path = os.path.join(_OUT, f'ball_cell{c}.png')
+        im.save(path)
+        out.append((_qbkey(GLOW_TEX_PATH.format(c).replace('\\\\', '\\')), path))
+    return out
+
+
+def material_groups(spark_group):
+    """The glow's static materials: WoR's spark material group (ImmediateMode_UI, UI_Col_Tex_2D, Add) renamed, with
+    one ball cell as its texture."""
     out = []
-    for k in TEXTURES:
-        src = os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{k:08x}.png')
-        if k in TINT:
-            im = Image.open(src).convert('RGBA')
-            r, g, b, a = im.split()
-            t = TINT[k]
-            im = Image.merge('RGBA', [c.point(lambda v, m=m: v * m // 255) for c, m in zip((r, g, b), t)] + [a])
-            src = os.path.join(out_dir, f'{k:08x}.png')
-            im.save(src)
-        out.append((k, src))
+    for name, c in zip(GLOW_MATS, GLOW_CELLS):
+        g = spark_group.replace('StructQBKey name = sys_Particle_Spark01_sys_Particle_Spark01', f'StructQBKey name = {name}')
+        g = re.sub(r'textureproperty = \S+', lambda m: 'textureproperty = ' + GLOW_TEX_PATH.format(c), g)
+        assert name in g and f'cell{c}.dds' in g
+        out.append(g)
     return out
 
 
@@ -94,6 +145,75 @@ def _rename(body):
         body = re.sub(r'\$' + re.escape(n) + r'\$', f'$WoR_HUD_{n}$', body)
         body = re.sub(r'StructQBKey ' + re.escape(n) + r'\b', f'StructQBKey WoR_HUD_{n}', body)
     return body
+
+
+FLIPBOOK = (
+    # switches a sprite's texture to <prefix><frame> every `step` game frames until the sprite is gone (loop) or the
+    # last frame shows (loop = 0); checks the sprite first (SetScreenElementProps on a missing element crashes)
+    'Script WoR_HUD_flipbook [\n'
+    '\t${\n\t\tStructInt frames = 16\n\t\tStructInt step = 3\n\t\tStructInt start = 0\n\t\tStructInt loop = 1\n\t}$\n'
+    '\t:i $f$ = %GLOBAL%$start$\n'
+    '\t:i while\n'
+    '\t\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+    '\t\t\t:i continue\n'
+    '\t\t:i endif\n'
+    '\t\t:i $FormatText$$checksumname$ = $tex$%s("%p%f")$p$ = %GLOBAL%$prefix$$f$ = %GLOBAL%$f$\n'
+    '\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$texture$ = %GLOBAL%$tex$\n'
+    '\t\t:i $f$ = (%GLOBAL%$f$ + %i(1))\n'
+    '\t\t:i if (%GLOBAL%$f$ >= %GLOBAL%$frames$)\n'
+    '\t\t\t:i if (%GLOBAL%$loop$ = %i(0))\n'
+    '\t\t\t\t:i continue\n'
+    '\t\t\t:i endif\n'
+    '\t\t\t:i $f$ = %i(0)\n'
+    '\t\t:i endif\n'
+    '\t\t:i $wait$%GLOBAL%$step$$gameframes$\n'
+    '\t:i loop_to \n'
+    '\t:i endfunction\n]\n')
+
+# sprite material -> (texture prefix, frames, game frames per frame (60 fps), start frame, loop)
+SPRITE_FLIPS = {
+    'Mat_Lightning_Arc_Anim01': ('WoR_HUD_bolt_', 16, 3, 0, 1),     # 20 fps
+    'Mat_Lightning_Arc_Anim02': ('WoR_HUD_bolt_', 16, 3, 8, 1),     # m_Offset 1: another phase
+    'Mat_Lightning_ball_anim01': ('WoR_HUD_ball_', 16, 3, 0, 1),
+    'Mat_Lightning_ball_anim02': ('WoR_HUD_ball_', 16, 3, 8, 1),
+    'Mat_UROK_Xplosion1': ('WoR_HUD_urok_', 16, 2, 0, 0),           # 30 fps, once
+}
+
+
+def _sprite_flipbooks(body):
+    """Each `$material$ = $<animated>$` sprite: its first frame as texture, additive, and WoR_HUD_flipbook spawned
+    on it right after it is created (its id is kept in the line after the CreateScreenElement)."""
+    out, i = '', 0
+    for m in re.finditer(r'\$material\$ = \$(\w+)\$', body):
+        mat = m.group(1)
+        if mat not in SPRITE_FLIPS:
+            continue
+        prefix, frames, step, start, loop = SPRITE_FLIPS[mat]
+        out += body[i:m.start()] + f'$texture$ = ${prefix}{start}$\n\t\t:i $Blend$ = $Add$'
+        i = m.end()
+    body = out + body[i:]
+    # spawn after each `%GLOBAL%$<var>$ = %GLOBAL%$id$` that follows such a sprite
+    def spawn(mm):
+        blk_start = body.rfind('$CreateScreenElement$', 0, mm.start())
+        if body.rfind('$create2dparticlesystem$', 0, mm.start()) > blk_start:
+            return mm.group(0)                           # a particle system's id, not a sprite's
+        tex = re.search(r'\$texture\$ = \$(WoR_HUD_(?:bolt|ball|urok)_)(\d+)\$', body[blk_start:mm.start()])
+        if not tex:
+            return mm.group(0)
+        prefix, start = tex.group(1), int(tex.group(2))
+        frames, step, _, loop = next((f, st, s0, lp) for (pf, f, st, s0, lp) in SPRITE_FLIPS.values()
+                                     if pf == prefix and s0 == start)
+        return (mm.group(0) + f'\t:i $spawnscriptnow$$WoR_HUD_flipbook$$params$ = :s{{$id$ = %GLOBAL%${mm.group(1)}$'
+                f'$prefix$ = %s("{prefix}")$frames$ = %i({frames})$step$ = %i({step})$start$ = %i({start})'
+                f'$loop$ = %i({loop}):s}}\n')
+    return re.sub(r'\t:i %GLOBAL%\$(\w+)\$ = %GLOBAL%\$id\$\n', spawn, body)
+
+
+def _glow_materials(body):
+    """You_Rock_Text_Glow's particle systems: the animated ball materials -> the static one-cell ones, in turn."""
+    k = iter(range(1000))
+    return re.sub(r'\$material\$ = \$Mat_Lightning_ball_anim0[12]\$',
+                  lambda m: f'$material$ = ${GLOW_MATS[next(k) % len(GLOW_MATS)]}$', body)
 
 
 def ported_scripts():
@@ -116,6 +236,11 @@ def ported_scripts():
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])
+        if name == 'You_Rock_Text_Glow':
+            body = _glow_materials(body)
+        if name in ('p2p_lightning_create_fx', 'UROK_FX_XPLOSION01'):
+            body = _sprite_flipbooks(body)
+            assert 'Mat_Lightning' not in body and 'Mat_UROK' not in body, f'{name}: animated material left'
         if name == 'p2p_lightning_create_fx':
             assert body.count('$parent$ = $root_window$') == 1, 'p2p_lightning_create_fx: parent changed'
             body = body.replace('$parent$ = $root_window$', f'$parent$ = ${FX_CONTAINER}$')
@@ -149,6 +274,9 @@ WRAPPER = (
     '\t\t:i return\n'
     '\t:i endif\n'
     '\t:i $destroy_all_exploding_text$\n'
+    # WoR clears the highway and HUD before YOU ROCK (v0.48 video: ours showed them for ~0.8 s): faded out here
+    + ''.join(f'\t:i if $ScreenElementExists$$id$ = ${e}$\n\t\t:i ${e}$.$se_setprops$$alpha$ = %f(0.0)$time$ = %f(0.2)\n'
+              '\t:i endif\n' for e in HIDE_ON_YOU_ROCK) +
     f'\t:i if NOT $ScreenElementExists$$id$ = ${FX_CONTAINER}$\n'
     '\t\t:i $CreateScreenElement$:s{\n'
     f'\t\t\t:i $type$ = $ContainerElement$\n\t\t\t:i $parent$ = $root_window$\n\t\t\t:i $id$ = ${FX_CONTAINER}$\n'
@@ -169,7 +297,7 @@ WRAPPER = (
 
 
 def scripts():
-    return WRAPPER + '\n' + ported_scripts()
+    return WRAPPER + '\n' + FLIPBOOK + '\n' + ported_scripts()
 
 
 def load_script():

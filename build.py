@@ -626,9 +626,12 @@ def dark_metal_sections(work):
         arr, found = darken_materials(arr, DARK_K)
         all_found += found
         if key == '0x345d04a2':
-            for name in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS:
+            for name in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS + wor_yourock.GLOW_MATS:
                 assert f'StructQBKey name = {name}\n' not in text, f'{name} already in the DE materials'
             groups = ''.join(wor_material_group(n) + '\n' for n in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS)
+            # the YOU ROCK glow's static one-cell materials, built on WoR's spark material (tools/wor_yourock.py)
+            groups += ''.join(g + '\n' for g in wor_yourock.material_groups(
+                wor_material_group('sys_Particle_Spark01_sys_Particle_Spark01')))
             end = arr.rindex(']')
             arr = arr[:end] + groups + arr[end:]
         secs.append(arr.replace(f'SectionArray {key}', f'SectionArray {new}', 1))
@@ -677,7 +680,7 @@ def build_ui_pak():
     src = os.path.join(ROOT, 'build', 'pak_src', wor_ui.UI_PAK)
     shutil.rmtree(src, ignore_errors=True)
     os.makedirs(src)
-    pngs = wor_ui.pill_images(src) + wor_menus.images(src)
+    pngs = wor_ui.pill_images(src) + wor_menus.images(src) + wor_yourock.ui_images(src)
     art = os.path.join(src, wor_ui.LOAD_TEX + '.png')
     wor_ui.loading_art().save(art)
     pngs.append(art)

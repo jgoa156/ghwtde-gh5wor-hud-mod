@@ -1318,3 +1318,10 @@
   before the text).
 - Cleanup: GHWT crash dumps, the add-on's old catalog, menu-music test outputs and extracted rars, old scratch
   folders moved to the Recycle Bin (C: had 4 GB free).
+- YOU ROCK flipbooks: WoR's lightning (1x16 cells), glow balls (4x4 of 32 px, 20 fps) and explosion (4x4 of 128 px,
+  once at 30 fps) are AnimatedTexture_UI flipbooks the DE doesn't animate (it draws the whole sheet: thin lines, a
+  soft fog, a weak burst). Sprites (bolts, the balls at their ends, the explosion's 4 rotated sprites) now get one
+  texture per frame (WoR_HUD_bolt_ / _ball_ / _urok_ 0..15, UI pak) switched by WoR_HUD_flipbook (checks the sprite
+  exists first); the glow's particle systems get static one-cell materials (WoR_HUD_Mat_ball_0/5/10/15, built on WoR's
+  spark material: ImmediateMode_UI / UI_Col_Tex_2D / Add; textures tex\models\highway\wor_hud_ball_cellN.dds, tinted,
+  in the gem paks). Highway, vocal highways and HUD fade out (0.2 s) as the text comes in, like WoR.

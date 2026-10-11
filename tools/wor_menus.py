@@ -26,7 +26,8 @@ TITLE_FONT_SRC = paths.wor('ui_shared', 'fontgrid_title_a1.fnt.xen')
 TEXT_FONT = wor_ui.PILL_FONT                             # WoR's fontgrid_text_a1
 BLANK, WHITE, FRAME, BAR = 'WoR_HUD_ui_blank', 'WoR_HUD_white', 'WoR_HUD_dialog_frame', 'WoR_HUD_light_bar'
 GOLD, WHITE_C, RED = (238, 190, 92, 255), (255, 255, 255, 255), (232, 36, 44, 255)
-CREAM, BROWN = (232, 214, 170, 255), (60, 34, 14, 255)
+CREAM, BROWN = (232, 214, 170, 255), (63, 53, 42, 255)   # title brown: #3f352a (user)
+FIG_RED = (225, 71, 78, 255)                                 # fail box percent / difficulty: #e1474e (user, WoR)
 
 # ---- assets
 
@@ -83,7 +84,7 @@ def popup_desc(kind, de_text):
     for tex in HIDE_TEX:
         d = re.sub(rf'StructQBKey texture = {re.escape(tex)}\b', f'StructQBKey texture = {BLANK}', d)
     d = desc_edit.set_elem(d, 'dialog_bg', texture=FRAME, pos=(0, 0), dims=(980, 534))
-    d = desc_edit.set_elem(d, 'title_text_container', pos=(640, BANNER_Y - 13))   # user: 2 px lower (was -15)
+    d = desc_edit.set_elem(d, 'title_text_container', pos=(640, BANNER_Y - 9))   # user: lower again (was -15, -13)
     # v0.48 test: no shadow on the title, slightly bigger (fit to 52 high instead of 44)
     d = desc_edit.set_elem(d, title, font=TITLE_FONT, dims=(600, 52), rgba=BROWN)
     d = desc_edit.set_flag(d, title, 'use_shadow', 'false')
@@ -115,11 +116,14 @@ def fail_desc(d):
     d = desc_edit.set_elem(d, 'dlog_fail_song_title', font=TITLE_FONT, dims=(580, FAIL_TITLE_H), rot=0.0, rgba=WHITE_C,
                            pos=(-1.43616, -2.0 - FAIL_TITLE_UP))
     for lid in ('dlog_fail_song_completed', 'dlog_fail_song_on', 'dlog_fail_song_completed_prac', 'dlog_fail_song_on_prac'):
-        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=CREAM, scale=(FAIL_WORD_S, FAIL_WORD_S))
+        # their boxes were narrower than the words (250 / 110 at fit 'scale each line if larger', per axis): COMPLETED
+        # was squeezed sideways (user: WoR's is wider); boxes wide enough for the natural width
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=CREAM, scale=(FAIL_WORD_S, FAIL_WORD_S),
+                               dims=(FAIL_WORD_W['on' if lid.endswith(('_on', '_on_prac')) else 'completed'], 100.0))
         d = desc_edit.set_flag(d, lid, 'text_case', 'upper')
     for lid in ('dlog_fail_song_percent', 'dlog_fail_song_difficulty', 'dlog_fail_song_percent_prac',
                 'dlog_fail_song_difficulty_prac'):
-        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=RED, scale=(FAIL_FIG_S, FAIL_FIG_S))
+        d = desc_edit.set_elem(d, lid, font=TEXT_FONT, rgba=FIG_RED, scale=(FAIL_FIG_S, FAIL_FIG_S))
     # the info rows (two menu elements; the normal one shares its local_id with its container): lower, wider gaps
     d = desc_edit.set_elem(d, 'dlog_fail_song_info_prac', pos=(0.0, 20.0 + FAIL_ROW_DOWN))
     d = _set_nth(d, 'dlog_fail_song_info', 1, pos=(0.0, 20.0 + FAIL_ROW_DOWN))
@@ -132,6 +136,7 @@ def fail_desc(d):
 
 
 FAIL_TITLE_H, FAIL_TITLE_UP = 37.0, 5.0          # song title: fit height (was 40), raised (canvas units)
+FAIL_WORD_W = {'completed': 400.0, 'on': 160.0}   # text box widths (DE 250 / 110)
 FAIL_WORD_S, FAIL_FIG_S = 0.64, 1.56             # COMPLETED / ON (was 1.0), percent / difficulty (was 2.0)
 FAIL_ROW_DOWN, FAIL_ROW_GAP = 31.0, 10           # info row: lower (canvas units: its Pos is in its container, scale 1), spacing (was 5)
 FAIL_MENU_S, FAIL_MENU_GAP = 0.69, 4             # options: container scale (was 0.74), spacing (was -10): 49.5 ref px

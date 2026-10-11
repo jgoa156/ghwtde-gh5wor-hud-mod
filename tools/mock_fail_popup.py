@@ -65,23 +65,27 @@ def row(img, parts, cx, cy, gap=10):
 
 def main():
     src, out = sys.argv[1], sys.argv[2]
+    title, song, percent, difficulty = 'FAILED', 'Freak On a Leash', '22', 'EXPERT'
+    options = ('RETRY SONG', 'NEW SONG', 'QUIT')
     shot = Image.open(src).convert('RGB')
     w, h = shot.size
     cw = round(h * 16 / 9)
     bg = shot.crop(((w - cw) // 2, 0, (w - cw) // 2 + cw, h)).resize((1280, 720), Image.LANCZOS)
-    img = ImageEnhance.Brightness(bg).enhance(0.5).convert('RGBA')
+    img = ImageEnhance.Brightness(bg).enhance(0.8).convert('RGBA')
     frame = Image.open(os.path.join(PREVIEW, 'WoR_HUD_dialog_frame.png')).convert('RGBA').resize((980, 534), Image.LANCZOS)
     img.alpha_composite(frame, (150, 99))
-    centre(img, text(TITLE, 'SONG ENDED', 40, BROWN), 640, 168)                      # banner, no shadow
-    centre(img, text(TITLE, 'Freak On a Leash', 50, RED, shadow=True), 640, 262)     # song title (title case)
-    row(img, [text(TEXT, 'Completed', 30, CREAM), text(TITLE, '22%', 40, GOLD, True), text(TEXT, 'on', 30, CREAM),
-              text(TITLE, 'Expert', 40, GOLD, True)], 640, 318, gap=12)
-    bar = Image.open(os.path.join(PREVIEW, 'WoR_HUD_light_bar.png')).convert('RGBA').resize((330, 42), Image.LANCZOS)
-    for k, (label, focus) in enumerate((('Retry Song', True), ('New Song', False), ('Main Menu', False))):
-        y = 425 + 42 * k
+    # after WoR's own fail box (user reference, 2026-10-11): FAILED in the banner, the song in the title font (white),
+    # COMPLETED / % ON in the text font (cream), the percent and difficulty large in red, gold options + brush
+    centre(img, text(TITLE, title, 40, BROWN), 640, 168)
+    centre(img, text(TITLE, song, 34, WHITE, shadow=True), 640, 262)
+    row(img, [text(TEXT, 'COMPLETED', 26, CREAM), text(TEXT, percent, 46, RED), text(TEXT, '%', 26, CREAM), text(TEXT, 'ON', 26, CREAM),
+              text(TEXT, difficulty, 46, RED)], 640, 318, gap=12)
+    bar = Image.open(os.path.join(PREVIEW, 'WoR_HUD_light_bar.png')).convert('RGBA').resize((420, 40), Image.LANCZOS)
+    for k, (label, focus) in enumerate(((o, i == 0) for i, o in enumerate(options))):
+        y = 430 + 40 * k
         if focus:
             centre(img, bar, 640, y)
-        centre(img, text(TITLE, label, 34, WHITE if focus else GOLD), 640, y)
+        centre(img, text(TITLE, label, 30, WHITE if focus else GOLD, shadow=True), 640, y)
     img.convert('RGB').save(out)
     print('wrote', out)
 

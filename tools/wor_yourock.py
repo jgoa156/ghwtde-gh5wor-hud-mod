@@ -47,6 +47,12 @@ PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
 TINT = {0x0c30522c: (154, 190, 255), 0x249c3fc1: (90, 140, 255)}
 
 
+# WoR's lightning bolts are created under root_window (no group the ultrawide add-on can rescale: v0.48 test, they
+# stayed in the centred 16:9 picture while the other YOU ROCK themes fill the screen): ours go under FX_CONTAINER, a
+# full-screen container the add-on covers like the other YOU ROCK layouts (as it does you_rock_physics).
+FX_CONTAINER = 'WoR_HUD_yourock_fx'
+
+
 def texture_pngs():
     """[(texture key, png path)]: WoR's effect textures, the tinted ones written to build/pak_src/wor_yourock."""
     from PIL import Image
@@ -93,7 +99,11 @@ def ported_scripts():
         e = t.index('endfunction', m.end())
         body = t[m.end():e]
         assert not any(a in body for a in ('FIXME', 'select(', ':OFFSET', ':POS(')), f'{name}: decompiler artifact'
-        out.append(f'Script WoR_HUD_{name} [' + _rename(body) + 'endfunction\n]\n')
+        body = _rename(body)
+        if name == 'p2p_lightning_create_fx':
+            assert body.count('$parent$ = $root_window$') == 1, 'p2p_lightning_create_fx: parent changed'
+            body = body.replace('$parent$ = $root_window$', f'$parent$ = ${FX_CONTAINER}$')
+        out.append(f'Script WoR_HUD_{name} [' + body + 'endfunction\n]\n')
     # p2p_get_connector_length: |a| / |b| by comparison, the hypotenuse by Newton's method (12 steps)
     out.append(
         'Script WoR_HUD_p2p_get_connector_length [\n'
@@ -171,6 +181,12 @@ WRAPPER = (
     '\t\t:i return\n'
     '\t:i endif\n'
     '\t:i $destroy_all_exploding_text$\n'
+    f'\t:i if NOT $ScreenElementExists$$id$ = ${FX_CONTAINER}$\n'
+    '\t\t:i $CreateScreenElement$:s{\n'
+    f'\t\t\t:i $type$ = $ContainerElement$\n\t\t\t:i $parent$ = $root_window$\n\t\t\t:i $id$ = ${FX_CONTAINER}$\n'
+    '\t\t\t:i $dims$ = %vec2(1280.0,720.0)\n\t\t\t:i $just$ = :a{$left$$top$:a}\n\t\t\t:i $Pos$ = %vec2(0.0,0.0)\n'
+    '\t\t:i :s}\n'
+    '\t:i endif\n'
     '\t:i $spawnscriptnow$$WoR_HUD_create_exploding_text$$params$ = :s{$text$ = %GLOBAL%$text$:s}\n'
     '\t:i if $ScreenElementExists$$id$ = $HandsOfGod$\n'
     '\t\t:i $DestroyScreenElement$$id$ = $HandsOfGod$\n'

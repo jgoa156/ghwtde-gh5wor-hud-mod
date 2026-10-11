@@ -1297,3 +1297,14 @@
 - Multiplayer mocks saved (docs/mocks/mock_modes_v1.jpg, tools/mock_modes.py), parked.
 - Menu music installer (ghwtde-ghwor-menu-music-mod/installer, untracked): merges ticked games' DE menu music mods
   into one; package in E:\Dev\ghwt\menu-music-all\dist (313 MB, 10 sources, all games = 302 MB bank). Not published.
+- Later (2026-10-11): ReShade "trouble" = PD80 bloom's three noise textures missing (pd80_bluenoise, _rgba,
+  pd80_gaussnoise: an error on every effect reload): restored from the 2026-10-06 game backup into the game and
+  extras/reshade (MIT, credited). Ultrawide add-on: its developer catalog (a line + fflush per new element; moving
+  text = new every frame, 16.8 MB) and auto frame dumps now off by default (Catalog=0).
+- Popups: message text one size (MSG_SCALE 0.42, room for ~5 lines; a one-line message was 0.67, longer ones
+  fit-shrunk); the DE's 35% dim layer (gradient_256) is opaque black, below the frame (user: full-screen background,
+  like the Metallica theme).
+- You Rock on ultrawide: WoR's bolts now go under WoR_HUD_yourock_fx (881079ee); the add-on covers it plus
+  you_rock_physics (6139b417, glow / explosion sprites) and exploding_particle_container (32cc87b4), like the other
+  YOU ROCK layouts (they stayed in the centred 16:9 picture).
+- Fail box mock v2 after the user's WoR FAILED screenshot (verify/mock_fail_popup_v2.png).

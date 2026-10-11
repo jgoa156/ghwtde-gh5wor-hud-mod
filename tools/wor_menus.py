@@ -54,6 +54,7 @@ DLG = {   # ours -> (DE desc global, file in ui_shared_wtde, title id, message i
     'none': ('a26a853d', '0x0d1e6a8a.qb.xen', 'alert_title', 'alert_message', None),
 }
 HIDE_TEX = ('0x7aa12d50', 'mixer_glow_64', 'dialog_side_chain', 'dialog_chain', 'dialog_bg_menu')
+MSG_SCALE = 0.42                                          # popup message text (was 0.67, fit-shrunk when long)
 BANNER_Y = 168.0                                          # the frame's gold banner middle (canvas units)
 
 
@@ -79,7 +80,13 @@ def popup_desc(kind, de_text):
     # v0.48 test: no shadow on the title, slightly bigger (fit to 52 high instead of 44)
     d = desc_edit.set_elem(d, title, font=TITLE_FONT, dims=(600, 52), rgba=BROWN)
     d = desc_edit.set_flag(d, title, 'use_shadow', 'false')
-    d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, 232), dims=(720, 150), scale=(0.67, 0.67), rgba=CREAM)
+    # v0.48 test: one message size for every box (a one-line message showed at full 0.67 while longer ones were
+    # scaled down to fit): smaller, with room for ~5 lines so none gets scaled down
+    d = desc_edit.set_elem(d, message, font=TEXT_FONT, pos=(640, 232), dims=(720, 180), scale=(MSG_SCALE, MSG_SCALE),
+                           rgba=CREAM)
+    # all-black screen behind the box (user: like the Metallica theme's full-screen background): the DE's dim layer
+    # (gradient_256, 35% subtract) made opaque black, below the frame
+    d = desc_edit.set_elem(d, 'gradient_256', texture=WHITE, rgba=(0, 0, 0, 255), alpha=1.0, blend='Blend', z=490)
     if menu_y is not None:
         d = desc_edit.set_elem(d, 'dlog_vmenu_container', pos=(0.13092, menu_y))
     return d

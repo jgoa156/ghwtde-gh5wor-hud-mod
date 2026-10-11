@@ -430,14 +430,7 @@ def main():
         shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(GAME, 'DATA', 'PAK'))
         print('installed DATA\\PAK\\' + wor_ui.UI_PAK + '.pak.xen')
         print('installed to', dst, '+ DATA\\PAK\\' + PAK_NAME + '.pak.xen')
-        mm = menu_music()[0]
-        # the DE loads ONE menu music mod: the collection replaces 0.48's own WoR-only folder
-        shutil.rmtree(os.path.join(GAME, 'DATA', 'MODS', 'WoR Main Menu Music'), ignore_errors=True)
-        shutil.rmtree(os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.WOR_MOD[0]), ignore_errors=True)   # (packaged one)
-        mm_dst = os.path.join(GAME, 'DATA', 'MODS', wor_menu_music.MOD_DIR)
-        shutil.rmtree(mm_dst, ignore_errors=True)
-        shutil.copytree(mm, mm_dst)
-        print('installed', mm_dst)
+        # (menu music is no longer installed from here: the All Menu Songs Installer builds the collection, levelled)
 
     if '--package' in sys.argv:
         package()

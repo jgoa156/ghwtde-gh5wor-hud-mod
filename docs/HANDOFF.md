@@ -84,7 +84,10 @@ ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in gam
 
 ## Next steps
 
-1. **Popup arrows** (user: yes): WoR's are ui_shared `Dropdown_Arrow` (gold chevron, flipped for down); mock
+1. **Popup arrows: installed, awaiting a test + calibration.** WoR_HUD_create_popup_warning_menu creates two
+   sprites under PopupElement, placed from the first / last option's absolute position (GetScreenElementChildren +
+   GetScreenElementPosition absolute) + ARROW_UP_DY / ARROW_DN_DY (wor_menus.py); size 0.9 of the mock (49 units),
+   3 px closer than the mock. Release HUD 0.49 once they sit right. Older note: WoR's are ui_shared `Dropdown_Arrow` (gold chevron, flipped for down); mock
    `verify/mock_popup_arrows_v1.jpg` awaiting a size pick. The popup descs have no arrow element: add two sprites
    (or repurpose hidden ones: fail desc 0x86431767 / 0x205d5bf9, main mixer_glow_64 / dialog_bg_menu) above the first
    and below the last option. Also untested: popup title #3f352a lower (BANNER_Y - 9), fail box COMPLETED / ON at natural
@@ -99,7 +102,9 @@ ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in gam
 5. All Menu Songs Installer: 1.0 package (~300 MB with other modders' menu music) not published: needs a GitHub
    Release (gh is not logged in) and the authors' blessing.
 
-Released 2026-10-11: HUD 0.48 (releases/, 23 MB, menu music no longer bundled), Ultrawide Fix 0.3 beta.
+Released 2026-10-11: HUD 0.48 (releases/, 23 MB, menu music no longer bundled), Ultrawide Fix 1.0, All Menu Songs
+Installer 1.0 source with lossless loudness levelling (package built in menu-music-all/dist, 312 MB, not uploaded).
+`build.py --install` no longer installs the menu music collection (the installer does).
 
 ## How to work on it
 

@@ -27,7 +27,12 @@ TEXT_FONT = wor_ui.PILL_FONT                             # WoR's fontgrid_text_a
 BLANK, WHITE, FRAME, BAR = 'WoR_HUD_ui_blank', 'WoR_HUD_white', 'WoR_HUD_dialog_frame', 'WoR_HUD_light_bar'
 GOLD, WHITE_C, RED = (238, 190, 92, 255), (255, 255, 255, 255), (232, 36, 44, 255)
 CREAM, BROWN = (232, 214, 170, 255), (63, 53, 42, 255)   # title brown: #3f352a (user)
-FIG_RED = (225, 71, 78, 255)                                 # fail box percent / difficulty: #e1474e (user, WoR)
+FIG_RED = (225, 71, 78, 255)
+# popup scroll arrows (WoR's fail box shows them): ui_shared Dropdown_Arrow (gold chevron), flipped for down. User mock
+# verify/mock_popup_arrows_v1.jpg, size 0.9 -> a 49-unit sprite; 3 px closer to the options than the mock.
+# Offsets of the arrow centres from the first / last option's anchor (canvas units); calibrate on an in-game shot.
+ARROW_UP, ARROW_DN = 'WoR_HUD_popup_arrow_up', 'WoR_HUD_popup_arrow_dn'
+ARROW_SIZE, ARROW_UP_DY, ARROW_DN_DY = 49.0, -39.0, 31.0                                 # fail box percent / difficulty: #e1474e (user, WoR)
 
 # ---- assets
 
@@ -40,7 +45,9 @@ def images(out_dir):
     frame.paste(half, (0, 0))
     frame.paste(half.transpose(Image.FLIP_LEFT_RIGHT), (512, 0))
     out = []
-    for name, im in ((FRAME, frame), (BAR, Image.open(os.path.join(ui, 'light_bar.png')).convert('RGBA')),
+    arrow = Image.open(os.path.join(ui, 'Dropdown_Arrow.png')).convert('RGBA')
+    for name, im in ((ARROW_UP, arrow), (ARROW_DN, arrow.transpose(Image.FLIP_TOP_BOTTOM)),
+                     (FRAME, frame), (BAR, Image.open(os.path.join(ui, 'light_bar.png')).convert('RGBA')),
                      (BLANK, Image.new('RGBA', (8, 8), (0, 0, 0, 0))), (WHITE, Image.new('RGBA', (8, 8), (255,) * 4))):
         p = os.path.join(out_dir, name + '.png')
         im.save(p)
@@ -237,11 +244,15 @@ def _swap(on):
     return f'\t\t:i $change$$[{PAUSE_DE}]$ = (~$WoR_HUD_de_pause$)\n'
 
 
+ARROWS_SCRIPT = ('\t:i if {IS}\n\t\t:i if $GotParam$$menu_id$\n\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$menu_id$\n\t\t\t:i if $ScreenElementExists$$id$ = $PopupElement$\n\t\t\t\t:i $GetScreenElementChildren$$id$ = %GLOBAL%$menu_id$\n\t\t\t\t:i if (%GLOBAL%$array_size$ > %i(0))\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_first$ = (%GLOBAL%$children$:a{{%i(0):a}})\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_last$ = (%GLOBAL%$children$:a{{(%GLOBAL%$array_size$ - %i(1)):a}})\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = $PopupElement$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_base$ = %GLOBAL%$screenelementpos$\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = %GLOBAL%$WoR_HUD_first$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_up$ = (%GLOBAL%$screenelementpos$ - %GLOBAL%$WoR_HUD_base$ + %vec2(0.0,{UP}))\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = %GLOBAL%$WoR_HUD_last$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_dn$ = (%GLOBAL%$screenelementpos$ - %GLOBAL%$WoR_HUD_base$ + %vec2(0.0,{DN}))\n\t\t\t\t\t:i $CreateScreenElement$:s{{$type$ = $SpriteElement$$parent$ = $PopupElement$$texture$ = ${TUP}$$Pos$ = %GLOBAL%$WoR_HUD_up$$dims$ = %vec2({SZ},{SZ})$just$ = :a{{$center$$center$:a}}$z_priority$ = %i(530):s}}\n\t\t\t\t\t:i $CreateScreenElement$:s{{$type$ = $SpriteElement$$parent$ = $PopupElement$$texture$ = ${TDN}$$Pos$ = %GLOBAL%$WoR_HUD_dn$$dims$ = %vec2({SZ},{SZ})$just$ = :a{{$center$$center$:a}}$z_priority$ = %i(530):s}}\n\t\t\t\t:i endif\n\t\t\t:i endif\n\t\t\t:i endif\n\t\t:i endif\n\t:i endif\n'.format(IS=IS_POPUP, UP=f'{ARROW_UP_DY:.1f}', DN=f'{ARROW_DN_DY:.1f}', SZ=f'{ARROW_SIZE:.1f}',
+                                   TUP=ARROW_UP, TDN=ARROW_DN))
+
 SCRIPTS = (
     # ---- popup
     'Script WoR_HUD_create_popup_warning_menu [\n'
     f'\t:i if {IS_POPUP}\n' + _swap('popup') + '\t:i else \n' + _swap('popup_de') + '\t:i endif\n'
     '\t:i $WoR_HUD_create_popup_warning_menu_orig$ isNull\n'
+    + ARROWS_SCRIPT +
     '\t:i if $GotParam$$menu_id$\n'
     '\t\t:i return$menu_id$ = %GLOBAL%$menu_id$\n'
     '\t:i endif\n'

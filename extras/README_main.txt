@@ -32,7 +32,7 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
     reshade-shaders\   the shaders the preset uses (licenses in THIRD_PARTY_LICENSES.txt). Not included:
                        qUINT (MXAO, depth of field, sharpen): tick "qUINT" in the ReShade installer for those
     ghwt_bgfx.addon32  background-only add-on: effects apply to the venue, never the HUD or highway
-    ghwtde_ultrawide.addon32  GHWT:DE Ultrawide Fix (beta): on screens wider than 16:9 the HUD and menus are drawn
+    ghwtde_ultrawide.addon32  GHWT:DE Ultrawide Fix 1.0: on screens wider than 16:9 the HUD and menus are drawn
                        unstretched (see ULTRAWIDE SCREENS below); does nothing at 16:9
   Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, the two .addon32
   files and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).

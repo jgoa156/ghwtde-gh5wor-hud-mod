@@ -79,7 +79,8 @@ ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in gam
   - textures that live in `z_in_game` can't be overridden from our paks (the per-song reload wins); gem-pak textures can;
   - after changing star/score geometry in `tools/wor_1g.py`, ALWAYS run `python tools/gen_plugin_names.py` before
     `pluginuild.bat`;
-  - send mocks to the user with SendUserFile (writing them to `verify/` is not enough).
+  - send mocks to the user with SendUserFile (writing them to `verify/` is not enough);
+  - never insert a line above a script's `${ ... }$` default-parameter block: it voids the defaults (froze YOU ROCK).
 
 ## Next steps
 

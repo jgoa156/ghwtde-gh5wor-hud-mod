@@ -115,7 +115,7 @@ def you_rock_sound(out_dir):
     for w in pcm:
         args += ['-i', w]
     mm.ffmpeg('-y', *args, '-filter_complex', f'amix=inputs={len(pcm)}:normalize=0,alimiter=limit=0.95:level=false',
-              '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '320k', '-joint_stereo', '1',
+              '-ar', '48000', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '320k', '-joint_stereo', '1',
               # like the DE's own sounds: MPEG frames from byte 0 (the ID3 tag froze the game at YOU ROCK)
               '-id3v2_version', '0', '-write_id3v1', '0', '-map_metadata', '-1', '-f', 'mp3', out)
     assert open(out, 'rb').read(2) == bytes((0xff, 0xfb)), 'YOU ROCK sound: not starting with an MPEG frame'
@@ -283,7 +283,12 @@ def ported_scripts():
             # WoR plays its YOU ROCK sound as the sequence starts (audio_ui_gameplay_play_you_rock_sfx)
             # (sound OFF: $playsound$ of our pak sound froze the game at YOU ROCK twice, with and without an ID3 tag)
             if YR_SOUND_PLAY:
-                body = f'\n\t:i $SoundEvent$${{StructQBKey event = {YR_EVENT}}}$' + body
+                # AFTER the script's default-parameter block (${ ... }$): a line above it voided the defaults
+                # (parent, text, placement) and froze the game at YOU ROCK (2026-10-11, twice)
+                d0 = body.index('${')
+                assert not body[:d0].strip(), 'create_exploding_text: no leading default block'
+                d1 = body.index('\n\t}$', d0) + len('\n\t}$')
+                body = body[:d1] + f'\n\t:i $SoundEvent$${{StructQBKey event = {YR_EVENT}}}$' + body[d1:]
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])

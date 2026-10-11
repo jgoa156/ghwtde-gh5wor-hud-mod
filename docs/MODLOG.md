@@ -1379,3 +1379,9 @@
 
 - Test A (registered, not played) ran fine (user). Test B installed: SoundEvent WoR_HUD_YouRock (+ _container, buss
   front_end) at the start of WoR_HUD_create_exploding_text.
+
+- YOU ROCK freeze, real cause (2026-10-11): the sound line went in ABOVE create_exploding_text's default-parameter block
+  (${ parent / text / placement ... }$), which voided the defaults. Both freezes (playsound, SoundEvent) were that, not the
+  sound. Now the SoundEvent WoR_HUD_YouRock goes right after the block (asserted). Sound re-encoded at 48 kHz like the
+  DE's own You_Rock_Explosion (ui\You_Rock_Explosion in global_sfx_wtde: 48 kHz stereo 320 kb/s, ID3 tag is fine).
+  Lesson: never insert a line before a script's ${...}$ default block.

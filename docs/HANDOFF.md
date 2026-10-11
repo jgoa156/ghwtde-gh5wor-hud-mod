@@ -99,12 +99,12 @@ ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; th
    "The" when sorting / displaying.
 4. Later (user): face-off crash + layouts, multiplayer / vocals layouts, song list side art, drum animations.
    Dropped: WoR highway lines (user was wrong about them).
-5. All Menu Songs Installer: 1.0 package (~300 MB with other modders' menu music) not published: needs a GitHub
-   Release (gh is not logged in) and the authors' blessing.
 
-Released 2026-10-11: HUD 0.48 (releases/, 23 MB, menu music no longer bundled), Ultrawide Fix 1.0, All Menu Songs
-Installer 1.0 source with lossless loudness levelling (package built in menu-music-all/dist, 312 MB, not uploaded).
-`build.py --install` no longer installs the menu music collection (the installer does).
+Released 2026-10-11: HUD 0.49 (releases/, 23 MB, bundles Ultrawide Fix 1.0), Ultrawide Fix 1.0, All Menu Songs Installer
+1.0 (releases/ as a 4-part 7z, levelled) + GHWoR Main Menu Music 1.0 (moved into the installer repo; the old
+ghwtde-ghwor-menu-music-mod repo is deleted, its local copy is in the Recycle Bin). `build.py --install` no longer
+installs the menu music collection (the installer does). Popup arrows: code ships but they did not show in game
+(user: leave it for now).
 
 ## How to work on it
 

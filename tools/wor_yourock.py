@@ -85,6 +85,14 @@ _OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
 YR_SOUND = 'WoR_HUD_you_rock'     # WoR's YOU ROCK sound (You_Rock_Front + _Back + _LFE, global_sfx), in the UI pak
 YR_SOUND_SRC = ('You_Rock_Front', 'You_Rock_Back', 'You_Rock_LFE')
 YR_SOUND_VOL = 0.0
+YR_SOUND_PLAY = False   # test B: play it through a sound event (WoR_HUD_YouRock + _container, like the DE's events)
+YR_EVENT = 'WoR_HUD_YouRock'
+YR_EVENT_SECTION = (f'SectionStruct {YR_EVENT}_container\n{{\n\tStructHeader\n\t{{\n\t\tStructInt default_priority = 50\n'
+                    '\t\tStructQBKey default_buss = front_end\n\t\tStructFloat norepeatfor = 0.10000000149011612\n'
+                    '\t\tStructQBKey instancemanagement = ignore\n\t\tStructInt instancelimit = 1\n'
+                    '\t\tStructQBKey command = playsound\n\t\tStructQBKey randomness = None\n\t\tStructArray sounds\n'
+                    f'\t\t{{\n\t\t\tArrayStruct\n\t\t\t[\n\t\t\t\tStructHeader\n\t\t\t\t{{\n\t\t\t\t\tStructQBKey {YR_SOUND}\n'
+                    '\t\t\t\t}\n\t\t\t]\n\t\t}\n\t}\n}\n')
 
 
 def you_rock_sound(out_dir):
@@ -274,6 +282,8 @@ def ported_scripts():
             body = body.replace('$fontgrid_title_a1$', f'${TITLE_FONT}$')
             # WoR plays its YOU ROCK sound as the sequence starts (audio_ui_gameplay_play_you_rock_sfx)
             # (sound OFF: $playsound$ of our pak sound froze the game at YOU ROCK twice, with and without an ID3 tag)
+            if YR_SOUND_PLAY:
+                body = f'\n\t:i $SoundEvent$${{StructQBKey event = {YR_EVENT}}}$' + body
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])
@@ -356,7 +366,7 @@ WRAPPER = (
 
 
 def scripts():
-    return WRAPPER + '\n' + FLIPBOOK + '\n' + ported_scripts()
+    return WRAPPER + '\n' + FLIPBOOK + '\n' + ported_scripts() + ('\n' + YR_EVENT_SECTION if YR_SOUND_PLAY else '')
 
 
 def load_script():

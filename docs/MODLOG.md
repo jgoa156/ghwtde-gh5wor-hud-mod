@@ -1376,3 +1376,6 @@
 
 - YOU ROCK sound test A: the sound is in wor_hud_ui.pak and registered by LoadSound at mod load, never played (the
   playsound froze YOU ROCK twice). If A is fine, test B plays it through a SoundEvent definition like the DE does.
+
+- Test A (registered, not played) ran fine (user). Test B installed: SoundEvent WoR_HUD_YouRock (+ _container, buss
+  front_end) at the start of WoR_HUD_create_exploding_text.

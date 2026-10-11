@@ -85,7 +85,7 @@ _OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
 YR_SOUND = 'WoR_HUD_you_rock'     # WoR's YOU ROCK sound (You_Rock_Front + _Back + _LFE, global_sfx), in the UI pak
 YR_SOUND_SRC = ('You_Rock_Front', 'You_Rock_Back', 'You_Rock_LFE')
 YR_SOUND_VOL = 0.0
-YR_SOUND_PLAY = False   # test B: play it through a sound event (WoR_HUD_YouRock + _container, like the DE's events)
+YR_SOUND_PLAY = True    # test B: play it through a sound event (WoR_HUD_YouRock + _container, like the DE's events)
 YR_EVENT = 'WoR_HUD_YouRock'
 YR_EVENT_SECTION = (f'SectionStruct {YR_EVENT}_container\n{{\n\tStructHeader\n\t{{\n\t\tStructInt default_priority = 50\n'
                     '\t\tStructQBKey default_buss = front_end\n\t\tStructFloat norepeatfor = 0.10000000149011612\n'

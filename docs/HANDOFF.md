@@ -84,23 +84,22 @@ ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in gam
 
 ## Next steps
 
-1. **Finish 0.48** (installed, awaiting the user's test, see "Awaiting a test" above). Then calibrate from the
-   screenshots (overlay tools: verify/fail_overlay_v1.jpg made by aligning on the frame; YOU ROCK side by side in
-   verify/yourock_compare.jpg). **Release the HUD 0.48 only once the pause menu fully works** (user): `python build.py
-   --package` (94 MB zip with the WoR menu music; GitHub refuses files over 100 MB), copy to releases/.
-   Open: popup up/down arrows (WoR fail box shows them); the WoR fail box's section line ("Fast Solo D", practice).
-2. WoR highway lines (fret gradient, lighter border bottom, line above the strikeline, strings fading halfway):
-   frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
-3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.
-4. Song list side art: the user is remastering `4b93dd1e` / `b19ce07d` (256x2048, setlist_wtde.pak) for higher res.
-5. Multiplayer / vocals layouts (parked, user 2026-10-11: mocks saved for later): `docs/mocks/mock_modes_v1.jpg`
-   (face-off / pro face-off, band, guitar + vocals, vocals), made by `python tools/mock_modes.py <out.jpg> [modes]`:
-   WoR widgets drawn from WoR's descs (hud_standard / _1g1v / _1v, comp_scoreboard_player, vocals_highway), our 1-player
-   WoR HUD on each highway, highway spots approximate (calibrate on in-game shots of each mode). Crowd selector parked
-   (no GH5/WoR crowd peds in the DE). Post-song stats box (WoR song_summary_mini): skipped, other DE themes don't
-   customise it either (user).
+1. **Popup arrows** (user: yes): WoR's are ui_shared `Dropdown_Arrow` (gold chevron, flipped for down); mock
+   `verify/mock_popup_arrows_v1.jpg` awaiting a size pick. The popup descs have no arrow element: add two sprites
+   (or repurpose hidden ones: fail desc 0x86431767 / 0x205d5bf9, main mixer_glow_64 / dialog_bg_menu) above the first
+   and below the last option. Also untested: popup title #3f352a lower (BANNER_Y - 9), fail box COMPLETED / ON at natural
+   width (boxes 400 / 160), figures #e1474e.
+2. **After publishing (user, 2026-10-11):** full code review of the 3 projects (HUD, ultrawide, menu music + installer)
+   for optimisation; WoR's Star03 sliver for the burst; the SP glow leak.
+3. **New mod idea (evaluate):** a game-catalogue jump menu opened with SELECT (Xbox) / its PC key, listing the games
+   installed (dynamic: each install has a different library); song list sorting optimisations and ignoring a leading
+   "The" when sorting / displaying.
+4. Later (user): face-off crash + layouts, multiplayer / vocals layouts, song list side art, drum animations.
+   Dropped: WoR highway lines (user was wrong about them).
+5. All Menu Songs Installer: 1.0 package (~300 MB with other modders' menu music) not published: needs a GitHub
+   Release (gh is not logged in) and the authors' blessing.
 
-6. WoR / GH5 drum animations: plan saved in `docs/DRUM_ANIMS_PLAN.md` (researched 2026-10-11, not started).
+Released 2026-10-11: HUD 0.48 (releases/, 23 MB, menu music no longer bundled), Ultrawide Fix 0.3 beta.
 
 ## How to work on it
 

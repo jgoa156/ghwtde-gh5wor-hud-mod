@@ -396,7 +396,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, needle_script(work), SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -719,7 +719,6 @@ def build_ui_pak():
         os.remove(p)                                   # only the .img.xen files go into the pak
     wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
     wor_font.convert(wor_menus.TITLE_FONT_SRC, os.path.join(src, wor_menus.TITLE_FONT + '.fnt.xen'))
-    wor_yourock.you_rock_sound(src)
     out = os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen')
     sdk('createpak', src, '-out', out, cwd=os.path.dirname(SDK))
     assert os.path.exists(out), 'createpak failed (UI pak)'

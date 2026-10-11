@@ -81,6 +81,11 @@ static const uint32_t kStarFire[24] = {
 	0x8829daa9, 0xff2eea3f, 0x6f91f7ae, 0x1896c738, 0x4a672c5f, 0x3d601cc9, 0xa4694d73, 0xd36e7de5,
 };
 
+// rock needle: its anchor container scale (finds it), the DE path knots (1 non-vocal player) and ours
+static const float kNeedleAX = 1.697040f, kNeedleAY = 1.560412f;
+static const float kNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 11.0000f, -24.0000f }, { 28.0000f, -57.0000f }, { 41.0000f, -80.0000f } };
+static const float kNeedleWoR[4][2] = { { -4.3211f, 8.4314f }, { 13.6667f, -26.6667f }, { 27.3333f, -53.3333f }, { 37.2819f, -72.7451f } };
+
 static const uint32_t kGlowTex[3] = { 0xf6d51567, 0xa98f56ca, 0xb35582b7 };   // WoR_HUD_spneon_bottom, WoR_HUD_spneon_w, WoR_HUD_spneon_c
 static const float kGlowAlpha[3] = { 0.00f, 1.00f, 1.00f };
 // burst sprites: canvas offset from the fill top

@@ -60,6 +60,11 @@ def main():
     for i in range(0, wor_1g.STAR_FIRE_FRAMES, 8):
         out.append('	' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.STAR_FIRE_NAMES[i:i + 8]) + ',')
     out += ['};', '']
+    ax, ay = wor_1g.needle_anchor_scale()
+    out += ['// rock needle: its anchor container scale (finds it), the DE path knots (1 non-vocal player) and ours',
+            f'static const float kNeedleAX = {ax:.6f}f, kNeedleAY = {ay:.6f}f;',
+            'static const float kNeedleDE[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_1g.DE_NEEDLE_KNOTS) + ' };',
+            'static const float kNeedleWoR[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_1g.needle_knots()) + ' };', '']
     out += [f'static const uint32_t kGlowTex[3] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_1g.SP_GLOW_NAMES)
             + ' };   // ' + ', '.join(wor_1g.SP_GLOW_NAMES)]
     out += ['static const float kGlowAlpha[3] = { ' + ', '.join(f'{g[4]:.2f}f' for g in wor_1g.SP_GLOW_SPRITES) + ' };']

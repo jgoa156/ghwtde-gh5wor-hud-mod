@@ -83,7 +83,7 @@ def popup_desc(kind, de_text):
     for tex in HIDE_TEX:
         d = re.sub(rf'StructQBKey texture = {re.escape(tex)}\b', f'StructQBKey texture = {BLANK}', d)
     d = desc_edit.set_elem(d, 'dialog_bg', texture=FRAME, pos=(0, 0), dims=(980, 534))
-    d = desc_edit.set_elem(d, 'title_text_container', pos=(640, BANNER_Y - 15))
+    d = desc_edit.set_elem(d, 'title_text_container', pos=(640, BANNER_Y - 13))   # user: 2 px lower (was -15)
     # v0.48 test: no shadow on the title, slightly bigger (fit to 52 high instead of 44)
     d = desc_edit.set_elem(d, title, font=TITLE_FONT, dims=(600, 52), rgba=BROWN)
     d = desc_edit.set_flag(d, title, 'use_shadow', 'false')

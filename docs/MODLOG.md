@@ -1362,3 +1362,8 @@
 - 2026-10-11 test: the game froze at the first song with plugin 1.28 (log: plugin fine, SP fill set up at level 0, then
   nothing). The needle swap (0x3205f550 is called every frame by 0x2e8a3a22) was the only new song-start code: disabled in
   plugin 1.29 to isolate it; the script WoR_HUD_side_meter_needle still ships (unused). Round-tripped compile looks intact.
+
+- Plugin 1.30: needle remapped per frame instead (element update hook: the anchor container found by its scale
+  kNeedleAX/AY, its child needle pos DE path -> health segment -> wor_1g.needle_knots()); the script copy no longer ships.
+- YOU ROCK freeze (user: YOU ROCK freezes the game now): the new $playsound$ of WoR_HUD_you_rock is off, and the sound
+  file / LoadSound are out of the build until understood. Popup title 2 px lower (BANNER_Y - 13).

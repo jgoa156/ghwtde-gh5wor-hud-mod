@@ -337,7 +337,6 @@ def load_script():
     """WoR_HUD_Load lines: load the pak, register both themes, then re-read both settings from the ini (the DE
     read them before mods loaded, when "ghwor" wasn't a choice yet)."""
     return (f'\t:i $LoadPak$%s("pak/{UI_PAK}.pak")\n'
-            '\t:i $LoadSound$%s("WoR_HUD_you_rock")\n'
             '\t:i $WoR_HUD_pill$ = (~$WoR_HUD_pill_theme$)\n'
             f'\t:i $[325bc724]$$id$ = $[e8b85065]$$field$ = ${THEME}$$element$ = %GLOBAL%$WoR_HUD_pill$\n'
             f'\t:i $WoR_HUD_pill_choice$ = :s{{$Title$ = %s("{THEME_TITLE}")$value$ = ${THEME}$$value_string$ = %s("{THEME}"):s}}\n'

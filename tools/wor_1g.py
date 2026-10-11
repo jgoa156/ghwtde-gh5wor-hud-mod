@@ -53,6 +53,9 @@ NEEDLE_H2 = ZONE_YG + (ZONE_YG - ZONE_RY)      # 256.5 (the top cap at full heal
 NEEDLE_STOPS = (31.0, ZONE_RY, ZONE_YG, 238.0)   # LED art: red from 31, green to 238 (texture px from the bottom)
 
 
+DE_NEEDLE_KNOTS = ((0.0, 0.0), (11.0, -24.0), (28.0, -57.0), (41.0, -80.0))   # script 0x3205f550, 1 non-vocal player
+
+
 def needle_knots():
     """The needle path points (the DE path's units: the anchor maps (0,0) -> NEEDLE_H0, DE_NEEDLE_END -> NEEDLE_H2)."""
     out = []

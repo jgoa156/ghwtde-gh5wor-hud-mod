@@ -95,18 +95,25 @@ ITEM_W = 425
 MENU_LEFT = TITLE_RIGHT - ITEM_W - 40
 
 
+# z: the DE's pause_menu is at z 598 (its dim layer 599), above every gameplay element (gem_containerp*, hud_root:
+# z 0..10); ours was at 0, so the highway and HUD showed through the black (v0.48 test). Items: make_menu extra_z 600.
+PAUSE_Z = 598.0
+
+
 def pause_desc():
-    root = E('pause_bg', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=[
-        E('WoR_pause_black', 'SpriteElement', dims=(1280, 720), just=(-1, -1), texture=WHITE, rgba=(8, 9, 10, 255)),
-        E('WoR_glow', 'SpriteElement', dims=(8, 8), texture=BLANK, alpha=0.0),            # glow_alpha (pulsed)
-        E('pause_fist_container', 'ContainerElement', dims=(1280, 720), just=(-1, -1)),   # slid in: kept empty
-        E('WoR_song', 'TextBlockElement', pos=(176, 62), dims=(900, 70), just=(-1, -1), scale=(0.8, 0.8), z=2,
+    z = PAUSE_Z
+    root = E('pause_bg', 'ContainerElement', dims=(1280, 720), just=(-1, -1), z=z, children=[
+        E('WoR_pause_black', 'SpriteElement', dims=(1280, 720), just=(-1, -1), z=z + 1, texture=WHITE,
+          rgba=(8, 9, 10, 255)),
+        E('WoR_glow', 'SpriteElement', dims=(8, 8), texture=BLANK, alpha=0.0, z=z + 1),   # glow_alpha (pulsed)
+        E('pause_fist_container', 'ContainerElement', dims=(1280, 720), just=(-1, -1), z=z + 1),   # kept empty
+        E('WoR_song', 'TextBlockElement', pos=(176, 62), dims=(900, 70), just=(-1, -1), scale=(0.8, 0.8), z=z + 3,
           rgba=RED, font=TITLE_FONT, internal_just=(-1, -1)),
-        E('WoR_artist', 'TextBlockElement', pos=(178, 146), dims=(900, 40), just=(-1, -1), scale=(0.63, 0.63), z=2,
+        E('WoR_artist', 'TextBlockElement', pos=(178, 146), dims=(900, 40), just=(-1, -1), scale=(0.63, 0.63), z=z + 3,
           rgba=CREAM, font=TEXT_FONT, internal_just=(-1, -1)),
-        E('title', 'TextBlockElement', pos=(TITLE_RIGHT, 146), dims=(400, 60), just=(1, -1), scale=(0.76, 0.76), z=2,
-          rgba=GOLD, font=TITLE_FONT, internal_just=(1, -1)),
-        E('menu', 'ContainerElement', pos=(MENU_LEFT, 268), dims=(400, 300), just=(-1, -1), z=3)])
+        E('title', 'TextBlockElement', pos=(TITLE_RIGHT, 146), dims=(400, 60), just=(1, -1), scale=(0.76, 0.76),
+          z=z + 3, rgba=GOLD, font=TITLE_FONT, internal_just=(1, -1)),
+        E('menu', 'ContainerElement', pos=(MENU_LEFT, 268), dims=(400, 300), just=(-1, -1), z=z + 4)])
     return desc_gen.desc('WoR_HUD_pause', root,
                          props=[('title_text', 'title', 'text'), ('glow_alpha', 'WoR_glow', 'alpha'),
                                 ('WoR_song_text', 'WoR_song', 'text'), ('WoR_artist_text', 'WoR_artist', 'text')],
@@ -250,6 +257,12 @@ SCRIPTS = (
     '\t:i $get_song_title$$song$ = (~$current_song$)\n'
     '\t:i $get_song_artist_text$$song$ = (~$current_song$)\n'
     '\t:i $get_song_artist$$song$ = (~$current_song$)\n'
+    # WoR: title and artist in title case, "BY" as it is (the song data is upper case); the DE's
+    # firstlettercapitalize (0x9d3d2dc5, guitar_intro.qb) returns processed_word (0x435185bc), as in its song intro
+    '\t:i $[9d3d2dc5]$$text$ = %GLOBAL%$song_title$\n'
+    '\t:i $song_title$ = %GLOBAL%$[435185bc]$\n'
+    '\t:i $[9d3d2dc5]$$text$ = %GLOBAL%$song_artist$\n'
+    '\t:i $song_artist$ = %GLOBAL%$[435185bc]$\n'
     '\t:i $FormatText$$textname$ = $WoR_line$%s("%a %b")$a$ = %GLOBAL%$song_artist_text$$b$ = %GLOBAL%$song_artist$\n'
     '\t:i $pausemenu_bg$.$se_setprops$$WoR_song_text$ = %GLOBAL%$song_title$$WoR_artist_text$ = %GLOBAL%$WoR_line$\n'
     '\t:i endfunction\n]\n\n'

@@ -1280,3 +1280,20 @@
   "(GHWoR) Main Menu Music" (WoR only, FSB GHWoR_Music_Menu), LAME V4 (~165 kb/s like the GH5 mod; V2 made 92 MB).
   Released: github.com/jgoa156/ghwtde-ghwor-menu-music-mod (releases/GHWoR-Main-Menu-Music_1.0.zip, 72 MB). The HUD
   package now ships the WoR-only folder (DATA\MODS); install removes it from the game (one menu music mod loads).
+
+## v0.48 WIP (2026-10-11): pause above the gameplay, title case, WoR You Rock letters and colours
+- v0.48 test (plugin 1.27): pause works (no crash), bars follow the selection; the highway / HUD drew over our black
+  and the title/artist were upper case. The DE's pause_menu desc is at z 598 (dim 599), above every gameplay element
+  (gem_containerp*, hud_root at z 0..10); ours was at 0: now 598.. (PAUSE_Z). Title case like WoR's pause ("The
+  Outsider" / "BY A Perfect Circle, 2003"): the DE's firstlettercapitalize (0x9d3d2dc5, guitar_intro.qb; returns
+  processed_word 0x435185bc; lowers a / and / of after the first word) on title and artist. Song data is upper case.
+- You Rock vs WoR capture: letters now WoR's split_text_into_physics_array_elements (each letter + a black copy 3,4
+  px down-right; the DE's gave an orange edge); glow and bolts were white (the DE ignores the particle / sprite colours
+  with these AnimatedTexture_UI materials): WoR's colours baked into the greyscale textures (wor_yourock.TINT).
+  Stats box after YOU ROCK (WoR song_summary_mini): skipped, other themes don't customise it (user).
+- Song ended / fail box: every popup theme has its own fail desc (dialog_box_fail / _ghm / _ghvh; default
+  dialog_box_fail_wtde 073f047c, which "ghwor" gets). Mock of a WoR version: verify/mock_fail_popup_v1.png
+  (tools/mock_fail_popup.py), awaiting approval.
+- Multiplayer mocks saved (docs/mocks/mock_modes_v1.jpg, tools/mock_modes.py), parked.
+- Menu music installer (ghwtde-ghwor-menu-music-mod/installer, untracked): merges ticked games' DE menu music mods
+  into one; package in E:\Dev\ghwt\menu-music-all\dist (313 MB, 10 sources, all games = 302 MB bank). Not published.

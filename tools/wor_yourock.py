@@ -36,11 +36,34 @@ PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
     'p2p_get_connector_angle': 'scripts/game/goals/goal_hud.qb.xen',
     'p2p_lightning_create_fx': 'scripts/game/goals/goal_hud.qb.xen',
     'p2p_lightning_create_fx_cleanup': 'scripts/game/goals/goal_hud.qb.xen',
+    # WoR's letters: each letter plus a black copy 3,4 px down-right (the DE's version gives an orange edge)
+    'split_text_into_physics_array_elements': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
 }
 
 
+# v0.48 test: the glow and the bolts came out white: the DE doesn't apply the scripts' particle / sprite colours with
+# these animated materials, so WoR's colours are baked into the (greyscale) textures: bolts in You_Rock_lightning_01's
+# rgba1 / rgba2 average, the lightning balls between You_Rock_Text_Glow's start (123 grey) and end (0,64,255) colours.
+TINT = {0x0c30522c: (154, 190, 255), 0x249c3fc1: (90, 140, 255)}
+
+
 def texture_pngs():
-    return [(k, os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{k:08x}.png')) for k in TEXTURES]
+    """[(texture key, png path)]: WoR's effect textures, the tinted ones written to build/pak_src/wor_yourock."""
+    from PIL import Image
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'build', 'pak_src', 'wor_yourock')
+    os.makedirs(out_dir, exist_ok=True)
+    out = []
+    for k in TEXTURES:
+        src = os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', f'{k:08x}.png')
+        if k in TINT:
+            im = Image.open(src).convert('RGBA')
+            r, g, b, a = im.split()
+            t = TINT[k]
+            im = Image.merge('RGBA', [c.point(lambda v, m=m: v * m // 255) for c, m in zip((r, g, b), t)] + [a])
+            src = os.path.join(out_dir, f'{k:08x}.png')
+            im.save(src)
+        out.append((k, src))
+    return out
 
 
 def _decompile(rel):
@@ -107,7 +130,7 @@ EXPLODING = (
     '\t:i if NOT $ScreenElementExists$$id$ = $exploding_particle_container$\n'
     '\t\t:i $create_exploding_particles$\n\t\t:i %GLOBAL%$explode$ = %i(1)\n'
     '\t:i else \n\t\t:i %GLOBAL%$explode$ = %i(0)\n\t:i endif\n'
-    '\t:i $split_text_into_physics_array_elements$:s{\n'
+    '\t:i $WoR_HUD_split_text_into_physics_array_elements$:s{\n'
     '\t\t:i $id$ = $yourock_text$\n\t\t:i $parent$ = %GLOBAL%$parent$\n\t\t:i $text$ = %GLOBAL%$text$\n'
     '\t\t:i $text_pos$ = %vec2(0.0,0.0)\n\t\t:i $cont_pos$ = %GLOBAL%$cont_pos$\n'
     '\t\t:i $space_between$ = %vec2(40.0,0.0)\n\t\t:i $fit_dims$ = %vec2(640.0,120.0)\n'

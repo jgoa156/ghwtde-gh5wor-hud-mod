@@ -1358,3 +1358,7 @@
   script with wor_1g.needle_knots() (tube heights 31 / 120.5 / 188.5 / 238) for one non-vocal player when the HUD theme
   has WoR_HUD_career_meter; the plugin swaps its symbol in. Mock verify/mock_needle_v4.png (approved). Earlier needle
   mocks were wrong: variants set ZONE_* but NEEDLE_H0/H2 had already been computed from them.
+
+- 2026-10-11 test: the game froze at the first song with plugin 1.28 (log: plugin fine, SP fill set up at level 0, then
+  nothing). The needle swap (0x3205f550 is called every frame by 0x2e8a3a22) was the only new song-start code: disabled in
+  plugin 1.29 to isolate it; the script WoR_HUD_side_meter_needle still ships (unused). Round-tripped compile looks intact.

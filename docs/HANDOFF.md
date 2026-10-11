@@ -4,6 +4,23 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
+## Start here (next session, from 2026-10-11)
+
+State: everything built from HEAD is installed in the game; all three repos are pushed (this one, ghwtde-ultrawide-fix,
+ghwtde-ghwor-menu-music-mod). Nothing from the last round has been tested in game yet.
+
+1. **Ask for one test run** (rule: ask before launching): fail a song (fail box vs WoR, overlay method in MODLOG
+   "Round 3"), finish one (YOU ROCK: letters fall, bigger "YOU ROCK!", glow size), watch the rock needle at the colour
+   changes, pause once (gameplay hidden, title case), title screen flashes on ultrawide. Calibrate from screenshots:
+   lay ours over the user's WoR reference (align on a fixed element, as for verify/fail_overlay_v1.jpg).
+2. **Release 0.48** once the user confirms the pause menu: `python build.py --package`, copy the zip to releases/,
+   push (94 MB, under GitHub's 100 MB limit). The ultrawide fix has unreleased changes too (its package.py).
+3. **Open decisions for the user:** publish the menu music collection installer (code in the menu music repo
+   `installer/`, package `E:\Dev\ghwt\menu-music-all\dist`, 302 MB with all games; loudness differs ~14 dB between
+   games: level them?); popup up/down arrows (WoR's fail box has them).
+4. **Backlog:** WoR highway lines; face-off crash + layouts; multiplayer layouts (mocks in docs/mocks); song list side
+   art (user remastering); drum animations (docs/DRUM_ANIMS_PLAN.md).
+
 ## Where things stand
 
 - **Dev folders:** everything lives under `E:\Dev\ghwt`: this repo, `ghwtde-ultrawide-fix` (separate repo, bundled
@@ -28,7 +45,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   **Awaiting a test (installed):** fail box calibration, You Rock round 3 (gravity, size, glow 128 px), rock needle,
   title-screen flashes (ultrawide), gameplay hidden under pause.
 - **Other repos:** ultrawide fix (loading bars default, YOU ROCK / title flash groups, catalog off by default; not
-  released since 0.2 beta); GHWoR menu music (released 1.0); menu music collection installer (untracked in the menu
+  released since 0.2 beta); GHWoR menu music (released 1.0); menu music collection installer (committed, unreleased, in the menu
   music repo `installer/`, package in `E:\Dev\ghwt\menu-music-all\dist`, not published: the user decides).
 - **Confirmed in game (2026-10-10):** WoR star power highway effect (0.47 / plugin 1.24: cyan rail glows, stars up
   the rails, strikeline rush; MODLOG "v0.47"), career rock needle (plugin 1.22), the new preset, every ultrawide screen

@@ -82,6 +82,36 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
 
 
+YR_SOUND = 'WoR_HUD_you_rock'     # WoR's YOU ROCK sound (You_Rock_Front + _Back + _LFE, global_sfx), in the UI pak
+YR_SOUND_SRC = ('You_Rock_Front', 'You_Rock_Back', 'You_Rock_LFE')
+YR_SOUND_VOL = 0.0
+
+
+def you_rock_sound(out_dir):
+    """WoR's three YOU ROCK layers (Xbox FSB4 XMA in ZONES global_sfx) mixed to stereo, as the DE's sound format: a
+    44.1 kHz stereo 320 kb/s MP3 named <sound>.wav.xen (pak entry = checksum of the name, registered by LoadSound)."""
+    import wor_menu_music as mm
+    work = tempfile.mkdtemp(prefix='woryrsnd_')
+    pcm = []
+    for n in YR_SOUND_SRC:
+        p = paths.wor('all', 'x', 'compressed_ZONES_global_sfx', n + '.wav.xen')
+        name, nsamp, nbytes, mode, freq, chans, off = mm.fsb4_samples(p)[0]
+        raw = open(p, 'rb').read()[off:off + nbytes]
+        x = os.path.join(work, n + '.xma.wav')
+        open(x, 'wb').write(mm.xma2_riff(raw, nsamp, freq, chans))
+        w = os.path.join(work, n + '.wav')
+        mm.ffmpeg('-y', '-i', x, w)
+        pcm.append(w)
+    out = os.path.join(out_dir, YR_SOUND + '.wav.xen')
+    args = []
+    for w in pcm:
+        args += ['-i', w]
+    mm.ffmpeg('-y', *args, '-filter_complex', f'amix=inputs={len(pcm)}:normalize=0,alimiter=limit=0.95:level=false',
+              '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', '320k', '-f', 'mp3', out)
+    shutil.rmtree(work, ignore_errors=True)
+    return out
+
+
 YR_EXPLODE, YR_GRAVITY = 13500000, 3500.0     # burst force (WoR 9000000), g_GRAVITY (DE 1000.0)
 
 
@@ -239,6 +269,8 @@ def ported_scripts():
             # our converted WoR title font; the text in capitals ("YOU ROCK!" as in WoR; the DE passes "You Rock!")
             assert body.count('$fontgrid_title_a1$') == 1, 'create_exploding_text: font changed'
             body = body.replace('$fontgrid_title_a1$', f'${TITLE_FONT}$')
+            # WoR plays its YOU ROCK sound as the sequence starts (audio_ui_gameplay_play_you_rock_sfx)
+            body = (f'\n\t:i $playsound$${YR_SOUND}$$vol$ = %f({YR_SOUND_VOL:.1f})$buss$ = $front_end$' + body)
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])

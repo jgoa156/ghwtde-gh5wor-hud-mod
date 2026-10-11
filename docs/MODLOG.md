@@ -1347,3 +1347,8 @@
   ~0.55. Now 1600 x 400 (MSG_DIMS, full size up to 5 lines, "Overwrite successful" on one line) at y 248 (was 232).
 - YOU ROCK: burst force 13500000 (WoR 9000000) and g_GRAVITY 2000 (DE 1000.0; QB global 0x6a831c8f read by the screen
   element physics at 0x75c1a4, set by WoR_HUD_do_exploding_text_physics).
+
+- YOU ROCK sound: WoR plays You_Rock_Front + _Back + _LFE (ZONES global_sfx, FSB4 XMA) as the sequence starts
+  (audio_ui_gameplay_play_you_rock_sfx). Mixed to a 44.1 kHz stereo 320 kb/s MP3 = the DE sound format, shipped as
+  WoR_HUD_you_rock.wav.xen in wor_hud_ui.pak, registered by LoadSound in WoR_HUD_Load, played by
+  WoR_HUD_create_exploding_text ($playsound$, buss front_end). g_GRAVITY raised to 3500 (user). Popup box 3 lines at full size.

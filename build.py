@@ -699,6 +699,7 @@ def build_ui_pak():
         os.remove(p)                                   # only the .img.xen files go into the pak
     wor_font.convert(wor_ui.PILL_FONT_SRC, os.path.join(src, wor_ui.PILL_FONT + '.fnt.xen'))
     wor_font.convert(wor_menus.TITLE_FONT_SRC, os.path.join(src, wor_menus.TITLE_FONT + '.fnt.xen'))
+    wor_yourock.you_rock_sound(src)
     out = os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen')
     sdk('createpak', src, '-out', out, cwd=os.path.dirname(SDK))
     assert os.path.exists(out), 'createpak failed (UI pak)'

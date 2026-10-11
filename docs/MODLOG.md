@@ -1373,3 +1373,6 @@
   from it through needle_knots every frame (log: "rock needle: remapped"). Health 1.0 stays mid-yellow (user: start is right).
 - YOU ROCK sound back: the MP3 had an ID3v2 tag (DE sounds start with the MPEG frame); now -id3v2_version 0 etc.,
   checked by an assert. Likely cause of the YOU ROCK freeze.
+
+- YOU ROCK sound test A: the sound is in wor_hud_ui.pak and registered by LoadSound at mod load, never played (the
+  playsound froze YOU ROCK twice). If A is fine, test B plays it through a SoundEvent definition like the DE does.

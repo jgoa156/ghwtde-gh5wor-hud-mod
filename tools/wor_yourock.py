@@ -273,7 +273,7 @@ def ported_scripts():
             assert body.count('$fontgrid_title_a1$') == 1, 'create_exploding_text: font changed'
             body = body.replace('$fontgrid_title_a1$', f'${TITLE_FONT}$')
             # WoR plays its YOU ROCK sound as the sequence starts (audio_ui_gameplay_play_you_rock_sfx)
-            body = f'\n\t:i $playsound$${YR_SOUND}$$vol$ = %f({YR_SOUND_VOL:.1f})$buss$ = $front_end$' + body
+            # (sound OFF: $playsound$ of our pak sound froze the game at YOU ROCK twice, with and without an ID3 tag)
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])

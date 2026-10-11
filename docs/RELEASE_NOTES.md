@@ -1,5 +1,14 @@
 # GH5 / WoR HUD: release notes
 
+## 0.49 (beta)
+
+`GH5-WoR_HUD_0.49.zip` (plugin `wor_hud_fixes.asi` 1.31), on top of 0.48:
+- Popup title in WoR's brown (#3f352a), a little lower; failed box: COMPLETED / ON at their natural width, the
+  percent and difficulty in WoR's red (#e1474e).
+- Bundles **GHWT:DE Ultrawide Fix 1.0** (optional folder).
+- Menu music links point to the [All Menu Songs Installer repo](https://github.com/jgoa156/ghwtde-all-menu-songs-installer),
+  which now also holds the GHWoR Main Menu Music mod.
+
 ## 0.48 (beta) - the WoR menus
 
 One drop-in zip, `GH5-WoR_HUD_0.48.zip` (plugin `wor_hud_fixes.asi` 1.31). New since 0.47, all picked as

@@ -9,7 +9,7 @@ the score / star / note-streak panel, the multiplier badge and soft HUD shadows.
 
 ## Download
 
-Latest: **[releases/GH5-WoR_HUD_0.48.zip](releases/GH5-WoR_HUD_0.48.zip)** (beta, notes in
+Latest: **[releases/GH5-WoR_HUD_0.49.zip](releases/GH5-WoR_HUD_0.49.zip)** (beta, notes in
 [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md)). Extract into the game folder. Recommended alongside it (separate):
 [GHWoR Main Menu Music](https://github.com/jgoa156/ghwtde-all-menu-songs-installer/tree/main/ghwor-menu-music) and the
 [All Menu Songs Installer](https://github.com/jgoa156/ghwtde-all-menu-songs-installer).

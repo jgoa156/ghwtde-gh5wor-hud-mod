@@ -1308,3 +1308,13 @@
   you_rock_physics (6139b417, glow / explosion sprites) and exploding_particle_container (32cc87b4), like the other
   YOU ROCK layouts (they stayed in the centred 16:9 picture).
 - Fail box mock v2 after the user's WoR FAILED screenshot (verify/mock_fail_popup_v2.png).
+- YOU ROCK video comparison (user's WoR / ours captures; verify/yourock_compare.jpg). Ported now: WoR's whole
+  exploding-text set (create_exploding_text, do_text_slam, do_exploding_text_physics, create_exploding_particles,
+  do_extra_exploding_particles, explode_white_screens, split): faster slam, ~1.7 s hold (DE 2 s), burst 9e6 with
+  280 deg spins (DE 5e6 / 720), glow gone and explosion at the burst (ours kept the glow ~1 s and exploded late);
+  text upper case like WoR ("YOU ROCK!"). Still different: the lightning bolts are thin straight lines (WoR: thick
+  jagged animated bolts with glow: the AnimatedTexture_UI flipbook doesn't animate in the DE; next: pre-rendered
+  frames switched by script, like the load wheel); the HUD / highway still shows for the first ~0.8 s (WoR clears it
+  before the text).
+- Cleanup: GHWT crash dumps, the add-on's old catalog, menu-music test outputs and extracted rars, old scratch
+  folders moved to the Recycle Bin (C: had 4 GB free).

@@ -36,8 +36,16 @@ PORTED = {   # WoR script -> source qb (under WOR_EXTRACT/qb)
     'p2p_get_connector_angle': 'scripts/game/goals/goal_hud.qb.xen',
     'p2p_lightning_create_fx': 'scripts/game/goals/goal_hud.qb.xen',
     'p2p_lightning_create_fx_cleanup': 'scripts/game/goals/goal_hud.qb.xen',
-    # WoR's letters: each letter plus a black copy 3,4 px down-right (the DE's version gives an orange edge)
+    # WoR's exploding text, all of it (v0.48 video comparison: the DE's versions hold the text 2 s, explode it softer
+    # and spin it 720 deg; WoR's hits faster, holds ~1.7 s, bursts at 9e6 with 280 deg spins, so the glow goes and the
+    # explosion fires at the burst): letters with a black copy 3,4 px down-right (the DE's had an orange edge)
+    'create_exploding_text': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
     'split_text_into_physics_array_elements': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
+    'do_text_slam': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
+    'do_exploding_text_physics': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
+    'create_exploding_particles': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
+    'do_extra_exploding_particles': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
+    'explode_white_screens': 'scripts/guitar/menu/ui_exploding_text.qb.xen',
 }
 
 
@@ -99,7 +107,15 @@ def ported_scripts():
         e = t.index('endfunction', m.end())
         body = t[m.end():e]
         assert not any(a in body for a in ('FIXME', 'select(', ':OFFSET', ':POS(')), f'{name}: decompiler artifact'
+        # (thaw_4f %vec2(a,b) = a random float in a..b: the decompiler's spelling, compiled back as such)
         body = _rename(body)
+        if name == 'create_exploding_text':
+            # our converted WoR title font; the text in capitals ("YOU ROCK!" as in WoR; the DE passes "You Rock!")
+            assert body.count('$fontgrid_title_a1$') == 1, 'create_exploding_text: font changed'
+            body = body.replace('$fontgrid_title_a1$', f'${TITLE_FONT}$')
+            k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
+            body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
+                    + body[k:])
         if name == 'p2p_lightning_create_fx':
             assert body.count('$parent$ = $root_window$') == 1, 'p2p_lightning_create_fx: parent changed'
             body = body.replace('$parent$ = $root_window$', f'$parent$ = ${FX_CONTAINER}$')
@@ -124,54 +140,6 @@ def ported_scripts():
         '\t:i endfunction\n]\n')
     return '\n'.join(out)
 
-
-# WoR's create_exploding_text, on the DE's version of it (same physics helpers): WoR title font, light blue, WoR's
-# effects (glow behind the letters, lightning bolts, then the explosion)
-EXPLODING = (
-    'Script WoR_HUD_create_exploding_text [\n'
-    '\t${\n\t\tStructString parent = "you_rock_physics"\n\t\tStructQBStringQs text = 0x6f6d143d\n'
-    '\t\tStructQBKey placement = top\n\t\tStructArray just\n\t\t{\n\t\t\tArrayQBKey\n\t\t\t[\n\t\t\t\tcenter\n\t\t\t\tbottom\n'
-    '\t\t\t]\n\t\t}\n\t\tStructInt text_physics = 1\n\t}$\n'
-    '\t:i $FormatText$$checksumname$ = $cont_id$%s("%p")$p$ = %GLOBAL%$parent$\n'
-    '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$cont_id$\n\t\t:i return\n\t:i endif\n'
-    '\t:i if (%GLOBAL%$placement$ = $top$)\n\t\t:i $cont_pos$ = ~$g_ui_exploding_text_top_pos$\n'
-    '\t:i else \n\t\t:i $cont_pos$ = ~$g_ui_exploding_text_bottom_pos$\n\t:i endif\n'
-    '\t:i $check_screen_for_physics$\n'
-    '\t:i if NOT $ScreenElementExists$$id$ = $exploding_particle_container$\n'
-    '\t\t:i $create_exploding_particles$\n\t\t:i %GLOBAL%$explode$ = %i(1)\n'
-    '\t:i else \n\t\t:i %GLOBAL%$explode$ = %i(0)\n\t:i endif\n'
-    '\t:i $WoR_HUD_split_text_into_physics_array_elements$:s{\n'
-    '\t\t:i $id$ = $yourock_text$\n\t\t:i $parent$ = %GLOBAL%$parent$\n\t\t:i $text$ = %GLOBAL%$text$\n'
-    '\t\t:i $text_pos$ = %vec2(0.0,0.0)\n\t\t:i $cont_pos$ = %GLOBAL%$cont_pos$\n'
-    '\t\t:i $space_between$ = %vec2(40.0,0.0)\n\t\t:i $fit_dims$ = %vec2(640.0,120.0)\n'
-    '\t\t:i $just$ = %GLOBAL%$just$\n\t\t:i $placement$ = %GLOBAL%$placement$\n'
-    '\t\t:i $flags$ = :s{\n'
-    '\t\t\t:i $Scale$ = %f(1.05)\n\t\t\t:i $z_priority$ = %i(95)\n'
-    f'\t\t\t:i $font$ = ${TITLE_FONT}$\n'
-    '\t\t\t:i $rgba$ = :a{%i(100)%i(200)%i(255)%i(255):a}\n\t\t\t:i $alpha$ = %i(1)\n'
-    '\t\t:i :s}\n\t\t:i $centered$\n\t:i :s}\n'
-    '\t:i $CreateScreenElement$:s{\n'
-    '\t\t:i $type$ = $ContainerElement$\n\t\t:i $parent$ = %GLOBAL%$cont_id$\n\t\t:i $dims$ = %vec2(100.0,100.0)\n'
-    '\t\t:i $just$ = :a{$center$$center$:a}\n\t\t:i $pos_anchor$ = :a{$center$$center$:a}\n'
-    '\t\t:i $Pos$ = %vec2(0.0,30.0)\n\t\t:i $z_priority$ = %i(0)\n\t:i :s}\n'
-    '\t:i $fx_id$ = %GLOBAL%$id$\n'
-    '\t:i $spawnscriptnow$$WoR_HUD_You_Rock_Text_Glow$$params$ = :s{$parent$ = %GLOBAL%$fx_id$:s}\n'
-    '\t:i $spawnscriptnow$$WoR_HUD_You_Rock_lightning_01$\n'
-    '\t:i $do_text_slam$:s{\n'
-    '\t\t:i $parent$ = %GLOBAL%$parent$\n\t\t:i $explode$ = %GLOBAL%$explode$\n'
-    '\t\t:i $text_physics$ = %GLOBAL%$text_physics$\n'
-    '\t\t:i $exploding_text_array_size$ = %GLOBAL%$exploding_text_array_size$\n'
-    '\t\t:i $cont_pos$ = %GLOBAL%$cont_pos$\n\t:i :s}\n'
-    '\t:i $DestroyScreenElement$$id$ = %GLOBAL%$fx_id$\n'
-    '\t:i $wait$${\n\t\tStructInt 2\n\t\tStructQBKey gameframes\n\t}$\n'
-    '\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$cont_id$\n\t\t:i return\n\t:i endif\n'
-    '\t:i $CreateScreenElement$:s{\n'
-    '\t\t:i $type$ = $ContainerElement$\n\t\t:i $parent$ = %GLOBAL%$cont_id$\n\t\t:i $dims$ = %vec2(100.0,100.0)\n'
-    '\t\t:i $just$ = :a{$center$$center$:a}\n\t\t:i $pos_anchor$ = :a{$center$$center$:a}\n'
-    '\t\t:i $Pos$ = %vec2(0.0,30.0)\n\t\t:i $z_priority$ = %i(0)\n\t:i :s}\n'
-    '\t:i $fx_id$ = %GLOBAL%$id$\n'
-    '\t:i $spawnscriptnow$$WoR_HUD_UROK_FX_XPLOSION01$$params$ = :s{$parent$ = %GLOBAL%$fx_id$:s}\n'
-    '\t:i endfunction\n]\n')
 
 WRAPPER = (
     'Script WoR_HUD_Create_HandsOfGod [\n'
@@ -201,7 +169,7 @@ WRAPPER = (
 
 
 def scripts():
-    return EXPLODING + '\n' + WRAPPER + '\n' + ported_scripts()
+    return WRAPPER + '\n' + ported_scripts()
 
 
 def load_script():

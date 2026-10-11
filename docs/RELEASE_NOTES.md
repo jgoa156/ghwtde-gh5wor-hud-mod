@@ -1,5 +1,33 @@
 # GH5 / WoR HUD: release notes
 
+## 0.48 (beta) - the WoR menus
+
+One drop-in zip, `GH5-WoR_HUD_0.48.zip` (plugin `wor_hud_fixes.asi` 1.31). New since 0.47, all picked as
+"Guitar Hero: Warriors of Rock" in the DE's theme options:
+
+- **Helper pills** (button prompts) and the gamertag pill in WoR's colours.
+- **Loading screen:** WoR's art, animated plate and spinning load ball (16:9 with black bars on ultrawide).
+- **Menu popups:** WoR's frame and banner title, WoR fonts and colours, the red brush bar behind the selected option,
+  black background; messages at one size.
+- **Failed / song ended box:** WoR's layout (song title, COMPLETED / percent / ON / difficulty in WoR's colours).
+- **Pause menu:** WoR's look above the gameplay, song info in title case.
+- **YOU ROCK:** WoR's whole sequence (exploding letters with gravity, lightning bolts, glow, explosion) and WoR's
+  YOU ROCK sound.
+- **Star power:** WoR's Tesla arc on the gems and the burst particles at WoR's size; Band Hero's star power sounds
+  (the same as WoR's) by default.
+- **Rock needle** follows WoR's LED art (bottom at fail, colour edges at the colour changes, top at full health).
+- **Score** with thousands separators.
+- Menu music is no longer in this zip: get the GHWoR Main Menu Music mod or the All Menu Songs Installer (below).
+
+**Recommended (separate):**
+[GHWoR Main Menu Music](https://github.com/jgoa156/ghwtde-ghwor-menu-music-mod),
+[All Menu Songs Installer](https://github.com/jgoa156/ghwtde-all-menu-songs-installer).
+
+### Known issues
+- Face-off can crash; face-off / battle HUDs are not adjusted for ultrawide.
+- Band, multiplayer and microphone layouts still use the stock DE layouts.
+- The DE's star power highway glow leaks slightly above and below the highway.
+
 ## 0.40 (beta, one zip)
 
 Everything ships in one drop-in zip, `GH5-WoR_HUD_0.40.zip`:

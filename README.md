@@ -7,6 +7,13 @@ Warriors of Rock gameplay HUD from the games' own art: rock meter and star power
 the score / star / note-streak panel, the multiplier badge and soft HUD shadows. It adds
 "Guitar Hero: Warriors of Rock" to the DE's HUD Theme options; nothing in the game is overwritten.
 
+## Download
+
+Latest: **[releases/GH5-WoR_HUD_0.48.zip](releases/GH5-WoR_HUD_0.48.zip)** (beta, notes in
+[docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md)). Extract into the game folder. Recommended alongside it (separate):
+[GHWoR Main Menu Music](https://github.com/jgoa156/ghwtde-ghwor-menu-music-mod) and the
+[All Menu Songs Installer](https://github.com/jgoa156/ghwtde-all-menu-songs-installer).
+
 ## What ships (one Nexus drop-in zip, built by `python build.py --package`)
 
 **Requirement:** ReShade 6.x (32-bit, D3D9) for the WoR shader look; the HUD works without it. A copy ships in
@@ -15,8 +22,8 @@ the zip's optional folder.
 | Part | Installs into the game folder | Notes |
 |---|---|---|
 | HUD theme | `DATA\MODS\WoR_HUD\`, `DATA\PAK\hud_ghwor.pak.xen`, `DATA\PAK\gems_ghwor_hud.pak.xen` | HUD Theme = Warriors of Rock (no in-play messages, darker highway metal); the WoR border needs Gem Theme = WoR |
-| HUD fixes | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | WoR streak light colours, textures on the 2nd song, smooth star power, theme switch crash |
-| Optional - ReShade (WoR shaders) | `d3d9.dll`, `ReShade.ini`, `GHWoR.ini`, `reshade-shaders\`, `ghwt_bgfx.addon32` | ReShade 6.8.0 + the WoR preset; the add-on keeps effects off the HUD |
+| HUD fixes | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | star power look, rock needle, score commas, WoR menus / popups / pause / YOU ROCK, crash fixes |
+| Optional - ReShade (WoR shaders) | `d3d9.dll`, `ReShade.ini`, `GHWoRHudModPreset.ini`, `reshade-shaders\`, `ghwt_bgfx.addon32`, `ghwtde_ultrawide.addon32` | ReShade 6.8.0 + the WoR preset; the add-ons keep effects off the HUD and fix ultrawide |
 
 ## Building
 

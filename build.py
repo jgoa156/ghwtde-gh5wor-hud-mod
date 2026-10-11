@@ -799,10 +799,8 @@ def package():
     for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
         shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    # Warriors of Rock menu music (its own release: ghwtde-ghwor-menu-music-mod); the collection is not shipped (it
-    # merges other modders' menu music mods)
-    wor_mm = menu_music()[1]
-    shutil.copytree(wor_mm, os.path.join(main, 'DATA', 'MODS', os.path.basename(wor_mm)))
+    # (menu music is NOT shipped since 0.48, user: the WoR menu music mod and the menu songs installer have their own
+    # releases; the README recommends them)
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))

@@ -37,6 +37,12 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
   Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, the two .addon32
   files and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
 
+RECOMMENDED (separate downloads, by WitchDoctoR)
+  - GHWoR Main Menu Music: Warriors of Rock's 14 menu songs in the DE's menus.
+    https://github.com/jgoa156/ghwtde-ghwor-menu-music-mod
+  - GHWT:DE All Menu Songs Installer: merges the menu music of every game you have into one menu music mod.
+    https://github.com/jgoa156/ghwtde-all-menu-songs-installer
+
 KNOWN ISSUES (beta)
   - Switching HUD theme in the options can crash the game. Pick the theme and restart if needed.
   - Band, multiplayer and microphone layouts still use the stock layouts.

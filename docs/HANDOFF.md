@@ -55,7 +55,12 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
    frets/border textures live in gems_ghwt, the strings' material sys_String01 in z_in_game. Mock first.
 3. Face-off crash: enable WER LocalDumps (admin) and reproduce; face-off / battle ultrawide layout.
 4. Song list side art: the user is remastering `4b93dd1e` / `b19ce07d` (256x2048, setlist_wtde.pak) for higher res.
-5. Multiplayer / vocals layouts (only 1 player is WoR-styled); crowd selector (parked: no GH5/WoR crowd peds in the DE).
+5. Multiplayer / vocals layouts (parked, user 2026-10-11: mocks saved for later): `docs/mocks/mock_modes_v1.jpg`
+   (face-off / pro face-off, band, guitar + vocals, vocals), made by `python tools/mock_modes.py <out.jpg> [modes]`:
+   WoR widgets drawn from WoR's descs (hud_standard / _1g1v / _1v, comp_scoreboard_player, vocals_highway), our 1-player
+   WoR HUD on each highway, highway spots approximate (calibrate on in-game shots of each mode). Crowd selector parked
+   (no GH5/WoR crowd peds in the DE). Post-song stats box (WoR song_summary_mini): skipped, other DE themes don't
+   customise it either (user).
 
 ## How to work on it
 

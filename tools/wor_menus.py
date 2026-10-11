@@ -60,7 +60,7 @@ MSG_SCALE = 0.42                                          # popup message text (
 # 2026-10-11 test: the box was 720 x 180 at 0.42 (302 x 76 canvas: two lines), so 3-4 line messages were fit-shrunk to
 # about 0.55 of the size; a wider, taller box keeps every message at full size (5 lines of ~33 units), wraps
 # "Overwrite successful" on one line, and sits a little lower under the banner
-MSG_DIMS = (1600.0, 400.0)
+MSG_DIMS = (1600.0, 315.0)   # 3 lines at full size; longer messages scale down (user: 4-line ones too big at full size)
 MSG_Y = 248.0
 BANNER_Y = 168.0                                          # the frame's gold banner middle (canvas units)
 

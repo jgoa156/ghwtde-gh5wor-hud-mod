@@ -82,7 +82,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _OUT = os.path.join(_HERE, '..', 'build', 'pak_src', 'wor_yourock')
 
 
-YR_EXPLODE, YR_GRAVITY = 13500000, 2000.0     # burst force (WoR 9000000), g_GRAVITY (DE 1000.0)
+YR_EXPLODE, YR_GRAVITY = 13500000, 3500.0     # burst force (WoR 9000000), g_GRAVITY (DE 1000.0)
 
 
 def _cells(key):

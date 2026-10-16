@@ -1,4 +1,4 @@
-// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -626,6 +626,9 @@ namespace
 		  "star power highway: GH_Star_Power_Verb_Off wrapped (WoR highway effect off)" },
 		// 1.28: rock needle on the WoR LED art (our copy of the DE's needle path script, WoR theme only)
 		// (1.28's needle swap of 0x3205f550 froze the game at the first song, 2026-10-11: disabled until understood)
+		// 1.32: battle attack cards into the WoR slots (tools/wor_battle.py; wrapper moves guitar_battle's card offsets)
+		{ 0xeeec662a /* create_battle_alert_frames */, 0xe44057a9 /* wor_hud_create_battle_alert_frames */, 0x88ff56b0 /* _orig */,
+		  "battle: create_battle_alert_frames wrapped (attack cards in the WoR slots)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)
 		{ 0x74d55bee /* create_loading_screen */, 0x16420b70 /* wor_hud_create_loading_screen */, 0xa8cfacd3 /* _orig */,
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
@@ -1241,7 +1244,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.31 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.32 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

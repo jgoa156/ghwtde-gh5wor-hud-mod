@@ -407,8 +407,27 @@ namespace
 				u->Release();
 	}
 
+	// Direct3D 9 only: under DXVK (ReShade on Vulkan) the device is a VkDevice and the draws arrive on DXVK's own
+	// thread, so the add-on steps aside and ReShade applies the preset at the end of the frame as usual.
+	bool g_off = false, g_api_checked = false;
+
+	bool off(device *dev)
+	{
+		if (!g_api_checked && dev != nullptr)
+		{
+			g_api_checked = true;
+			g_off = dev->get_api() != device_api::d3d9;
+			if (g_off)
+				reshade::log::message(reshade::log::level::warning,
+					"ghwt_bgfx: not Direct3D 9 (DXVK?): background-only shaders off, the preset applies to the whole frame");
+		}
+		return g_off;
+	}
+
 	void on_draw_common(command_list *cmd_list, const char *kind, uint32_t count)
 	{
+		if (off(cmd_list->get_device()))
+			return;
 		if (g_auto && !g_scrub && g_pending_inject && !g_injected_this_frame)
 		{
 			g_pending_inject = false;
@@ -496,6 +515,8 @@ namespace
 	// Fires before ReShade renders its end-of-frame effects: the game's own final frame.
 	void on_present(command_queue *queue, swapchain *, const rect *, const rect *, uint32_t, const rect *)
 	{
+		if (off(queue->get_device()))
+			return;
 		if (g_dump_active)
 		{
 			IDirect3DDevice9 *dev = reinterpret_cast<IDirect3DDevice9 *>(queue->get_device()->get_native());
@@ -546,6 +567,8 @@ namespace
 	// Fires after ReShade's effects (end of frame or our injection): frame boundary.
 	void on_reshade_present(effect_runtime *runtime)
 	{
+		if (off(runtime->get_device()))
+			return;
 		if (g_dump_active)
 		{
 			uint32_t w = 0, h = 0;

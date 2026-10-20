@@ -7,7 +7,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 ## Start here (next session, from 2026-10-11)
 
 State: everything built from HEAD is installed in the game; all three repos are pushed (this one, ghwtde-ultrawide-fix,
-ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; the old ghwtde-ghwor-menu-music-mod repo is being deleted). Nothing from the last round has been tested in game yet.
+ghwtde-all-main-menu-music: every game's menu music in one mod, games switched off in its menumusic.ini). Nothing from the last round has been tested in game yet.
 
 1. **Ask for one test run** (rule: ask before launching): fail a song (fail box vs WoR, overlay method in MODLOG
    "Round 3"), finish one (YOU ROCK: letters fall, bigger "YOU ROCK!", glow size), watch the rock needle at the colour
@@ -15,9 +15,7 @@ ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; th
    lay ours over the user's WoR reference (align on a fixed element, as for verify/fail_overlay_v1.jpg).
 2. **Release 0.48** once the user confirms the pause menu: `python build.py --package`, copy the zip to releases/,
    push (94 MB, under GitHub's 100 MB limit). The ultrawide fix has unreleased changes too (its package.py).
-3. **Open decisions for the user:** publish the menu music collection installer (code in the menu music repo
-   `installer/`, package `E:\Dev\ghwt\menu-music-all\dist`, 302 MB with all games; loudness differs ~14 dB between
-   games: level them?); popup up/down arrows (WoR's fail box has them).
+3. **Open decisions for the user:** popup up/down arrows (WoR's fail box has them).
 4. **Backlog:** WoR highway lines; face-off crash + layouts; multiplayer layouts (mocks in docs/mocks); song list side
    art (user remastering); drum animations (docs/DRUM_ANIMS_PLAN.md).
 
@@ -45,8 +43,8 @@ ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; th
   **Awaiting a test (installed):** fail box calibration, You Rock round 3 (gravity, size, glow 128 px), rock needle,
   title-screen flashes (ultrawide), gameplay hidden under pause.
 - **Other repos:** ultrawide fix (loading bars default, YOU ROCK / title flash groups, catalog off by default; not
-  released since 0.2 beta); GHWoR menu music (released 1.0); menu music collection installer (committed, unreleased, in the menu
-  music repo `installer/`, package in `E:\Dev\ghwt\menu-music-all\dist`, not published: the user decides).
+  released since 0.2 beta); All Main Menu Music (github.com/jgoa156/ghwtde-all-main-menu-music, `python build.py --install <game>`;
+  2026-10-20: NoWorldTour QB empty array fixed, awaiting a boot test, not released).
 - **Confirmed in game (2026-10-10):** WoR star power highway effect (0.47 / plugin 1.24: cyan rail glows, stars up
   the rails, strikeline rush; MODLOG "v0.47"), career rock needle (plugin 1.22), the new preset, every ultrawide screen
   (title, menus, song list, loading, YOU ROCK themes, song intro, left-pinned menus). User: the occasional crash
@@ -92,7 +90,7 @@ ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; th
    (or repurpose hidden ones: fail desc 0x86431767 / 0x205d5bf9, main mixer_glow_64 / dialog_bg_menu) above the first
    and below the last option. Also untested: popup title #3f352a lower (BANNER_Y - 9), fail box COMPLETED / ON at natural
    width (boxes 400 / 160), figures #e1474e.
-2. **After publishing (user, 2026-10-11):** full code review of the 3 projects (HUD, ultrawide, menu music + installer)
+2. **After publishing (user, 2026-10-11):** full code review of the 3 projects (HUD, ultrawide, all main menu music)
    for optimisation; WoR's Star03 sliver for the burst; the SP glow leak.
 3. **New mod idea (evaluate):** a game-catalogue jump menu opened with SELECT (Xbox) / its PC key, listing the games
    installed (dynamic: each install has a different library); song list sorting optimisations and ignoring a leading
@@ -100,10 +98,8 @@ ghwtde-all-menu-songs-installer, which now also holds the WoR menu music mod; th
 4. Later (user): face-off crash + layouts, multiplayer / vocals layouts, song list side art, drum animations.
    Dropped: WoR highway lines (user was wrong about them).
 
-Released 2026-10-11: HUD 0.49 (releases/, 23 MB, bundles Ultrawide Fix 1.0), Ultrawide Fix 1.0, All Menu Songs Installer
-1.0 (releases/ as a 4-part 7z, levelled) + GHWoR Main Menu Music 1.0 (moved into the installer repo; the old
-ghwtde-ghwor-menu-music-mod repo is deleted, its local copy is in the Recycle Bin). `build.py --install` no longer
-installs the menu music collection (the installer does). Popup arrows: code ships but they did not show in game
+Released 2026-10-11: HUD 0.49 (releases/, 23 MB, bundles Ultrawide Fix 1.0), Ultrawide Fix 1.0. The menu music is one all-games mod
+(ghwtde-all-main-menu-music); `build.py --install` does not install it (that repo's build.py does). Popup arrows: code ships but they did not show in game
 (user: leave it for now).
 
 ## How to work on it

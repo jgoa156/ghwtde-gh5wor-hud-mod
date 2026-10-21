@@ -34,7 +34,7 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
-## Next: face-off / pro face-off, band, vocals (user 2026-10-21) -- research first
+## Next: face-off / pro face-off, band, vocals (user 2026-10-21) -- research DONE, mocks next
 
 User's current-state clip: `Downloads\Video Project 25.mp4` (0:00-0:53 face-off + pro face-off: the DE's GH3-style top
 score bar and dial, highways touching; 0:53-1:46 battle; 1:46-end band: the DE's WT band meter top-left and per-player
@@ -51,6 +51,7 @@ User's requirements:
 - Band: rock meter, star power tube and streak multiplier kept; WoR star power is per player (the DE's is shared:
   find a workaround, e.g. show the same amount on every player). Remove the instrument icon from the highway; use WoR's
   failed-instrument and instrument-icon textures.
+- **Research done 2026-10-21: read `docs/MODES_RULES.md` "Research 2026-10-21" (+ docs/research/*).** Original brief:
 - Research (mechanical, cheaper model): (1) GH wiki (guitarhero.fandom.com) on both games: versus / face-off / pro
   face-off, band (shared vs per-player SP, band multiplier, revive), multiplier rules per instrument, vocals scoring and
   the precision wording (WT: "Awesome / Strong / Good / Okay / Messy / Weak"-style vs WoR) -- write findings into

@@ -25,6 +25,12 @@ static const uint32_t kSpFill[][2] = {
 	{ 0x0a3c8de4, 0x3baed0b3 },   // hud_rock_tube_glow_full_b -> WoR_HUD_spseg_b
 };
 
+// multiplayer star power tubes (tools/wor_versus.py): same renames, kept out of the 1-player smooth fill
+static const uint32_t kVsFill[][2] = {
+	{ 0x20273d7b, 0x9042cfbe },   // hud_rock_tube_glow_full -> WoR_HUD_vsseg
+	{ 0x0a3c8de4, 0xef028dba },   // hud_rock_tube_glow_full_b -> WoR_HUD_vsseg_b
+};
+
 // smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc
 static const uint32_t kSpFull = 0xe735c742;   // WoR_HUD_spfull
 static const uint32_t kSpFullB = 0x59d0dc4e;  // WoR_HUD_spfull_b
@@ -130,3 +136,11 @@ static const float kBSlot[6][5] = {
 	{ 1033.00f, 253.00f, 1066.60f, 522.96f, 16.04f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
+
+// 2-highway layouts (tools/wor_mp.py): per-player rock needle and multiplier
+static const float kMpNeedleAX = 1.031300f, kMpNeedleAY = 1.031300f;
+static const uint32_t kMpNeedleTex = 0xa5460419;   // WoR_HUD_mpneedle
+static const float kMpNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 13.0000f, -28.0000f }, { 26.0000f, -58.0000f }, { 37.0000f, -84.0000f } };
+static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 20.3021f, -37.7079f }, { 35.7271f, -66.3574f }, { 46.9557f, -87.2126f } };
+static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };
+static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

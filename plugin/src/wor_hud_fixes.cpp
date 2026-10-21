@@ -209,6 +209,18 @@ namespace
 				}
 			}
 		}
+		else if (element && (current == kVsFill[0][1] || current == kVsFill[1][1]))
+		{
+			// 1.35: multiplayer tubes (tools/wor_versus.py): WoR's fill under their own names, no smooth fill
+			for (const auto &p : kVsFill)
+			{
+				if (p[0] == texture)
+				{
+					texture = p[1];
+					break;
+				}
+			}
+		}
 		reinterpret_cast<SetTextureFn>(kSetTexture)(element, edx, texture);
 	}
 
@@ -641,6 +653,13 @@ namespace
 		// 1.33: battle highways further apart with the WoR theme (wrapper moves the Pos the DE script returns)
 		{ 0x214c3209 /* get_highway_pos_and_scale */, 0x8dd39687 /* wor_hud_get_highway_pos_and_scale */, 0x739598f1 /* _orig */,
 		  "battle: get_highway_pos_and_scale wrapped (highways apart in battle)" },
+		// 1.35: no messages above the highway in any mode with the WoR theme (tools/wor_modes.py)
+		{ 0x8a3b4c01 /* hud_create_message */, 0xbca8b3cd /* wor_hud_hud_create_message */, 0x68c30716 /* _orig */,
+		  "messages: hud_create_message wrapped (none above the highway with the WoR theme)" },
+		{ 0xa076e10c /* HUD_attach_widget_band_faceoff_meter */, 0xcd9c2a12 /* wrapper */, 0xb668444b /* _orig */,
+		  "versus: HUD_attach_widget_band_faceoff_meter wrapped (WoR versus meter shown when attached)" },
+		{ 0xd267c276 /* HUD_attach_widget_player_health */, 0x463bdb7e /* wrapper */, 0xd030a5a0 /* _orig */,
+		  "multiplayer: HUD_attach_widget_player_health wrapped (per-player rock tube shown when attached)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)
 		{ 0x74d55bee /* create_loading_screen */, 0x16420b70 /* wor_hud_create_loading_screen */, 0xa8cfacd3 /* _orig */,
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
@@ -716,30 +735,43 @@ namespace
 	// the only child of the anchor container whose scale is kNeedleAX / kNeedleAY (unique in the HUD).
 	bool g_needle_logged = false;
 
-	void needle_remap(void *anchor)
+	// one anchor type: its scale (finds it), the needle texture, the DE's path knots and ours (anchor units)
+	bool remap_on(void *anchor, float ax, float ay, uint32_t tex, const float (&de)[4][2], const float (&wor)[4][2],
+	              bool &logged, const char *what)
 	{
-		if (fabsf(f32(anchor, kElementScale) - kNeedleAX) > 1e-3f || fabsf(f32(anchor, kElementScale + 4) - kNeedleAY) > 1e-3f)
-			return;
+		if (fabsf(f32(anchor, kElementScale) - ax) > 1e-3f || fabsf(f32(anchor, kElementScale + 4) - ay) > 1e-3f)
+			return false;
 		void *needle = nullptr, *src = nullptr;
 		for (void *c = *reinterpret_cast<void **>(field(anchor, kElementFirstChild)); c;
 		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
-			(texture_of(c) == kNeedleTex ? needle : src) = c;
+			(texture_of(c) == tex ? needle : src) = c;
 		if (!needle || !src)
-			return;
+			return true;
 		const float y = f32(src, kElementPos + 4);       // where the DE put its (invisible) needle
 		int i = 0;
-		while (i < 2 && y < kNeedleDE[i + 1][1])
+		while (i < 2 && y < de[i + 1][1])
 			++i;
-		const float dy = kNeedleDE[i + 1][1] - kNeedleDE[i][1];
-		float t = dy != 0.0f ? (y - kNeedleDE[i][1]) / dy : 0.0f;
+		const float dy = de[i + 1][1] - de[i][1];
+		float t = dy != 0.0f ? (y - de[i][1]) / dy : 0.0f;
 		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
-		f32(needle, kElementPos) = kNeedleWoR[i][0] + (kNeedleWoR[i + 1][0] - kNeedleWoR[i][0]) * t;
-		f32(needle, kElementPos + 4) = kNeedleWoR[i][1] + (kNeedleWoR[i + 1][1] - kNeedleWoR[i][1]) * t;
-		if (!g_needle_logged)
+		f32(needle, kElementPos) = wor[i][0] + (wor[i + 1][0] - wor[i][0]) * t;
+		f32(needle, kElementPos + 4) = wor[i][1] + (wor[i + 1][1] - wor[i][1]) * t;
+		if (!logged)
 		{
-			g_needle_logged = true;
-			log("rock needle: remapped on the WoR LED art (DE y %.1f -> segment %d)", y, i);
+			logged = true;
+			log("%s: remapped on the WoR LED art (DE y %.1f -> segment %d)", what, y, i);
 		}
+		return true;
+	}
+
+	// 1.35: the 2-highway layouts' per-player rock tubes (tools/wor_mp.py) use the DE's 2-player needle path
+	bool g_mp_needle_logged = false;
+
+	void needle_remap(void *anchor)
+	{
+		if (!remap_on(anchor, kNeedleAX, kNeedleAY, kNeedleTex, kNeedleDE, kNeedleWoR, g_needle_logged, "rock needle"))
+			remap_on(anchor, kMpNeedleAX, kMpNeedleAY, kMpNeedleTex, kMpNeedleDE, kMpNeedleWoR, g_mp_needle_logged,
+			         "multiplayer rock needle");
 	}
 
 	// ---- 1.33, battle rock tube (tools/wor_battle.py): the DE turns each player's HUD2D_rock_needle by health
@@ -853,6 +885,38 @@ namespace
 		if (!g_script_swaps_done)
 			script_swaps_try();
 		g_element_update(element, edx);
+	}
+
+	// ---- 1.35, no instrument icon on the highway (tools/wor_mp.py): HUD_attach_widget_player_multiplier puts
+	// higway_icon_* (sic) into the x1 slot of the multiplier textures in band scoring, after reading the theme's arrays.
+	// When the target element is one of our multiplier badges (it shows one of this theme's multiplier textures), our
+	// x1 badge is set instead. Other themes' badges never show our textures, so they keep the icon.
+	SetTextureFn g_set_texture = nullptr;
+	int g_icon_swaps = 0;
+
+	void __fastcall set_texture_hook(void *element, void *edx, uint32_t texture)
+	{
+		if (element)
+		{
+			for (uint32_t icon : kHighwayIcons)
+			{
+				if (icon != texture)
+					continue;
+				const uint32_t current = texture_of(element);
+				for (uint32_t m : kOurMult)
+				{
+					if (m == current)
+					{
+						texture = kOurMult[0];
+						if (g_icon_swaps++ < 4)
+							log("multiplier: highway instrument icon %08x replaced by the x1 badge", icon);
+						break;
+					}
+				}
+				break;
+			}
+		}
+		g_set_texture(element, edx, texture);
 	}
 
 	// ---- Fix 14, missing parents (1.24): SetParent reads the parent it looked up without a null check, so a
@@ -1358,7 +1422,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.34 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.35 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -1378,6 +1442,8 @@ namespace
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
 		log(g_element_update ? "star power effects: per-frame hook installed" : "star power effects: per-frame hook failed");
+		g_set_texture = reinterpret_cast<SetTextureFn>(install_jmp(kSetTexture, 7, reinterpret_cast<void *>(&set_texture_hook)));
+		log(g_set_texture ? "multiplier: SetTexture hooked (no highway instrument icon on our badges)" : "multiplier: SetTexture hook failed");
 		// mov eax, fs:[0] = 6 bytes, one whole instruction
 		g_set_parent = reinterpret_cast<SetParentFn>(install_jmp(kSetParent, 6, reinterpret_cast<void *>(&set_parent_hook)));
 		log(g_set_parent ? "missing parents: SetParent guarded" : "missing parents: SetParent hook failed");

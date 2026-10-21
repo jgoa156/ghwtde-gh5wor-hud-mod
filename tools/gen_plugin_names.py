@@ -4,7 +4,7 @@ usage: python tools/gen_plugin_names.py"""
 import os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import paths, wor_1g, wor_battle  # noqa: E402
+import paths, wor_1g, wor_battle, wor_mp, wor_versus  # noqa: E402
 
 
 def qbkey(s):
@@ -31,6 +31,10 @@ def main():
     out += ['// star power fill: stock name the DE sets -> our name (segments start on the second column)',
             'static const uint32_t kSpFill[][2] = {']
     out += [f'\t{{ 0x{qbkey(a):08x}, 0x{qbkey(b):08x} }},   // {a} -> {b}' for a, b in wor_1g.SP_FILL_NAMES]
+    out += ['};', '']
+    out += ['// multiplayer star power tubes (tools/wor_versus.py): same renames, kept out of the 1-player smooth fill',
+            'static const uint32_t kVsFill[][2] = {']
+    out += [f'\t{{ 0x{qbkey(a):08x}, 0x{qbkey(b):08x} }},   // {a} -> {b}' for a, b in wor_versus.SEG_NAMES]
     out += ['};', '']
     out += ['// smooth star power fill (tools/wor_1g.py plugin_geometry): canvas units of the band meter desc',
             f'static const uint32_t kSpFull = 0x{qbkey(wor_1g.SP_FULL_NAMES[0]):08x};   // {wor_1g.SP_FULL_NAMES[0]}',
@@ -95,6 +99,17 @@ def main():
     out += [f'\t{{ {s[0]:.2f}f, {s[1]:.2f}f, {c[0]:.2f}f, {c[1]:.2f}f, {k:.2f}f }},' for s, c, k in wor_battle.plugin_cards()]
     out += ['};',
             f'static const uint32_t kBattlemodeContainer = 0x{qbkey("battlemode_container"):08x};', '']
+    # 2-highway layouts (tools/wor_mp.py): the per-player rock needle (anchor scale, DE 2-player path, our stops), the
+    # multiplier textures (the x1 badge replaces the DE's highway instrument icon) and those icon names
+    ax, ay = wor_mp.ANCHOR_SCALE
+    out += ['// 2-highway layouts (tools/wor_mp.py): per-player rock needle and multiplier',
+            f'static const float kMpNeedleAX = {ax:.6f}f, kMpNeedleAY = {ay:.6f}f;',
+            f'static const uint32_t kMpNeedleTex = 0x{qbkey(wor_mp.NEEDLE_TEX):08x};   // {wor_mp.NEEDLE_TEX}',
+            'static const float kMpNeedleDE[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.DE_KNOTS_2P) + ' };',
+            'static const float kMpNeedleWoR[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.needle_knots()[1]) + ' };',
+            'static const uint32_t kOurMult[8] = { ' + ', '.join(f'0x{qbkey(n):08x}' for n, _ in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
+            'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
+            '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))
     print('wrote', p)

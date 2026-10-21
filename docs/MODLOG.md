@@ -1442,3 +1442,40 @@
     pasted mock): ROCK_NUDGE +15 px; checked on the clip's frames. Slots touch their rail as they are.
   - Empty slot disc alpha 215 -> 245 (the highway showed through).
 - Plugin 1.34 also logs "battle card <id>: slot n moved to (x, y)".
+
+## v0.50 WIP + plugin 1.35 (2026-10-21, night): no messages in any mode, WoR face-off, per-player band HUD
+
+Built unattended at the user's request ("code as much as possible, I'll test tomorrow"); not tested in game. Mock:
+docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user's clip; face-off left, band right).
+
+- **No messages above the highway, every mode** (tools/wor_modes.py): WoR_HUD_hud_create_message (plugin swap of
+  hud_create_message, the funnel of note streaks, Hot Start, Star Power Ready, band streaks, band fail hint, drum fill /
+  solo) returns when the theme has WoR_HUD_no_messages. Battle: show_battle_text 0 and the alert cards
+  (battle_alert_containerp1/p2) alpha 0 after create_battle_alert_frames. Vocal phrase grades (vocals_message) stay.
+- **Highways 30 apart in every 2-highway layout** (face-off, pro face-off, 2-player co-op / quickplay, 2 instruments +
+  vocals): WoR_HUD_get_highway_pos_and_scale no longer checks p2_battle, only 2 non-vocal highways + our theme.
+- **Face-off / Pro Face-Off** (tools/wor_versus.py): our versus desc HUD_band_battle_ghwor in our hud_2g copy = WoR's
+  uidesc_HUD_band_battle look: dial (OFF art, needle on the DE's angle, the leader's glow in WoR's team colours
+  228,61,12 / 87,149,229), a WoR score bar per player (HUD_band_battle_score + stripe, score in WoR numerals, the DE's
+  multiplier nixie at the outer end), placing badges (WoR HUD_place_icon_back/front + "1st"/"2nd" in WoR's text font,
+  baked: the DE's QS has no "1st"; the leader's "1st" + starburst_256 sit in containers driven by the DE's amber /
+  violet "who leads" alphas over static "2nd" badges; amber = faceoff_ratio > 0, assumed P1 ahead: VERIFY). The DE's
+  instance overrides (placeholder texts, stock fill textures) are dropped with the instance block.
+- **Versus meter gate** (all our layouts): the meter instance starts at alpha 0; WoR_HUD_HUD_attach_widget_band_faceoff_meter
+  (plugin swap) runs the DE attach then sets it to 1. With the user's HUDBossFOMeter=1 the unattached meter used to
+  show "01234567" / "50" in band / co-op; now blank there.
+- **Per-player pieces in hud_2g and hud_2g1v** (tools/wor_mp.py; g1/g2 moved with the highways): appended children
+  Star_Power (wor_sp_mp_ghwor: the WoR SP tube mapped onto the right rail like the battle tubes, three fill segments
+  glow0..2 fed by HUD_attach_widget_player_star_power; textures WoR_HUD_vsseg/_b = WoR's fill under names the plugin
+  renames to without its single-tube smooth fill) and BAND_side_meter (wor_side_mp_ghwor: the battle rock tube + one LED
+  per zone SIDE_meter_*_ON_alpha + needle stand-in; instance alpha 0 until WoR_HUD_HUD_attach_widget_player_health
+  (plugin swap) shows it, so no rock meter in face-off types, where the DE attaches no health); player_meter ->
+  wor_mult_mp_ghwor (the 1-player WoR nixie + 5 streak lights mapped onto the tube top; root = alias_player_multiplier,
+  killed by the DE in face-off). The WT+ star_power_1g child (unwired) hidden.
+- Plugin 1.35: swaps hud_create_message, HUD_attach_widget_band_faceoff_meter, HUD_attach_widget_player_health;
+  multiplayer rock needle remap (anchor scale kMpNeedleAX/AY, DE 2-player path (0,0)(13,-28)(26,-58)(37,-84) from
+  script 0x3205f550 -> our LED stops); SetTexture (0x59e6d0) hook: when the DE writes higway_icon_* (band scoring x1
+  slot) on an element showing one of our multiplier textures, our x1 badge goes instead; vs-fill rename (kVsFill).
+- Theme pak 3.92 MB (dial shadow dropped, starburst 128 px to stay well under 4 MiB).
+- Not done: hud_1g1v (1 instrument + vocals), hud_3g1v (3-4 players, 4p pro face-off), the band meter restyle (still
+  the WT+ band meter top-left), vocals layouts, the failed-instrument glyph (the DE already uses band_hud_*2 names, red).

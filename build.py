@@ -15,7 +15,7 @@ import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_battle, wor_ui, wor_yourock  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_yourock  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -169,11 +169,14 @@ def main():
             d = d.replace(f'"{other}"', f'"{other.replace("_ghwtwithtime", "_ghwor")}"')
         for old, (new_id, _) in TEXTURES.items():
             d = re.sub(rf'texture = {re.escape(old)}\b', f'texture = {new_id}', d)
+        d = wor_versus.edit_layout(name.replace('_ghwtwithtime', ''), d)     # versus meter: ours / hidden
         if name == 'solo_play_rock_meter_ghwtwithtime':
             for local_id, changes in ROCK_METER_EDITS.items():
                 d = desc_edit.set_elem(d, local_id, **changes)
         descs.append(d)
     descs += wor_1g.all_descs()
+    descs.append(wor_versus.versus_desc())        # face-off / pro face-off: WoR versus meter (tools/wor_versus.py)
+    descs += wor_mp.descs()                       # 2-highway layouts: per-player SP tube, rock tube, multiplier
     descs.append(wor_battle.gamertag_desc(next(v for k, v in vh.items() if k.endswith('0x2fdc39e1.qb.xen'))))
 
     # ---- layouts and theme row
@@ -211,6 +214,7 @@ def main():
         extra += (f'\t\t\t\tStructArray {key}\n\t\t\t\t{{\n\t\t\t\t\tArrayQBKey\n\t\t\t\t\t[\n'
                   + ''.join(f'\t\t\t\t\t\t{t[0]}\n' for t in lst) + '\t\t\t\t\t]\n\t\t\t\t}\n')
     extra += wor_battle.theme_extra()        # battle: WoR layout, WoR name plates (tools/wor_battle.py)
+    extra += wor_modes.theme_extra()         # multiplayer modes: no messages above the highway (tools/wor_modes.py)
     k = wor.rindex('}', 0, wor.rindex('}'))
     wor = wor[:k] + extra + '\t\t\t' + wor[k:]
     for c in CONFIGS:
@@ -359,11 +363,22 @@ def main():
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}
-    for name, im in wor_battle.textures(work).items():     # battle rock tube + needle, slot rings, name plate
+    battle_tex = wor_battle.textures(work)
+    for name, im in list(battle_tex.items()) + list(wor_mp.textures(battle_tex).items()):   # battle + multiplayer tubes
         out = os.path.join(work, name + '.png')
         im.save(out)
         pngs.append(out)
     sources.update(wor_battle.sources())
+    sources.update(wor_mp.sources())
+    for name, im in wor_versus.textures(work).items():     # versus meter, placing badges, multiplayer SP tube
+        out = os.path.join(work, name + '.png')
+        im.save(out)
+        pngs.append(out)
+    sources.update(wor_versus.sources())
+    for (_, sp), (_, vs) in zip(wor_1g.SP_FILL_NAMES, wor_versus.SEG_NAMES):   # multiplayer tubes: the 1p fill art
+        shutil.copy(os.path.join(work, sp + '.png'), os.path.join(work, vs + '.png'))
+        pngs.append(os.path.join(work, vs + '.png'))
+        sources[vs] = dict(sources[sp], copy_of=sp)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)
@@ -404,7 +419,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)

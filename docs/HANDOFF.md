@@ -34,7 +34,20 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
-## Next: face-off / pro face-off, band, vocals (user 2026-10-21) -- research DONE, mocks next
+## Built overnight 2026-10-21 (untested; plugin 1.35): test these first
+
+See MODLOG "v0.50 WIP + plugin 1.35". Test in this order (ask before launching; quickplay first):
+1. Quickplay 1 player: unchanged? (no messages there already). Then 2-player band / co-op (drums + guitar): per-player
+   WoR rock tube (one LED, needle slides; log "multiplayer rock needle: remapped"), WoR SP tube per player (fills?
+   which amount: the player's own or the band's?), multiplier badge on the tube top WITHOUT the instrument icon (log
+   "multiplier: highway instrument icon ... replaced"), no "01234567" bar, no messages (Hot Start, SP Ready, streaks).
+2. Face-off / pro face-off: highways 30 apart, WoR dial + team bars + scores + multiplier nixies, "1st" badge with
+   starburst on the LEADER (if it shows on the trailing player, swap lead_1/lead_2 in wor_versus props), SP tubes,
+   no rock tube, no messages.
+3. Battle (plugin 1.34 fixes + no attack names / alert cards above the highway).
+Logs: `wor_hud_fixes.log` (swap lines for hud_create_message, faceoff meter, player health), debug.txt.
+
+## Next: face-off / pro face-off, band, vocals (user 2026-10-21) -- research DONE, first build above
 
 User's current-state clip: `Downloads\Video Project 25.mp4` (0:00-0:53 face-off + pro face-off: the DE's GH3-style top
 score bar and dial, highways touching; 0:53-1:46 battle; 1:46-end band: the DE's WT band meter top-left and per-player

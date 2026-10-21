@@ -38,6 +38,7 @@ import os
 import numpy as np
 
 import paths
+import wor_modes
 
 NAME = 'WoR_HUD_battle'                 # the layout struct (theme row 0x6bd128d8)
 FLAG = 'WoR_HUD_battle_hud'             # theme flag read by the wrappers
@@ -506,23 +507,24 @@ def scripts():
             + changes(STOCK_CARD_OFFS, STOCK_CARD_SCALES) +
             '\t:i endif\n'
             '\t:i $WoR_HUD_create_battle_alert_frames_orig$ isNull\n'
+            + wor_modes.battle_alerts_off() +          # no attack names / alert cards above the highway
             '\t:i endfunction\n]\n\n'
             # placeholder: the plugin moves the DE script's data here
             'Script WoR_HUD_create_battle_alert_frames_orig [\n'
             '\t:i $printf$%s("WoR_HUD: battle alert frames placeholder ran, plugin swap missing")\n'
             '\t:i endfunction\n]\n\n'
-            # highways SEP further apart in battle with this theme: the returned Pos (canvas x, -+x_offset_p2) moved
-            # out by SEP per player. (2026-10-21: changing the global x_offset_p2 instead added SEP on every call.)
+            # highways SEP further apart in every 2-highway layout with this theme (battle, face-off, pro face-off,
+            # 2-player co-op / quickplay; user: carry the battle spacing over): the returned Pos (canvas x,
+            # -+x_offset_p2) moved out by SEP per player. (2026-10-21: changing the global x_offset_p2 instead added SEP
+            # on every call.)
             'Script WoR_HUD_get_highway_pos_and_scale [\n'
             '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
-            '\t:i if (~$game_mode$ = $p2_battle$)\n'
-            '\t\t:i if (%GLOBAL%$num_non_vocals_players$ = %i(2))\n'
-            f'\t\t\t:i if {is_ours}\n'
-            '\t\t\t\t:i if (%GLOBAL%$non_vocalist_player$ = %i(1))\n'
-            f'\t\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ - %vec2({SEP:.1f},0.0))\n'
-            '\t\t\t\t:i else \n'
-            f'\t\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ + %vec2({SEP:.1f},0.0))\n'
-            '\t\t\t\t:i endif\n'
+            '\t:i if (%GLOBAL%$num_non_vocals_players$ = %i(2))\n'
+            f'\t\t:i if {is_ours}\n'
+            '\t\t\t:i if (%GLOBAL%$non_vocalist_player$ = %i(1))\n'
+            f'\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ - %vec2({SEP:.1f},0.0))\n'
+            '\t\t\t:i else \n'
+            f'\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ + %vec2({SEP:.1f},0.0))\n'
             '\t\t\t:i endif\n'
             '\t\t:i endif\n'
             '\t:i endif\n'

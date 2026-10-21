@@ -15,7 +15,8 @@ our hud_2g copy gets three descs of ours, all authored in screen px for P1 (P2 =
   - player_meter -> wor_mult_mp_ghwor: the multiplier badge (this theme's WoR multiplier textures) with its five
     note-streak lights, right of the star power tube (WoR: the multiplier bubble right of each highway). In band
     scoring the DE writes the instrument icon into the x1 slot; the plugin puts our x1 badge back (SetTexture hook).
-    Its root is alias_player_multiplier, which the DE kills in face-off types (the multiplier is in the versus bar).
+    The DE kills alias_player_multiplier in face-off types (GH:588-594); ours points at a hidden stand-in, so the
+streak meter stays on every highway in face-off too (user 2026-10-21: each highway keeps its SP tube and streak meter).
 """
 import math
 
@@ -118,7 +119,7 @@ def mult_desc():
             kids.append(E(e.local_id, 'SpriteElement', pos=p, dims=e.dims, just=e.just, scale=(e.scale[0] * k, e.scale[1] * k),
                           rot=e.rot + dr, z=6.0 if e.local_id == 'nixie' else 6.5, texture=e.extra['texture']))
     kids += [_dummy('note_streak', 'TextBlockElement'), _dummy('mult_bg'), _dummy('nixie_rgba_sink'),
-             *[_dummy(f'glow{i}') for i in range(3)]]
+             *[_dummy(f'glow{i}') for i in range(3)], _dummy('mult_die_standin')]
     root = _root('mult_mp', kids)
     props = [('note_streak_text', 'note_streak', 'text')]
     props += [(f'light{i}_texture', f'light{i}', 'texture') for i in range(5)]
@@ -126,7 +127,7 @@ def mult_desc():
         props += [(f'glow{i}_texture', f'glow{i}', 'texture'), (f'glow{i}_scale', f'glow{i}', 'Scale')]
     props += [('nixie_texture', 'nixie', 'texture'), ('mult_bg_alpha', 'mult_bg', 'alpha'),
               ('nixie_rgba', 'nixie_rgba_sink', 'rgba')]
-    return desc(MULT_NAME, root, props, aliases=[('alias_player_multiplier', 'mult_mp')])
+    return desc(MULT_NAME, root, props, aliases=[('alias_player_multiplier', 'mult_die_standin')])
 
 
 def descs():

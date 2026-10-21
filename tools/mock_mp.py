@@ -94,14 +94,15 @@ def faceoff(frame):
     for c in [e for e in root.children if e.local_id == 'lead_2'][0].children:
         c.hidden = True                                   # P1 leads (preview_hud doesn't multiply container alpha)
     _set(root, 'needle', rot=-22.0)
-    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'}, 'streak_number_1': {'text': '64'},
-            'streak_number_2': {'text': '12'},
-            'HUD_bb_multiplier_nixie_1': {'texture': 'WoR_HUD_mult_3'},
-            'HUD_bb_multiplier_nixie_2': {'texture': 'WoR_HUD_mult_1'}}
+    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'}, 
+            'HUD_bb_multiplier_nixie_1': {'texture': 'WoR_HUD_vsmult_3'},
+            'HUD_bb_multiplier_nixie_2': {'texture': 'WoR_HUD_vsmult_1'},
+            'pscore_1': {'text': '45,625'}, 'pscore_2': {'text': '31,210'}, 'pstreak_1': {'text': '64'},
+            'pstreak_2': {'text': '12'}}
     items = [((0.0, 0.0), root, vals)]
-    for p, sp in ((1, 0.7), (2, 0.3)):
+    for p, sp, mult in ((1, 0.7, 3), (2, 0.3, 1)):     # each highway keeps its streak meter (user 2026-10-21)
         base = (0.0 if p == 1 else B.p2_dx(), 0.0)
-        items += [(base, r, v) for r, v in per_player(sp)]
+        items += [(base, r, v) for r, v in per_player(sp, None, mult)]
     draw_all(img, items)
     return before, img
 

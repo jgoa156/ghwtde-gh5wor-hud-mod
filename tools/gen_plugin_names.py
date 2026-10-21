@@ -111,6 +111,10 @@ def main():
             '// versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours',
             'static const uint32_t kNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(src):08x}, 0x{qbkey(ours):08x} }}'
                                                      for ours, src in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
+            '// the versus meter multiplier as text (tools/wor_versus.py VSMULT): our text textures, DE name -> ours',
+            'static const uint32_t kVsMult[8] = { ' + ', '.join(f'0x{qbkey(o):08x}' for o, _, _ in wor_versus.VSMULT) + ' };',
+            'static const uint32_t kVsNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(s):08x}, 0x{qbkey(o):08x} }}'
+                                                       for o, s, _ in wor_versus.VSMULT) + ' };',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

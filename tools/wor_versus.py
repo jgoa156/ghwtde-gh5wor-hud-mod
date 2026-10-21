@@ -14,7 +14,17 @@ team-coloured glows + needle, a score bar per player with the team stripe) plus 
   - star power: a WoR tube on each highway's right rail (the 1-player tube mapped like the battle tubes,
     tools/wor_battle.py) filled by the six fill_N_k segments (WoR's SP fill under the WoR_HUD_vsseg names, which the
     plugin keeps out of its single-tube smooth fill);
-  - multiplier: the DE's nixie on the score bar's outer end;
+  - team bars (user 2026-10-21, WoR 2v2 frame "x4 | 150" / "137 | x2"): the side's multiplier as text in the bar's
+    square (P2's bar mirrored: score, then square), the side's score (the DE: a player in 2-player, the team's sum in
+    4-player Pro Face-Off); the DE's side streak (p1/p2_streak_number_text) is not shown there;
+  - per-player bars at each highway (WoR competitive_meter: streak | score | difficulty square), the player's own note
+    streak (no "+": WoR's "+N" there is its point system) and score, both bound by the faceoff wrapper
+    (AttachHudWidget player_status Score / note_streak -> pscore_N_text / pstreak_N_text), same font and size;
+  - each highway keeps its WoR star power tube and streak meter (tools/wor_mp.py);
+  - multiplier text: like WoR's bar ("x" in its text font fontgrid_text_a1,
+    the number in fontgrid_numeral_A2, both white in uidesc_HUD_band_battle; no colour prop there). The DE only gives
+    a texture name per value (HUD_score_nixie_1a..4a, 2b..8b), so each value is a baked text texture (WoR_HUD_vsmult_*)
+    the plugin swaps in for the DE's name (kVsNixieMap);
   - no rock meter (the DE kills the band meter in face-off types).
 Highways: the same spacing as battle (WoR_HUD_get_highway_pos_and_scale moves every 2-highway layout by SEP).
 The meter starts at alpha 0 in every layout of ours (the user's HUDBossFOMeter=1 keeps it alive, unattached, in band /
@@ -41,7 +51,11 @@ TEX = {   # ours -> extracted WoR png
     'WoR_HUD_vs_score_back': os.path.join(WOR_ZIG, 'HUD_band_battle_score_back.png'),
     'WoR_HUD_vs_stripe': os.path.join(WOR_UI, 'vocal_meter_color_stripe.png'),
     'WoR_HUD_starburst': os.path.join(WOR_UI, 'starburst_256.png'),
+    'WoR_HUD_comp_back': os.path.join(WOR_UI, 'competitive_meter_back.png'),
+    'WoR_HUD_comp_frame': os.path.join(WOR_UI, 'competitive_meter_frame.png'),
+    'WoR_HUD_comp_stripe': os.path.join(WOR_UI, 'competitive_stripe.png'),
 }
+MIRRORED = {'WoR_HUD_vs_score_m': 'WoR_HUD_vs_score', 'WoR_HUD_vs_score_back_m': 'WoR_HUD_vs_score_back'}
 RANK_TEX = {1: 'WoR_HUD_rank_1', 2: 'WoR_HUD_rank_2'}
 PLACE_BACK = os.path.join(WOR_UI, 'HUD_place_icon_back.png')
 PLACE_FRONT = os.path.join(WOR_UI, 'HUD_place_icon_front.png')
@@ -59,13 +73,27 @@ STREAK_SQ_H = 20.0                         # its height on screen
 PLUS_TEX = 'WoR_HUD_plus'                  # WoR's '+' (fontgrid_text_a1 glyph; the numeral font has none, the DE's QS no '+')
 PLUS_D = 9.0
 PLUS_X = 7.0
-SCORE_K = 0.30                             # score numerals (0.62 overflowed the bar, 0.38 still too big: user 2026-10-21)
+# multiplier as text (user 2026-10-21): one texture per value the DE writes (ours, the DE's nixie name, label)
+VSMULT = [('WoR_HUD_vsmult_' + ours.split('mult_')[1], src, src[len('HUD_score_nixie_'):-1])
+          for ours, src in [('WoR_HUD_mult_1', 'HUD_score_nixie_1a'), ('WoR_HUD_mult_2', 'HUD_score_nixie_2a'),
+                            ('WoR_HUD_mult_3', 'HUD_score_nixie_3a'), ('WoR_HUD_mult_4', 'HUD_score_nixie_4a'),
+                            ('WoR_HUD_mult_sp2', 'HUD_score_nixie_2b'), ('WoR_HUD_mult_sp4', 'HUD_score_nixie_4b'),
+                            ('WoR_HUD_mult_sp6', 'HUD_score_nixie_6b'), ('WoR_HUD_mult_sp8', 'HUD_score_nixie_8b')]]
+WOR_NUM_A2 = os.path.join(paths.WOR_EXTRACT, 'ui_shared', 'fontgrid_numeral_A2.fnt.xen')   # Xbox: wor_font.convert
+VSMULT_CANVAS = (64, 32)
+VSMULT_NUM_H, VSMULT_X_H = 26, 14          # digit / "x" heights in the texture (WoR: the x is the smaller glyph)
+VSMULT_H = 22.0                            # the texture's height on screen (digit ~18 px, the score's size)
+SCORE_K = 0.26                             # score numerals (0.62 overflowed the bar, 0.38 still too big: user 2026-10-21)
 
 # ---- layout (screen px)
 DIAL_C = (640.0, 322.0)
 DIAL_K = 0.62                              # the 256 px dial art
 BAR_K = 0.62                               # the 512x64 score bar art (visible 268 px)
-BAR_Y = 352.0
+BAR_Y = 344.0                              # team bars, by the dial
+PBAR_K = 0.70                              # per-player bars (WoR competitive_meter, 512x64 art, visible ~300 px)
+PBAR_DX = 177.0                            # their centres: 640 -/+ this (the highway tops, highways moved apart)
+PBAR_Y = 384.0
+PBAR_SQ = ((104.0, 176.0), (180.0, 330.0)) # its streak square and score window (texture x)
 BAR_GAP = 8.0                              # between the dial's outer edge and a bar's inner end
 RANK_D = 78.0                              # the badge's 128 px texture: its square (66 px of it) ~40 px on screen
 RANK_FACE = (38, 36, 94, 90)               # the square's inner face in the 128 px badge art (the text fits in it)
@@ -188,6 +216,34 @@ def plus_glyph():
     return out
 
 
+_NUM_A2 = {}
+
+
+def _num_a2_font():
+    if 'p' not in _NUM_A2:
+        import tempfile
+        import wor_font
+        out = os.path.join(tempfile.gettempdir(), 'worhud_fontgrid_numeral_A2.fnt.xen')
+        wor_font.convert(WOR_NUM_A2, out)
+        _NUM_A2['p'] = out
+    return _NUM_A2['p']
+
+
+def mult_text(label):
+    """'x' + the multiplier value, white, bottoms aligned (WoR's mult_X + multiplier_number)."""
+    from PIL import Image
+    import mock_fail_popup as fonts
+    x = fonts.text(fonts.TEXT, 'x', VSMULT_X_H, (255, 255, 255))
+    n = fonts.text(_num_a2_font(), label, VSMULT_NUM_H, (255, 255, 255))
+    x, n = x.crop(x.getbbox()), n.crop(n.getbbox())
+    w = x.width + 1 + n.width
+    out = Image.new('RGBA', VSMULT_CANVAS, (0, 0, 0, 0))
+    x0, base = (VSMULT_CANVAS[0] - w) // 2, (VSMULT_CANVAS[1] + n.height) // 2
+    out.alpha_composite(x, (x0, base - x.height))
+    out.alpha_composite(n, (x0 + x.width + 1, base - n.height))
+    return out
+
+
 def textures(textures_dir=None):
     from PIL import Image
     textures_dir = textures_dir or os.path.join(paths.REPO, 'build', 'preview')
@@ -197,6 +253,10 @@ def textures(textures_dir=None):
     for r in (1, 2):
         out[RANK_TEX[r]] = rank_badge(r)
     out[PLUS_TEX] = plus_glyph()
+    for ours, _, label in VSMULT:
+        out[ours] = mult_text(label)
+    for m, src in MIRRORED.items():
+        out[m] = out[src].transpose(Image.FLIP_LEFT_RIGHT)
     ids = _sp_body_ids()
     m = sp_map()
     cut = _sp_cut()
@@ -216,6 +276,10 @@ def sources():
     for r in (1, 2):
         s[RANK_TEX[r]] = {'src': PLACE_BACK, 'front': PLACE_FRONT, 'text_font': 'fontgrid_text_a1'}
     s[PLUS_TEX] = {'src': 'fontgrid_text_a1 (WoR ui_shared)', 'glyph': '+'}
+    for ours, _, label in VSMULT:
+        s[ours] = {'src': WOR_NUM_A2, 'x_font': 'fontgrid_text_a1', 'text': 'x' + label}
+    for m, src in MIRRORED.items():
+        s[m] = {'src': TEX[src], 'flip': True}
     s[SPTUBE_TEX] = {'src': 'WoR_HUD_sp_base (1-player tube, mapped)', 'battle_tube': True}
     for v in s.values():
         v.setdefault('box', None)
@@ -252,32 +316,42 @@ def tree():
         sgn = -1 if p == 1 else 1
         bx = DIAL_C[0] + sgn * (half_dial + BAR_GAP + bar_w / 2)       # visible bar centre
         art_c = (bx - (258 - 256) * BAR_K, BAR_Y)                     # the art's visible part is centred on x 258
+        sq = ((STREAK_SQ[0] + STREAK_SQ[1]) / 2 - 258) * BAR_K        # the square's centre, from the art's visible centre
+        sq_x = bx + (sq if p == 1 else -sq)                            # P2's bar is mirrored
+        score_x = bx + bar_w / 2 - 14 if p == 1 else sq_x - (STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K / 2 - 10
+        m = '_m' if p == 2 else ''
+        mult_h = STREAK_SQ_H * 1.05
         kids.append(E(f'score_container_{p}', 'ContainerElement', just=(-1, -1), dims=(1280, 720), z=5.0, children=[
-            _sprite(f'score_back_{p}', 'WoR_HUD_vs_score_back', art_c, (512 * BAR_K, 64 * BAR_K), 5.0),
-            _sprite(f'score_frame_{p}', 'WoR_HUD_vs_score', art_c, (512 * BAR_K, 64 * BAR_K), 6.0),
+            _sprite(f'score_back_{p}', 'WoR_HUD_vs_score_back' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),
+                    (512 * BAR_K, 64 * BAR_K), 5.0),
+            _sprite(f'score_frame_{p}', 'WoR_HUD_vs_score' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),
+                    (512 * BAR_K, 64 * BAR_K), 6.0),
             _sprite(f'stripe_{p}', 'WoR_HUD_vs_stripe', (bx, BAR_Y - 3), (256 * BAR_K * 1.072, 64 * BAR_K), 7.0,
                     rgba=P_RGBA[p]),
-            # score right-aligned at the bar's right end (WoR: "x1 | 82" / "94 x1")
-            E(f'score_{p}', 'TextBlockElement', pos=(bx + bar_w / 2 - 14, BAR_Y + 1), dims=(300, 40), just=(1, 0),
+            # the side's score, right-aligned before the square (P2) / at the bar's right end (P1)
+            E(f'score_{p}', 'TextBlockElement', pos=(score_x, BAR_Y + 1), dims=(300, 40), just=(1, 0),
               scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
-            # the streak: "+N" in the bar's first square (WoR, user's frame 2026-10-21), empty without a streak. A window
-            # clipped to the square holds a container (alias_streak_pN) with WoR's "+" and the DE's streak number; the
-            # DE's HUD_setup_streak_meter_animation (face-off) slides that container 200 px aside when the streak ends
-            # (out of the window) and back when one starts. The square spans texture x 128..186 of the 512 px art.
-            E(f'streak_mask_{p}', 'windowelement', pos=(bx + (STREAK_SQ[0] - 258) * BAR_K, BAR_Y - STREAK_SQ_H / 2),
-              dims=((STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K, STREAK_SQ_H), just=(-1, -1), z=8.0, children=[
-                  E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=((STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K, STREAK_SQ_H),
-                    just=(-1, -1), z=8.0, children=[
-                        E(f'streak_plus_{p}', 'SpriteElement', pos=(PLUS_X, STREAK_SQ_H / 2 + 1), dims=(PLUS_D, PLUS_D),
-                          just=(0, 0), z=8.0, texture=PLUS_TEX),
-                        E(f'streak_number_{p}', 'TextBlockElement', pos=(PLUS_X + PLUS_D / 2, STREAK_SQ_H / 2 + 1),
-                          dims=(200, 40), just=(-1, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT,
-                          text='0x00000000', shadow=False)])]),
-            # the DE's multiplier nixie at the bar's outer end
-            # starts on our x1 badge: the plugin maps the DE's stock nixie names to ours on it; pos = the art's centre
-            E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(bx + sgn * (bar_w / 2 + 26), BAR_Y),
-              dims=(256 * NIXIE_K, 256 * NIXIE_K), just=(NIXIE_ART[0] / 256 - 1, NIXIE_ART[1] / 256 - 1), z=9.0,
-              texture='WoR_HUD_mult_1'),
+            # the side's multiplier as text in the square; starts on our x1 text texture (plugin kVsNixieMap)
+            E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(sq_x, BAR_Y + 1),
+              dims=(mult_h * VSMULT_CANVAS[0] / VSMULT_CANVAS[1], mult_h), just=(0, 0), z=9.0, texture=VSMULT[0][0]),
+            # the DE's side-streak animation needs alias_streak_pN: kept, invisible (not shown in WoR's team bar)
+            E(f'streak_mask_{p}', 'windowelement', pos=(sq_x, BAR_Y), dims=(4, 4), just=(0, 0), z=8.0, alpha=0.0, children=[
+                E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=(4, 4), just=(-1, -1), z=8.0, children=[
+                    E(f'streak_number_{p}', 'TextBlockElement', pos=(0, 0), dims=(4, 4), just=(-1, -1), z=8.0, scale=(0.01, 0.01),
+                      font=SCORE_FONT, text='0x00000000', shadow=False)])]),
+        ]))
+        # per-player bar at the highway's top (WoR competitive_meter): streak | score | (difficulty square, empty)
+        hx = 640.0 + (PBAR_DX if p == 2 else -PBAR_DX)
+        pk = PBAR_K
+        (s0, s1), (w0, w1) = PBAR_SQ
+        kids.append(E(f'pbar_{p}', 'ContainerElement', just=(-1, -1), dims=(1280, 720), z=5.0, children=[
+            _sprite(f'pbar_back_{p}', 'WoR_HUD_comp_back', (hx, PBAR_Y), (512 * pk, 64 * pk), 5.0),
+            _sprite(f'pbar_frame_{p}', 'WoR_HUD_comp_frame', (hx, PBAR_Y), (512 * pk, 64 * pk), 6.0),
+            _sprite(f'pbar_stripe_{p}', 'WoR_HUD_comp_stripe', (hx, PBAR_Y - 2), (512 * pk, 64 * pk), 7.0, rgba=P_RGBA[p]),
+            E(f'pstreak_{p}', 'TextBlockElement', pos=(hx + ((s0 + s1) / 2 - 256) * pk, PBAR_Y + 1), dims=(200, 40),
+              just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
+            E(f'pscore_{p}', 'TextBlockElement', pos=(hx + (w1 - 256) * pk - 8, PBAR_Y + 1), dims=(300, 40),
+              just=(1, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
         ]))
     # placing: static "2nd" badges, the leader's "1st" + burst in containers the DE fades (amber = P1, violet = P2)
     lead = {1: [glow_l], 2: [glow_r]}
@@ -310,7 +384,9 @@ def versus_desc():
              ('score_1_text', 'score_1', 'text'), ('score_2_text', 'score_2', 'text'),
              ('hud_bb_multiplier_nixie_1_texture', 'HUD_bb_multiplier_nixie_1', 'texture'),
              ('hud_bb_multiplier_nixie_2_texture', 'HUD_bb_multiplier_nixie_2', 'texture'),
-             ('p1_streak_number_text', 'streak_number_1', 'text'), ('p2_streak_number_text', 'streak_number_2', 'text')]
+             ('p1_streak_number_text', 'streak_number_1', 'text'), ('p2_streak_number_text', 'streak_number_2', 'text'),
+             ('pscore_1_text', 'pscore_1', 'text'), ('pscore_2_text', 'pscore_2', 'text'),
+             ('pstreak_1_text', 'pstreak_1', 'text'), ('pstreak_2_text', 'pstreak_2', 'text')]
     for p in (1, 2):
         for k in range(1, 7):
             props += [(f'fill_{p}_{k}_texture', f'fill_{p}_{k}', 'texture'), (f'fill_{p}_{k}_scale', f'fill_{p}_{k}', 'Scale')]
@@ -378,6 +454,53 @@ SCRIPTS = (
     '\t:i if $GotParam$$parent_id$\n'
     '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$parent_id$\n'
     '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$parent_id$$alpha$ = %i(1)\n'
+    # per-player bars: only our 2-player versus desc has them (4-player Pro Face-Off still uses the DE's)
+    '\t\t\t:i if (~$current_num_players$ = %i(2))\n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = $player1_status$\n'
+    '\t\t\t\t\t:i $value$ = $Score$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $seinttostring$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$parent_id$\n'
+    '\t\t\t\t\t:i $property$ = $pscore_1_text$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = $player1_status$\n'
+    '\t\t\t\t\t:i $value$ = $note_streak$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $seinttostring$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$parent_id$\n'
+    '\t\t\t\t\t:i $property$ = $pstreak_1_text$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = $player2_status$\n'
+    '\t\t\t\t\t:i $value$ = $Score$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $seinttostring$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$parent_id$\n'
+    '\t\t\t\t\t:i $property$ = $pscore_2_text$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = $player2_status$\n'
+    '\t\t\t\t\t:i $value$ = $note_streak$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $seinttostring$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$parent_id$\n'
+    '\t\t\t\t\t:i $property$ = $pstreak_2_text$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'

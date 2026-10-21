@@ -912,6 +912,20 @@ namespace
 					}
 				break;
 			}
+			// 1.36: the versus bars show the multiplier as text ("x1"): the same DE names, our text textures there
+			for (const auto &n : kVsNixieMap)
+			{
+				if (n[0] != texture)
+					continue;
+				const uint32_t current = texture_of(element);
+				for (uint32_t m : kVsMult)
+					if (m == current)
+					{
+						texture = n[1];
+						break;
+					}
+				break;
+			}
 			for (uint32_t icon : kHighwayIcons)
 			{
 				if (icon != texture)
@@ -1436,7 +1450,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.35 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.36 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

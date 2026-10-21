@@ -145,4 +145,7 @@ static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 20.3021f, -37.
 static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };
 // versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours
 static const uint32_t kNixieMap[8][2] = { { 0xb373f287, 0x99c7e9f3 }, { 0x985ea144, 0x00ceb849 }, { 0x81459005, 0x77c988df }, { 0xce0406c2, 0xe9ad1d7c }, { 0x0157f0fe, 0x72b100bd }, { 0x570d5778, 0x9bd2a588 }, { 0x653b35fa, 0x75dcc4a4 }, { 0xfbb81874, 0x9264e9a3 } };
+// the versus meter multiplier as text (tools/wor_versus.py VSMULT): our text textures, DE name -> ours
+static const uint32_t kVsMult[8] = { 0xaa48caf2, 0x33419b48, 0x4446abde, 0xda223e7d, 0xc9cd7301, 0x20aed634, 0xcea0b718, 0x29189a1f };
+static const uint32_t kVsNixieMap[8][2] = { { 0xb373f287, 0xaa48caf2 }, { 0x985ea144, 0x33419b48 }, { 0x81459005, 0x4446abde }, { 0xce0406c2, 0xda223e7d }, { 0x0157f0fe, 0xc9cd7301 }, { 0x570d5778, 0x20aed634 }, { 0x653b35fa, 0xcea0b718 }, { 0xfbb81874, 0x29189a1f } };
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

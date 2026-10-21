@@ -1479,3 +1479,8 @@ docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user'
 - Theme pak 3.92 MB (dial shadow dropped, starburst 128 px to stay well under 4 MiB).
 - Not done: hud_1g1v (1 instrument + vocals), hud_3g1v (3-4 players, 4p pro face-off), the band meter restyle (still
   the WT+ band meter top-left), vocals layouts, the failed-instrument glyph (the DE already uses band_hud_*2 names, red).
+- User 2026-10-21: placing squares too small for the numbers, score font too big. Badges now 78 px for the 128 px art
+  (its square ~40 px on screen) with "1st"/"2nd" fitted to the square's face (RANK_FACE); scores at SCORE_K 0.38 (fit
+  the bar's slot). Versus multiplier: our badge (art centred), and plugin 1.35's SetTexture hook maps the DE's stock
+  HUD_score_nixie_* names (hard-coded in HUD_attach_widget_band_faceoff_meter) to our WoR_HUD_mult_* on it (kNixieMap).
+

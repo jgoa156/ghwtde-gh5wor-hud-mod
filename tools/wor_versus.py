@@ -52,7 +52,9 @@ SEG_NAMES = (('hud_rock_tube_glow_full', 'WoR_HUD_vsseg'), ('hud_rock_tube_glow_
 P_RGBA = {1: (228, 61, 12, 255), 2: (87, 149, 229, 255)}
 SP_NUDGE = np.array((-15.0, 0.0))          # the right rail's tube, towards the highway (see wor_battle.ROCK_NUDGE)
 SCORE_FONT = 'WoR_HUD_num_a1'
-NIXIE_DIMS = 64.0                          # the DE's HUD_score_nixie_* are 64 px wide badges (verify)
+NIXIE_K = 0.30                             # our multiplier badges: the 154x137 art top-left in a 256 px texture
+NIXIE_ART = (154.0, 137.0)                 # (the plugin maps the DE's stock nixie names to them, kNixieMap)
+SCORE_K = 0.38                             # score numerals: fit the bar's slot (0.62 overflowed it, user 2026-10-21)
 
 # ---- layout (screen px)
 DIAL_C = (640.0, 322.0)
@@ -60,7 +62,8 @@ DIAL_K = 0.62                              # the 256 px dial art
 BAR_K = 0.62                               # the 512x64 score bar art (visible 268 px)
 BAR_Y = 352.0
 BAR_GAP = 8.0                              # between the dial's outer edge and a bar's inner end
-RANK_D = 54.0                              # badge size
+RANK_D = 78.0                              # the badge's 128 px texture: its square (66 px of it) ~40 px on screen
+RANK_FACE = (38, 36, 94, 90)               # the square's inner face in the 128 px badge art (the text fits in it)
 RANK_BURST = 120.0
 RANK_Y = 430.0                             # badge centre height, outside each highway's left rail
 
@@ -157,8 +160,14 @@ def rank_badge(rank):
     out = Image.new('RGBA', back.size, (0, 0, 0, 0))
     out.alpha_composite(back)
     out.alpha_composite(Image.open(PLACE_FRONT).convert('RGBA'))
-    t = fonts.text(fonts.TEXT, {1: '1st', 2: '2nd'}[rank], 34, (255, 255, 255), shadow=True)
-    out.alpha_composite(t, ((out.width - t.width) // 2, (out.height - t.height) // 2))
+    x0, y0, x1, y1 = RANK_FACE
+    word = {1: '1st', 2: '2nd'}[rank]
+    h = int((y1 - y0) * 0.62)
+    t = fonts.text(fonts.TEXT, word, h, (255, 255, 255), shadow=True)
+    while t.width > (x1 - x0) * 0.86 and h > 8:      # fit the square's face (user: big enough for the numbers)
+        h -= 1
+        t = fonts.text(fonts.TEXT, word, h, (255, 255, 255), shadow=True)
+    out.alpha_composite(t, ((x0 + x1 - t.width) // 2, (y0 + y1 - t.height) // 2))
     return out
 
 
@@ -231,10 +240,12 @@ def tree():
                     rgba=P_RGBA[p]),
             # score right-aligned at the bar's right end (WoR: "x1 | 82" / "94 x1")
             E(f'score_{p}', 'TextBlockElement', pos=(bx + bar_w / 2 - 14, BAR_Y + 1), dims=(300, 40), just=(1, 0),
-              scale=(0.62, 0.62), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
+              scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
             # the DE's multiplier nixie at the bar's outer end
-            _sprite(f'HUD_bb_multiplier_nixie_{p}', 'WoR_HUD_blank', (bx + sgn * (bar_w / 2 + 22), BAR_Y),
-                    (NIXIE_DIMS * 0.62, NIXIE_DIMS * 0.62), 9.0),
+            # starts on our x1 badge: the plugin maps the DE's stock nixie names to ours on it; pos = the art's centre
+            E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(bx + sgn * (bar_w / 2 + 26), BAR_Y),
+              dims=(256 * NIXIE_K, 256 * NIXIE_K), just=(NIXIE_ART[0] / 256 - 1, NIXIE_ART[1] / 256 - 1), z=9.0,
+              texture='WoR_HUD_mult_1'),
         ]))
     # placing: static "2nd" badges, the leader's "1st" + burst in containers the DE fades (amber = P1, violet = P2)
     lead = {1: [glow_l], 2: [glow_r]}

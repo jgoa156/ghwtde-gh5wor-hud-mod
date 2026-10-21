@@ -108,6 +108,9 @@ def main():
             'static const float kMpNeedleDE[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.DE_KNOTS_2P) + ' };',
             'static const float kMpNeedleWoR[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.needle_knots()[1]) + ' };',
             'static const uint32_t kOurMult[8] = { ' + ', '.join(f'0x{qbkey(n):08x}' for n, _ in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
+            '// versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours',
+            'static const uint32_t kNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(src):08x}, 0x{qbkey(ours):08x} }}'
+                                                     for ours, src in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

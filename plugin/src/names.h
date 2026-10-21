@@ -143,4 +143,6 @@ static const uint32_t kMpNeedleTex = 0xa5460419;   // WoR_HUD_mpneedle
 static const float kMpNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 13.0000f, -28.0000f }, { 26.0000f, -58.0000f }, { 37.0000f, -84.0000f } };
 static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 20.3021f, -37.7079f }, { 35.7271f, -66.3574f }, { 46.9557f, -87.2126f } };
 static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };
+// versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours
+static const uint32_t kNixieMap[8][2] = { { 0xb373f287, 0x99c7e9f3 }, { 0x985ea144, 0x00ceb849 }, { 0x81459005, 0x77c988df }, { 0xce0406c2, 0xe9ad1d7c }, { 0x0157f0fe, 0x72b100bd }, { 0x570d5778, 0x9bd2a588 }, { 0x653b35fa, 0x75dcc4a4 }, { 0xfbb81874, 0x9264e9a3 } };
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

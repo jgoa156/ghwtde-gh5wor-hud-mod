@@ -898,6 +898,20 @@ namespace
 	{
 		if (element)
 		{
+			// the versus meter's multiplier: the DE's script writes its stock nixie names; on our badges, ours
+			for (const auto &n : kNixieMap)
+			{
+				if (n[0] != texture)
+					continue;
+				const uint32_t current = texture_of(element);
+				for (uint32_t m : kOurMult)
+					if (m == current)
+					{
+						texture = n[1];
+						break;
+					}
+				break;
+			}
 			for (uint32_t icon : kHighwayIcons)
 			{
 				if (icon != texture)

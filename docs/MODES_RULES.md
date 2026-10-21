@@ -79,8 +79,12 @@ from the three WoR clips, + `docs/research/ui_shared_desc/`, 24 decompiled WoR u
 | vocals pill / highway | `uidesc_vocals_all_meters` + sub-descs, `uidesc_vocals_highway` |
 | instrument icons | `band_hud_guitar2`, `bass2`, `drums2`, `microphone2` (no keys); failed = same glyphs as `skull` / `dead_icon` + `vof01` vignettes |
 
-Not found: `icon_dead_256`, team colour values `band_color1`-`8`, per-rank badge colours, the WoR band rock meter desc
-(`alias_hud_meter_band_rock`), any failed-instrument / revive frames in the clips.
+Follow-up (all found, details in wor_assets.md "Follow-up"): failed player = the instrument glyph itself
+(`band_hud_*2`; `icon_dead_256` is only an unused script fallback) + `vof01` corner vignettes; team colours band_color1-8 =
+uicolorref_palette p1_md (65,75,235) blue, p2_md (238,138,93) orange, p3_md (213,130,190), p4_md (200,187,77), ...;
+no per-rank colours (rank text + starburst for 1st only); the bar's right glyph = difficulty icon `icon_difficulty_*`;
+WoR has no band-wide rock meter: each highway's sidebar rock tube (`uidesc_hud_sidebar_rockmeter`, what our 1-player HUD
+ports); song-start instrument icons `mixer_icon_guitar` / `_bass` / `_drums` / `_vox`.
 
 ### How the DE builds each mode (details in de_layouts.md)
 

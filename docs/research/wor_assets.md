@@ -105,3 +105,18 @@ phrase progress), challenge medal on the right of the now line, score box at the
 - Rock meter in the band clip: none visible.
 - Challenge medal artwork: dynamic texture, not among the named PNGs (hashed `basic_gems_png` folder contains unnamed images, not matched: CRC32 of ~220 candidate names did not hit any).
 - Materials (lightning, fire, notes, vocal note bars) are in `E:\Dev\ghwt\ghwor-extract\matqb` / `hudqb` materials, not PNGs; not catalogued here.
+
+## Follow-up 2026-10-21 (the "not found" items, found)
+
+Method: WoR keeps texture names only in pak file tables; the full catalogue `ghwor-extract/all/catalog.tsv` (731 paks)
+lists them by name, scripts by checksum (`tools`-style qbkey search over `ghwor-extract/all/x`, the decompressed paks).
+
+| Was "not found" | Answer |
+|---|---|
+| `icon_dead_256` | Only a fallback in `init_standard_highway_hud` (hudqb guitar_highway_hud): `skull_texture = icon_dead_256`, then switched to `band_hud_guitar2` / `band_hud_bass2` / `band_hud_drums2` for guitar / bass / drums. The texture isn't shipped anywhere: **WoR's failed-player icon IS the instrument glyph** (`ui_shared_png/band_hud_guitar2`, `band_hud_microphone2`; `z_in_game_png/band_hud_bass2`, `band_hud_drums2`, 128 px white glyphs). |
+| failed-instrument vignette | `ui_shared_png/vof01` (256x128 corner gradient, `uidesc_band_fail_vignette`, 4 corners). |
+| team colours `band_color1`-`8` | `qb/scripts/game/net/guitar_net_globals`: band_color1-6 = `p1_md`..`p6_md`, 7 = `good_md`, 8 = `average_md`; values in `qb/scripts/game/menu/uicolorref_palette`: p1_md (65,75,235) blue, p2_md (238,138,93) orange, p3_md (213,130,190) pink, p4_md (200,187,77) yellow, p5_md (112,175,150), p6_md (175,135,200), good_md (135,195,97), average_md (240,177,85). Each also has _lt / _dk / _xdk. `init_standard_highway_hud` sets `competitive_stripe_rgba` = band_color<band>. |
+| per-rank badge colours | None exist: `competitive_meter_get_rank_text` (goal_hud) only sets `rank_text` (1st..4th strings) on `HUD_SideBar_RankMeter`; rank 1 alone gets `BurstContainer_alpha` 1 (`starburst_256`). Same badge art (`HUD_place_icon_back` / `_front`) for every rank. |
+| "quote-like" glyph right of the competitive bar | The player's difficulty icon: `ui_shared_png/icon_difficulty_*` (expert = two silver gems, hard = red gem, ...; also _1.._6, gold, platinum, diamond, vinyl), element `difficulty` in `uidesc_vocals_competitive_meters`; `difficulty_up` / `_down` arrows are for Momentum. |
+| WoR band rock meter | No band-wide meter: WoR uses each highway's sidebar rock tube (`uidesc_hud_sidebar_rockmeter`, z_in_game; `setup_sidebar_rockmeter` in `init_standard_highway_hud`), i.e. the tube our 1-player HUD already ports. |
+| instrument icon at song start | `setup_player_instrument_icon`; textures `ui_shared_png/mixer_icon_guitar`, `_bass`, `_drums`, `_vox`. |

@@ -37,20 +37,19 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
 - **Game:** GHWT:DE at `D:\Games\Guitar Hero World Tour`; config
   `OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini` (`HUDTheme=ghwor`,
   `GemTheme=ghwor`, `Preferred*Highway=GH5_Highway`, 2560x1080). The `GHWTDE.ini` in the game folder is not the live one.
-- **Released: 0.47** (`releases/GH5-WoR_HUD_0.47.zip`). **Installed: 0.48 WIP** (built from HEAD): mod `WoR_HUD` +
-  theme / gem / UI paks (`wor_hud_ui.pak.xen`, 16.7 MB: raw-PNG loading art) + `wor_hud_fixes.asi` **1.27** + ASI
-  loader + ReShade (preset, `ghwt_bgfx.addon32`, `ghwtde_ultrawide.addon32` from the ultrawide repo HEAD) + the
-  "Main Menu Music Collection" (GH5 mod + WoR; the WoR-only mod is the released one).
-- **0.48 WoR menu look** (MODLOG "v0.48 WIP" sections), all choosable as "Guitar Hero: Warriors of Rock":
-  helper pills (+ gamertag pill), loading screen (ball, animated plate, raw 2x art; ultrawide: 16:9 + black bars),
-  menu popups (WoR frame, black background, one message size, brush bar), failed / song ended box (calibrated on the
-  user's WoR screenshot, verify/fail_overlay_v1.jpg), pause menu (black above the gameplay at z 598, title-cased song
-  info, right-aligned items), You Rock (WoR's whole exploding-text sequence, lightning / ball / explosion as per-frame
-  flipbooks, static glow materials, highway + HUD fade, "YOU ROCK!" fit width 755), star power awarded / activation
-  = Band Hero's sounds by default, rock needle travel calibrated to the LED art (wor_1g ZONE_RY / ZONE_YG).
-- **Confirmed by the user in game:** pills, menu music, pause (no crash, layout), popup look, loading ball.
-  **Awaiting a test (installed):** fail box calibration, You Rock round 3 (gravity, size, glow 128 px), rock needle,
-  title-screen flashes (ultrawide), gameplay hidden under pause.
+- **Released: 0.49** (`releases/GH5-WoR_HUD_0.49.zip`, 23 MB; bundles Ultrawide Fix **1.0**). **Installed (from
+  HEAD, version string still 0.49):** mod `WoR_HUD` + theme / gem / UI paks + `wor_hud_fixes.asi` **1.32** (battle
+  mode) + `ghwtde_ultrawide.asi` / `.ini` **1.1** (no ReShade add-on any more) + ReShade (preset, `ghwt_bgfx.addon32`,
+  which steps aside on DXVK). The package (`build.py --package`) bundles Ultrawide 1.1's asi + ini since 6e398df.
+  Menu music: All Main Menu Music (its own repo; installed with Guitar Hero, GH II, Encore 80s, Aerosmith on).
+- **WoR look, all choosable as "Guitar Hero: Warriors of Rock":** helper pills (+ gamertag pill), loading screen,
+  menu popups (WoR frame, black background, brush bar; arrows coded but not showing), failed / song ended box, pause
+  menu, You Rock (WoR's exploding text, flipbook lightning / ball / explosion, glow, WoR sound), star power sounds,
+  rock needle, battle mode (0.50 WIP, broken, see Start here 1).
+- **Confirmed by the user in game:** pills, menu music, pause (no crash, layout), popup look, loading ball, star power
+  highway, career needle, every ultrawide screen; Ultrawide Fix 1.1 and All Main Menu Music 1.0 (2026-10-20).
+  **Never confirmed:** fail box calibration, YOU ROCK round 3 (letters, gravity 3500, glow, sound), rock needle
+  stand-in (plugin 1.31), popup message size, popup arrows (did not show), battle mode (footage: broken).
 - **Other repos:** Ultrawide Fix 1.1 (github.com/jgoa156/ghwtde-ultrawide-fix: ASI plugin, Hor+ 3D FOV, 2D layer at
   16:9; its 2D hooks go in at Direct3DCreate9 so wor_hud_fixes.asi still finds 0x5a05e0 untouched); All Main Menu
   Music 1.0 (github.com/jgoa156/ghwtde-all-main-menu-music, `python build.py --install <game>`; never replace the DE's
@@ -90,27 +89,27 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
   - send mocks to the user with SendUserFile (writing them to `verify/` is not enough);
   - never insert a line above a script's `${ ... }$` default-parameter block: it voids the defaults (froze YOU ROCK).
 
-## Next steps
+## Task list (2026-10-20, user order)
 
-1. **Popup arrows: installed, awaiting a test + calibration.** WoR_HUD_create_popup_warning_menu creates two
-   sprites under PopupElement, placed from the first / last option's absolute position (GetScreenElementChildren +
-   GetScreenElementPosition absolute) + ARROW_UP_DY / ARROW_DN_DY (wor_menus.py); size 0.9 of the mock (49 units),
-   3 px closer than the mock. Release HUD 0.49 once they sit right. Older note: WoR's are ui_shared `Dropdown_Arrow` (gold chevron, flipped for down); mock
-   `verify/mock_popup_arrows_v1.jpg` awaiting a size pick. The popup descs have no arrow element: add two sprites
-   (or repurpose hidden ones: fail desc 0x86431767 / 0x205d5bf9, main mixer_glow_64 / dialog_bg_menu) above the first
-   and below the last option. Also untested: popup title #3f352a lower (BANNER_Y - 9), fail box COMPLETED / ON at natural
-   width (boxes 400 / 160), figures #e1474e.
-2. **After publishing (user, 2026-10-11):** full code review of the 3 projects (HUD, ultrawide, all main menu music)
-   for optimisation; WoR's Star03 sliver for the burst; the SP glow leak.
-3. **New mod idea (evaluate):** a game-catalogue jump menu opened with SELECT (Xbox) / its PC key, listing the games
-   installed (dynamic: each install has a different library); song list sorting optimisations and ignoring a leading
-   "The" when sorting / displaying.
-4. Later (user): face-off crash + layouts, multiplayer / vocals layouts, song list side art, drum animations.
-   Dropped: WoR highway lines (user was wrong about them).
+1. Battle mode rework: calibrate on the user's clip, mock, approval, build (Start here 1).
+2. One test run (ask first): battle + every "never confirmed" item above.
+3. Release HUD 0.50 (bundles Ultrawide 1.1): bump VERSION in build.py, `python build.py --package`, zip to releases/,
+   push; Nexus page text like the other two repos' `docs/NEXUS.txt`.
+4. Popup up/down arrows: code ships (WoR_HUD_create_popup_warning_menu, ARROW_UP_DY / ARROW_DN_DY in wor_menus.py) but
+   they did not show in game; user: leave it for now.
+5. Face-off crash (enable WER LocalDumps for GHWT_Definitive.exe first) + face-off layouts.
+6. Multiplayer / vocals layouts (docs/MODES_RULES.md, mocks in docs/mocks).
+7. Song list side art (`4b93dd1e` / `b19ce07d`, the user is remastering them).
+8. Drum animations (docs/DRUM_ANIMS_PLAN.md + the 10-16 scan; GH5 is now pulled to `E:\Dev\ghwt\gh5-extract`).
+9. Full code review of the three repos (HUD, ultrawide, all main menu music) for optimisation.
+10. Small visuals: WoR's Star03 sliver for the star power burst; the DE's SP highway glow leak.
+11. Ideas to evaluate: game-catalogue jump menu (SELECT / its PC key; each install's library differs); song list
+    sorting that ignores a leading "The".
+12. All Main Menu Music "now playing" toast (bottom-left: song, artist, game, like EA Trax games): plan in that repo's
+    README (Title= / Artist= / Game= per track, a native hook on the menu-song picker, mock first).
 
-Released 2026-10-11: HUD 0.49 (releases/, 23 MB, bundles Ultrawide Fix 1.0), Ultrawide Fix 1.0. The menu music is one all-games mod
-(ghwtde-all-main-menu-music); `build.py --install` does not install it (that repo's build.py does). Popup arrows: code ships but they did not show in game
-(user: leave it for now).
+Dropped: WoR highway lines (the user was wrong about them); the menu music collection installer (replaced by
+All Main Menu Music).
 
 ## How to work on it
 
@@ -137,6 +136,7 @@ Released 2026-10-11: HUD 0.49 (releases/, 23 MB, bundles Ultrawide Fix 1.0), Ult
   dark metal sections + `$change$` lines live in `WoR_HUD_Load`. `--package` makes one zip: mod + paks + plugin +
   ASI loader at the root, and `Optional - ReShade (WoR shaders)` (ReShade 6.8.0 d3d9.dll, ReShade.ini, GHWoR.ini,
   reshade-shaders, ghwt_bgfx.addon32). ReShade is listed as a requirement (for the shader look only) in the READMEs.
+  Since 6e398df the root also has Ultrawide Fix 1.1 (`ghwtde_ultrawide.asi` + `.ini`); the old addon32 is gone.
 - Vendored ReShade files: `extras/reshade`. ReShade dll: `E:\Dev\ghwt
 eshade-6.8.0`, ASI loader:
   `E:\Dev\ghwtsi-loader-9.7.4` (paths.py `RESHADE`, `ASI_LOADER`). `addon/build/ghwt_bgfx.addon32` = the tested binary.

@@ -17,10 +17,12 @@ Install: extract this archive into the game folder (the one with GHWT_Definitive
   DATA\PAK\gems_ghwt_hud.pak.xen, gems_gh3_hud.pak.xen, gems_flat_hud.pak.xen
                                 the WoR highway border for the other stock gem themes
   wor_hud_fixes.asi             native fixes (smooth animated star power, WoR star power highway, note-streak lights)
-  dinput8.dll                   Ultimate ASI Loader (MIT), loads the .asi
+  ghwtde_ultrawide.asi, ghwtde_ultrawide.ini
+                                GHWT:DE Ultrawide Fix 1.1 (see ULTRAWIDE SCREENS below); does nothing at 16:9
+  dinput8.dll                   Ultimate ASI Loader (MIT), loads the .asi files
 Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock". Gem Theme = Warriors of Rock gives the full
 WoR look; the WoR highway border also shows with the other stock gem themes (custom gem-theme mods keep their own).
-If you already use an ASI loader (dinput8.dll), keep yours and only add the .asi.
+If you already use an ASI loader (dinput8.dll), keep yours and only add the .asi files.
 Uninstall: delete those items.
 
 OPTIONAL: "Optional - ReShade (WoR shaders)" folder
@@ -32,16 +34,12 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
     reshade-shaders\   the shaders the preset uses (licenses in THIRD_PARTY_LICENSES.txt). Not included:
                        qUINT (MXAO, depth of field, sharpen): tick "qUINT" in the ReShade installer for those
     ghwt_bgfx.addon32  background-only add-on: effects apply to the venue, never the HUD or highway
-    ghwtde_ultrawide.addon32  GHWT:DE Ultrawide Fix 1.0: on screens wider than 16:9 the HUD and menus are drawn
-                       unstretched (see ULTRAWIDE SCREENS below); does nothing at 16:9
-  Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, the two .addon32
-  files and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
+  Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, ghwt_bgfx.addon32
+  and the shaders and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
 
 RECOMMENDED (separate downloads, by WitchDoctoR)
-  - GHWoR Main Menu Music: Warriors of Rock's 14 menu songs in the DE's menus.
-    https://github.com/jgoa156/ghwtde-all-menu-songs-installer/tree/main/ghwor-menu-music
-  - GHWT:DE All Menu Songs Installer: merges the menu music of every game you have into one menu music mod.
-    https://github.com/jgoa156/ghwtde-all-menu-songs-installer
+  - GHWT:DE All Main Menu Music: the main menu music of ten Guitar Hero games (Warriors of Rock included) in one
+    menu music mod; switch games off in its menumusic.ini. https://github.com/jgoa156/ghwtde-all-main-menu-music
 
 KNOWN ISSUES (beta)
   - Switching HUD theme in the options can crash the game. Pick the theme and restart if needed.
@@ -49,7 +47,9 @@ KNOWN ISSUES (beta)
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
 
 ULTRAWIDE SCREENS
-  The game stretches the HUD and menus on ultrawide screens. ghwtde_ultrawide.addon32 (in the optional folder,
-  needs the included ReShade) draws them as a centred 16:9 picture, with full-screen backgrounds filling the
-  screen and side panels pinned to the screen edges. Toggle it in the ReShade overlay, Add-ons tab. Source and
-  standalone release: https://github.com/jgoa156/ghwtde-ultrawide-fix
+  On screens wider than 16:9 the game stretches the HUD and menus sideways and zooms the 3D view in (the highway
+  runs off the bottom). ghwtde_ultrawide.asi (GHWT:DE Ultrawide Fix 1.1, no ReShade needed) keeps 16:9's vertical
+  field of view for the 3D view and draws the HUD and menus as a centred 16:9 picture, with full-screen backgrounds
+  filling the screen and side panels pinned to the screen edges. Settings in ghwtde_ultrawide.ini. Updating from
+  an older HUD zip: delete ghwtde_ultrawide.addon32 from the game folder. Source and standalone release:
+  https://github.com/jgoa156/ghwtde-ultrawide-fix

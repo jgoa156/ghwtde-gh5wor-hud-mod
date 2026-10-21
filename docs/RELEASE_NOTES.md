@@ -1,5 +1,13 @@
 # GH5 / WoR HUD: release notes
 
+## 0.50 (WIP, not released)
+
+- Bundles **GHWT:DE Ultrawide Fix 1.1** next to the HUD plugin (`ghwtde_ultrawide.asi` + `.ini`, loaded by the same
+  ASI loader; no ReShade needed): the 3D view keeps 16:9's vertical field of view, so the highway is no longer zoomed
+  in on ultrawide screens. Updating: delete `ghwtde_ultrawide.addon32` from the game folder.
+- Recommends **All Main Menu Music** (one menu music mod with ten games' menu songs).
+- Battle mode in the WoR style (plugin 1.32): first in-game test showed it misaligned, being reworked.
+
 ## 0.49 (beta)
 
 `GH5-WoR_HUD_0.49.zip` (plugin `wor_hud_fixes.asi` 1.31), on top of 0.48:

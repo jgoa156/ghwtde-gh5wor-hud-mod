@@ -24,7 +24,7 @@ PAK_NAME = 'hud_ghwor'
 VERSION = '0.49'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
-ULTRAWIDE_ADDON = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix', 'build', 'ghwtde_ultrawide.addon32')   # its build.bat
+ULTRAWIDE_DIR = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix')   # GHWT:DE Ultrawide Fix 1.1 (its build.bat)
 RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
 
@@ -800,11 +800,13 @@ def package():
     for _, _, gem_pak, _ in wor_1g.BORDER_GEM_PAKS:
         shutil.copy(os.path.join(OUT, gem_pak + '.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
     shutil.copy(os.path.join(OUT, f'{wor_ui.UI_PAK}.pak.xen'), os.path.join(main, 'DATA', 'PAK'))
-    # (menu music is NOT shipped since 0.48, user: the WoR menu music mod and the menu songs installer have their own
-    # releases; the README recommends them)
+    # (menu music is NOT shipped since 0.48: All Main Menu Music has its own release; the README recommends it)
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))
+    # GHWT:DE Ultrawide Fix 1.1 ships with the HUD mod (built in its own repo): an ASI plugin next to ours
+    shutil.copy(os.path.join(ULTRAWIDE_DIR, 'build', 'ghwtde_ultrawide.asi'), main)
+    shutil.copy(os.path.join(ULTRAWIDE_DIR, 'ghwtde_ultrawide.ini'), main)
     shutil.copy(os.path.join(RESHADE_DIR, 'THIRD_PARTY_LICENSES.txt'), main)
     # OPTIONAL folder (requirement for the WoR look, not for the HUD): ReShade (d3d9.dll) + the WoR preset + the
     # background-only add-on and its GH5 tone shader; its contents also go next to GHWT_Definitive.exe
@@ -816,7 +818,6 @@ def package():
     shutil.copytree(os.path.join(RESHADE_DIR, 'reshade-shaders'), os.path.join(opt, 'reshade-shaders'))
     shutil.copy(GH5_GRADE, os.path.join(opt, 'reshade-shaders', 'Shaders'))
     shutil.copy(BGFX_ADDON, opt)
-    shutil.copy(ULTRAWIDE_ADDON, opt)          # GHWT:DE Ultrawide Fix ships with the HUD mod (built in its own repo)
     shutil.copy(os.path.join(ROOT, 'extras', 'README_main.txt'), os.path.join(main, 'README - GH5-WoR HUD.txt'))
     shutil.make_archive(main, 'zip', main)
     print('packaged:', os.path.basename(main) + '.zip')

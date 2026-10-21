@@ -12,10 +12,13 @@ DXVK; plugin 1.32 is installed, battle is NOT tested in game. Sibling repos, bot
 user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade needed; only release on its repo) and
 **All Main Menu Music 1.0** (10 games in one mod, GitHub Release, World Tour's six always play).
 
-1. **Bundle Ultrawide Fix 1.1** in the HUD package instead of `ghwtde_ultrawide.addon32` 1.0 (ship
-   `ghwtde_ultrawide.asi` + `.ini`; the package already ships the ASI loader); tell 1.0 users to delete the addon32.
-2. **Ask for one test run** (rule: ask before launching): battle mode (health arc, slot rings, name plates, attack
-   cards in our slots), plus the still-unconfirmed 0.48/0.49 items: fail box calibration, YOU ROCK round 3 (letters,
+1. **Battle mode rework** (user footage `OneDrive\Videos6-10-20 21-49-06.mp4`, 2560x1080, Ultrawide 1.1): the two
+   GH5-width highways touch in the middle (the DE's 2p spacing is for World Tour's narrower highway); the attack slot
+   rings float at the outer top corners off the rail with grey striped fills; the attack card shows above the highway
+   instead of in a slot; P1's health arc runs off the left edge of the 16:9 area (clipped) and both needles sit outside
+   their arcs. Mock v6 was never calibrated to DE positions: calibrate on frames from that clip, mock, get approval.
+   (Ultrawide Fix 1.1 is bundled in the package since 6e398df.)
+2. **Ask for one test run** (rule: ask before launching): the reworked battle mode, plus the still-unconfirmed 0.48/0.49 items: fail box calibration, YOU ROCK round 3 (letters,
    gravity 3500, glow, the WoR sound via SoundEvent), rock needle stand-in (plugin 1.31), popup message size.
 3. **Release 0.50** with the above (`python build.py --package`, zip to releases/, push).
 4. **Open decision:** popup up/down arrows (code ships, did not show in game; user: leave it for now).

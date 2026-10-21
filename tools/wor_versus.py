@@ -54,7 +54,11 @@ SP_NUDGE = np.array((-15.0, 0.0))          # the right rail's tube, towards the 
 SCORE_FONT = 'WoR_HUD_num_a1'
 NIXIE_K = 0.30                             # our multiplier badges: the 154x137 art top-left in a 256 px texture
 NIXIE_ART = (154.0, 137.0)                 # (the plugin maps the DE's stock nixie names to them, kNixieMap)
-STREAK_SQ_X = 157.0                         # centre of the score bar art's first square (texture px)
+STREAK_SQ = (128.0, 186.0)                 # the score bar art's first square (texture x)
+STREAK_SQ_H = 20.0                         # its height on screen
+PLUS_TEX = 'WoR_HUD_plus'                  # WoR's '+' (fontgrid_text_a1 glyph; the numeral font has none, the DE's QS no '+')
+PLUS_D = 9.0
+PLUS_X = 7.0
 SCORE_K = 0.30                             # score numerals (0.62 overflowed the bar, 0.38 still too big: user 2026-10-21)
 
 # ---- layout (screen px)
@@ -172,6 +176,18 @@ def rank_badge(rank):
     return out
 
 
+def plus_glyph():
+    """WoR's '+' (its text font fontgrid_text_a1) on a 32 px power-of-two canvas."""
+    from PIL import Image
+    import mock_fail_popup as fonts
+    t = fonts.text(fonts.TEXT, '+', 28, (255, 255, 255))
+    bb = t.getbbox()
+    t = t.crop(bb)
+    out = Image.new('RGBA', (32, 32), (0, 0, 0, 0))
+    out.alpha_composite(t, ((32 - t.width) // 2, (32 - t.height) // 2))
+    return out
+
+
 def textures(textures_dir=None):
     from PIL import Image
     textures_dir = textures_dir or os.path.join(paths.REPO, 'build', 'preview')
@@ -180,6 +196,7 @@ def textures(textures_dir=None):
     out['WoR_HUD_starburst'] = out['WoR_HUD_starburst'].resize((128, 128), Image.LANCZOS)
     for r in (1, 2):
         out[RANK_TEX[r]] = rank_badge(r)
+    out[PLUS_TEX] = plus_glyph()
     ids = _sp_body_ids()
     m = sp_map()
     cut = _sp_cut()
@@ -198,6 +215,7 @@ def sources():
     s = {k: {'src': v} for k, v in TEX.items()}
     for r in (1, 2):
         s[RANK_TEX[r]] = {'src': PLACE_BACK, 'front': PLACE_FRONT, 'text_font': 'fontgrid_text_a1'}
+    s[PLUS_TEX] = {'src': 'fontgrid_text_a1 (WoR ui_shared)', 'glyph': '+'}
     s[SPTUBE_TEX] = {'src': 'WoR_HUD_sp_base (1-player tube, mapped)', 'battle_tube': True}
     for v in s.values():
         v.setdefault('box', None)
@@ -242,10 +260,19 @@ def tree():
             # score right-aligned at the bar's right end (WoR: "x1 | 82" / "94 x1")
             E(f'score_{p}', 'TextBlockElement', pos=(bx + bar_w / 2 - 14, BAR_Y + 1), dims=(300, 40), just=(1, 0),
               scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
-            # the streak: just a number in the bar's first square (WoR's "+4 | 64", user 2026-10-21); the square spans
-            # texture x 128..186 of the 512 px art, the visible bar is centred on x 258
-            E(f'streak_number_{p}', 'TextBlockElement', pos=(bx + (STREAK_SQ_X - 258) * BAR_K, BAR_Y + 1), dims=(200, 40),
-              just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
+            # the streak: "+N" in the bar's first square (WoR, user's frame 2026-10-21), empty without a streak. A window
+            # clipped to the square holds a container (alias_streak_pN) with WoR's "+" and the DE's streak number; the
+            # DE's HUD_setup_streak_meter_animation (face-off) slides that container 200 px aside when the streak ends
+            # (out of the window) and back when one starts. The square spans texture x 128..186 of the 512 px art.
+            E(f'streak_mask_{p}', 'windowelement', pos=(bx + (STREAK_SQ[0] - 258) * BAR_K, BAR_Y - STREAK_SQ_H / 2),
+              dims=((STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K, STREAK_SQ_H), just=(-1, -1), z=8.0, children=[
+                  E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=((STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K, STREAK_SQ_H),
+                    just=(-1, -1), z=8.0, children=[
+                        E(f'streak_plus_{p}', 'SpriteElement', pos=(PLUS_X, STREAK_SQ_H / 2 + 1), dims=(PLUS_D, PLUS_D),
+                          just=(0, 0), z=8.0, texture=PLUS_TEX),
+                        E(f'streak_number_{p}', 'TextBlockElement', pos=(PLUS_X + PLUS_D / 2, STREAK_SQ_H / 2 + 1),
+                          dims=(200, 40), just=(-1, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT,
+                          text='0x00000000', shadow=False)])]),
             # the DE's multiplier nixie at the bar's outer end
             # starts on our x1 badge: the plugin maps the DE's stock nixie names to ours on it; pos = the art's centre
             E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(bx + sgn * (bar_w / 2 + 26), BAR_Y),
@@ -287,7 +314,7 @@ def versus_desc():
     for p in (1, 2):
         for k in range(1, 7):
             props += [(f'fill_{p}_{k}_texture', f'fill_{p}_{k}', 'texture'), (f'fill_{p}_{k}_scale', f'fill_{p}_{k}', 'Scale')]
-    return desc(NAME, root, props)
+    return desc(NAME, root, props, aliases=[('alias_streak_p1', 'streak_1'), ('alias_streak_p2', 'streak_2')])
 
 
 # ---- edits of the copied WT+ layouts (build.py)

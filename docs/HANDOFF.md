@@ -34,6 +34,20 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## Session stopped 2026-10-21 (user request): where to resume
+
+Installed in the game = HEAD (mod + plugin 1.35), nothing tested in game since battle test 2. Last user feedback (versus
+score bars, from their WoR frame: team bar "x1 | 1", per-player bar "+1 | 1"):
+- done: placing squares bigger with the rank inside (RANK_D 78, RANK_FACE), score font SCORE_K 0.30, the streak as
+  "+N" in the score bar's first square (window streak_mask_N > container streak_N = alias_streak_pN, WoR "+" texture
+  WoR_HUD_plus + the DE's p1/p2_streak_number_text; the DE's face-off streak animation slides it out of the window when
+  the streak ends). Mock: tools/mock_mp.py -> scratch; close-up as the user saw it: score bars "+64 45,625".
+- the LAST change (streak "+N" window) is built and installed but `python tests/run_offline.py` was NOT re-run and it
+  is committed together with this note: run the tests first.
+- open question to the user: the multiplier nixie badge still sits at each bar's outer end; WoR shows "x1" as text in
+  that bar (the DE only gives the nixie texture, no number). Ask whether to drop the badge from the versus bars.
+- user wants it tested next: quickplay, 2-player band, face-off, battle (see the checklist below).
+
 ## Built overnight 2026-10-21 (untested; plugin 1.35): test these first
 
 See MODLOG "v0.50 WIP + plugin 1.35". Test in this order (ask before launching; quickplay first):

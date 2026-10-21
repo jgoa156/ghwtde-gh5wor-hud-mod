@@ -112,3 +112,12 @@ static const float kLevelPt[65][2] = {
 	{ 824.60f, 478.22f }, { 823.61f, 476.44f }, { 822.62f, 474.66f }, { 821.64f, 472.88f },
 	{ 820.65f, 471.10f },
 };
+
+// battle (tools/wor_battle.py): our needle (texture, layout dims), the DE-turned stand-in ids (p1, p2), the
+// needle offsets from the stand-in on the WoR LED stops (layout units), the slot card size and its container
+static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
+static const float kBNeedleDims = 85.3333f;
+static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
+static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.9167f, -51.8508f }, { 49.1272f, -91.2458f }, { 64.5672f, -119.9231f } };
+static const float kBCard = 44.4212f;   // guitar_battle cards are 64x64
+static const uint32_t kBattlemodeContainer = 0xe2ef4f36;

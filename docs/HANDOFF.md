@@ -1,23 +1,26 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-20, 0.49 released, 0.50 WIP)
+# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## Start here (2026-10-20)
+## Start here (2026-10-21)
 
-State: HUD **0.49** released (releases/, bundles Ultrawide Fix **1.0**). HEAD adds battle mode in the WoR style
-(plugin 1.32, tools/wor_battle.py, mock verify/mock_battle_v6.jpg approved 10-16) and the bgfx add-on stepping aside on
-DXVK; plugin 1.32 is installed, battle is NOT tested in game. Sibling repos, both released and confirmed working by the
+State: HUD **0.49** released (releases/, bundles Ultrawide Fix **1.0**). HEAD has battle mode rebuilt in the WoR style
+(plugin 1.33, tools/wor_battle.py, mock docs/mocks/mock_battle_v8.jpg approved 10-20, build preview
+docs/mocks/mock_battle_v9_build.jpg) and the bgfx add-on stepping aside on DXVK; HEAD + plugin 1.33 are installed,
+battle is NOT tested in game. Sibling repos, both released and confirmed working by the
 user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade needed; only release on its repo) and
 **All Main Menu Music 1.0** (10 games in one mod, GitHub Release, World Tour's six always play).
 
-1. **Battle mode rework** (user footage `OneDrive\Videos6-10-20 21-49-06.mp4`, 2560x1080, Ultrawide 1.1): the two
-   GH5-width highways touch in the middle (the DE's 2p spacing is for World Tour's narrower highway); the attack slot
-   rings float at the outer top corners off the rail with grey striped fills; the attack card shows above the highway
-   instead of in a slot; P1's health arc runs off the left edge of the 16:9 area (clipped) and both needles sit outside
-   their arcs. Mock v6 was never calibrated to DE positions: calibrate on frames from that clip, mock, get approval.
-   (Ultrawide Fix 1.1 is bundled in the package since 6e398df.)
+1. **Battle mode rework: built (2026-10-21), awaiting the test run.** Calibrated on the user's footage
+   (`OneDrive\Videos\2026-10-20 21-49-06.mp4`); v8 approved. Each highway carries the main theme's rock tube on its
+   left rail (needle slid by plugin 1.33 from the DE-turned stand-in) and the three attack slots where the SP tube goes,
+   highways 30 apart each (x_offset_p2 + 30 in battle), P2 = P1's set translated, empty slots dark, cards sized to the
+   slots. **The attack alert / card above the highway is stock on purpose: its design is still to be discussed with
+   the user** (WoR template idea: uidesc_quickplay_challenge_alert, `wor_card()` in tools/mock_battle.py). What to read
+   in `wor_hud_fixes.log` after the test: "battle needle: ..." (stand-in found, rot range, swing 42 or 74), "battle
+   card ..." (cards resized), "get_highway_pos_and_scale wrapped". Details: MODLOG "v0.50 WIP + plugin 1.33".
 2. **Ask for one test run** (rule: ask before launching): the reworked battle mode, plus the still-unconfirmed 0.48/0.49 items: fail box calibration, YOU ROCK round 3 (letters,
    gravity 3500, glow, the WoR sound via SoundEvent), rock needle stand-in (plugin 1.31), popup message size.
 3. **Release 0.50** with the above (`python build.py --package`, zip to releases/, push).
@@ -38,18 +41,18 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
   `OneDrive\Documentos\My Games\Guitar Hero World Tour Definitive Edition\GHWTDE.ini` (`HUDTheme=ghwor`,
   `GemTheme=ghwor`, `Preferred*Highway=GH5_Highway`, 2560x1080). The `GHWTDE.ini` in the game folder is not the live one.
 - **Released: 0.49** (`releases/GH5-WoR_HUD_0.49.zip`, 23 MB; bundles Ultrawide Fix **1.0**). **Installed (from
-  HEAD, version string still 0.49):** mod `WoR_HUD` + theme / gem / UI paks + `wor_hud_fixes.asi` **1.32** (battle
-  mode) + `ghwtde_ultrawide.asi` / `.ini` **1.1** (no ReShade add-on any more) + ReShade (preset, `ghwt_bgfx.addon32`,
+  HEAD, version string still 0.49):** mod `WoR_HUD` + theme / gem / UI paks + `wor_hud_fixes.asi` **1.33** (battle
+  mode rework) + `ghwtde_ultrawide.asi` / `.ini` **1.1** (no ReShade add-on any more) + ReShade (preset, `ghwt_bgfx.addon32`,
   which steps aside on DXVK). The package (`build.py --package`) bundles Ultrawide 1.1's asi + ini since 6e398df.
   Menu music: All Main Menu Music (its own repo; installed with Guitar Hero, GH II, Encore 80s, Aerosmith on).
 - **WoR look, all choosable as "Guitar Hero: Warriors of Rock":** helper pills (+ gamertag pill), loading screen,
   menu popups (WoR frame, black background, brush bar; arrows coded but not showing), failed / song ended box, pause
   menu, You Rock (WoR's exploding text, flipbook lightning / ball / explosion, glow, WoR sound), star power sounds,
-  rock needle, battle mode (0.50 WIP, broken, see Start here 1).
+  rock needle, battle mode (0.50 WIP, rebuilt 10-21, untested, see Start here 1).
 - **Confirmed by the user in game:** pills, menu music, pause (no crash, layout), popup look, loading ball, star power
   highway, career needle, every ultrawide screen; Ultrawide Fix 1.1 and All Main Menu Music 1.0 (2026-10-20).
   **Never confirmed:** fail box calibration, YOU ROCK round 3 (letters, gravity 3500, glow, sound), rock needle
-  stand-in (plugin 1.31), popup message size, popup arrows (did not show), battle mode (footage: broken).
+  stand-in (plugin 1.31), popup message size, popup arrows (did not show), battle mode (rebuilt 10-21, untested).
 - **Other repos:** Ultrawide Fix 1.1 (github.com/jgoa156/ghwtde-ultrawide-fix: ASI plugin, Hor+ 3D FOV, 2D layer at
   16:9; its 2D hooks go in at Direct3DCreate9 so wor_hud_fixes.asi still finds 0x5a05e0 untouched); All Main Menu
   Music 1.0 (github.com/jgoa156/ghwtde-all-main-menu-music, `python build.py --install <game>`; never replace the DE's
@@ -91,7 +94,7 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
 
 ## Task list (2026-10-20, user order)
 
-1. Battle mode rework: calibrate on the user's clip, mock, approval, build (Start here 1).
+1. Battle mode rework: built 2026-10-21 (Start here 1); the card above the highway is still to be designed with the user.
 2. One test run (ask first): battle + every "never confirmed" item above.
 3. Release HUD 0.50 (bundles Ultrawide 1.1): bump VERSION in build.py, `python build.py --package`, zip to releases/,
    push; Nexus page text like the other two repos' `docs/NEXUS.txt`.

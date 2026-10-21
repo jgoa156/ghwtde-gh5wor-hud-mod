@@ -1385,3 +1385,29 @@
   sound. Now the SoundEvent WoR_HUD_YouRock goes right after the block (asserted). Sound re-encoded at 48 kHz like the
   DE's own You_Rock_Explosion (ui\You_Rock_Explosion in global_sfx_wtde: 48 kHz stereo 320 kb/s, ID3 tag is fine).
   Lesson: never insert a line before a script's ${...}$ default block.
+
+## v0.50 WIP + plugin 1.33 (2026-10-21): battle mode rebuilt on the approved v8 mock
+
+- Calibration (user footage 2026-10-20, frame 25 s, tools/mock_battle.py): hud_2d `just` is -1..1 with 0 = centre (v6
+  gave 0.5 and every element landed a quarter of its size up-left); P1's rails (320,395)->(170,700) / (500,395)->(652,700),
+  strikeline ~633, top ~393; the GH5-width highways touched in the middle.
+- Layout (tools/wor_battle.py, mock v8 approved): the main theme's rock tube on each highway's left rail and the three
+  attack slots where the SP tube goes (cluster ~ the SP tube's length, rings overlapping 12%), P2 = P1's set translated
+  (p2_dx), empty slots dark (WoR ui_shared Circle tinted), no health arc. The tube textures (WoR_HUD_btube body / _red /
+  _yellow / _green, WoR_HUD_bneedle) are the 1-player HUD (preview_hud, game calibration) rendered at 2 px per canvas
+  unit and mapped by the rail affine; LEDs and needle are 'Add' on the 1-player HUD, so their brightness becomes alpha
+  (hud_2d sprites blend normally; the needle's black square showed otherwise). mock_battle.py now draws the built
+  layout itself (docs/mocks/mock_battle_v9_build.jpg = v8 without the alert card).
+- Health needle: the DE turns HUD2D_rock_needle per player (0x465ab0: rot = A (1 - health) degrees, A = 74 with the game
+  mode flag 0xc0d40e (QB 0x8ef82384) or one HUD player, else 42; clamped; SetRot 0x5a1970 stores radians at 0xd0). Our
+  layout makes it a blank stand-in at the tube's health-0 stop; plugin 1.33 finds our needle (dims kBNeedleDims, texture
+  WoR_HUD_bneedle), its stand-in sibling (id HUD2D_rock_needle + p1 / p2), and slides it on the WoR LED stops
+  (kBNeedleD, layout units). It logs the stand-in, the swing and the rot range it sees.
+- Cards: guitar_battle makes every card 64x64 at z 19 under battlemode_container; the big slot holds ~44, so plugin 1.33
+  sets those to kBCard while our battle needle was seen in the last 0.5 s, and WoR_HUD_create_battle_alert_frames sets
+  medium_scale 0.611 / small_scale 0.361 (stock 0.55 / 0.40 back with other themes).
+- Highways 30 apart each: WoR_HUD_get_highway_pos_and_scale (plugin swap of get_highway_pos_and_scale) keeps the stock
+  x_offset_p2 in WoR_HUD_x_offset_p2_stock and sets x_offset_p2 = stock + 30 in p2_battle with our theme, stock otherwise.
+  The DE's battle alert containers sit at 640 -+ x_offset_p2, so the stock alerts stay centred over the moved highways.
+- The attack alert / card above the highway is unchanged (user: design still to be discussed).
+- Not tested in game yet.

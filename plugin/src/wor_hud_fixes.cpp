@@ -83,6 +83,10 @@ namespace
 	constexpr size_t kElementPos = 0xa8;             // float x, y (the position the desc gives, in the parent)
 	constexpr size_t kElementScale = 0xc0;           // float x, y
 	constexpr size_t kElementDims = 0x1bc;           // float w, h
+	constexpr size_t kElementRot = 0xd0;             // float, radians (SetRot 0x5a1970 takes degrees)
+	constexpr size_t kElementZ = 0x1c8;              // float z_priority
+	constexpr uintptr_t kModeFlag = 0xc0d40e;        // byte: game mode flag 0x8ef82384 (picks the battle needle swing)
+	constexpr uintptr_t kNeedleSwing = 0xa11860;     // float 74, 42: battle needle swing (flag / 1 player, else)
 	constexpr size_t kElementAlpha = 0x94;           // float alpha (tween target at +0x44 = 0xd8)
 	constexpr size_t kElementFirstChild = 0x70;
 	constexpr size_t kElementNextSibling = 0x7c;
@@ -133,6 +137,9 @@ namespace
 		{ 0x5a02ce, { 0x8B, 0x81, 0xD4, 0x01, 0x00, 0x00 }, 6, "SetParent parent read" },
 		{ 0x517eec, { 0x8B, 0x0D, 0xB8, 0x2E, 0xD6, 0x00 }, 6, "element lookup manager" },
 		{ kFindElement, { 0x53, 0x56, 0x8B, 0xD9, 0x8B, 0x73, 0x08 }, 7, "element lookup by id" },
+		{ 0x44029d, { 0xA2, 0x0E, 0xD4, 0xC0, 0x00 }, 5, "game mode flag store" },
+		{ kNeedleSwing, { 0x00, 0x00, 0x94, 0x42, 0x00, 0x00, 0x28, 0x42 }, 8, "battle needle swing (74, 42)" },
+		{ 0x465bd1, { 0xF3, 0x0F, 0x10, 0x1D, 0x64, 0x18, 0xA1, 0x00 }, 8, "battle needle: swing 42 read" },
 	};
 
 	// thiscall functions called through fastcall pointers (ecx = this, edx unused, callee cleans the stack)
@@ -629,6 +636,9 @@ namespace
 		// 1.32: battle attack cards into the WoR slots (tools/wor_battle.py; wrapper moves guitar_battle's card offsets)
 		{ 0xeeec662a /* create_battle_alert_frames */, 0xe44057a9 /* wor_hud_create_battle_alert_frames */, 0x88ff56b0 /* _orig */,
 		  "battle: create_battle_alert_frames wrapped (attack cards in the WoR slots)" },
+		// 1.33: battle highways further apart with the WoR theme (wrapper sets x_offset_p2 before the DE script)
+		{ 0x214c3209 /* get_highway_pos_and_scale */, 0x8dd39687 /* wor_hud_get_highway_pos_and_scale */, 0x739598f1 /* _orig */,
+		  "battle: get_highway_pos_and_scale wrapped (highways apart in battle)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)
 		{ 0x74d55bee /* create_loading_screen */, 0x16420b70 /* wor_hud_create_loading_screen */, 0xa8cfacd3 /* _orig */,
 		  "loading screen: create_loading_screen wrapped (WoR load wheel spins)" },
@@ -730,10 +740,89 @@ namespace
 		}
 	}
 
+	// ---- 1.33, battle rock tube (tools/wor_battle.py): the DE turns each player's HUD2D_rock_needle by health
+	// (0x465ab0: rot = A (1 - health) degrees, health 0..2, A = 74 with the game mode flag 0xc0d40e set, else 42). In our
+	// battle layout that element is an invisible stand-in at the tube's health-0 stop, and our needle (WoR_HUD_bneedle,
+	// a sibling in the same rock container) slides up the tube from it on the WoR LED stops (kBNeedleD, layout units).
+	// guitar_battle creates every attack card 64x64 at z 19 under battlemode_container; while our battle needle is on
+	// screen those get our big slot's size (the wrapper sets medium_scale / small_scale for the smaller slots).
+	double g_battle_seen = -100.0;
+	bool g_bneedle_logged = false, g_bcard_z_logged = false;
+	float g_brot_lo = 1e9f, g_brot_hi = -1e9f;
+	int g_brange_logs = 0, g_bcards = 0;
+
+	uint32_t id_of(void *e) { return *reinterpret_cast<uint32_t *>(field(e, kElementId)); }
+
+	void battle_needle(void *needle)
+	{
+		void *parent = *reinterpret_cast<void **>(field(needle, kElementParent));
+		if (!parent || texture_of(needle) != kBNeedleTex)
+			return;
+		void *src = nullptr;
+		for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c && !src;
+		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+			if (id_of(c) == kBNeedleId[0] || id_of(c) == kBNeedleId[1])
+				src = c;
+		if (!src)
+			return;
+		g_battle_seen = now();
+		const float *swing = reinterpret_cast<const float *>(kNeedleSwing);
+		const float a = *reinterpret_cast<const uint8_t *>(kModeFlag) ? swing[0] : swing[1];
+		const float deg = f32(src, kElementRot) * 57.2957795f;
+		float h = 1.0f - deg / a;
+		h = h < 0.0f ? 0.0f : h > 2.0f ? 2.0f : h;
+		const int i = h < 2.0f / 3.0f ? 0 : h < 4.0f / 3.0f ? 1 : 2;
+		float t = (h - i * (2.0f / 3.0f)) * 1.5f;
+		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+		f32(needle, kElementPos) = f32(src, kElementPos) + kBNeedleD[i][0] + (kBNeedleD[i + 1][0] - kBNeedleD[i][0]) * t;
+		f32(needle, kElementPos + 4) = f32(src, kElementPos + 4) + kBNeedleD[i][1] + (kBNeedleD[i + 1][1] - kBNeedleD[i][1]) * t;
+		if (!g_bneedle_logged)
+		{
+			g_bneedle_logged = true;
+			log("battle needle: stand-in %08x at (%.1f, %.1f), rot %.2f deg, swing %.0f -> health %.2f",
+			    id_of(src), f32(src, kElementPos), f32(src, kElementPos + 4), deg, a, h);
+		}
+		if ((deg < g_brot_lo - 2.0f || deg > g_brot_hi + 2.0f) && g_brange_logs < 24)
+		{
+			g_brot_lo = deg < g_brot_lo ? deg : g_brot_lo;
+			g_brot_hi = deg > g_brot_hi ? deg : g_brot_hi;
+			++g_brange_logs;
+			log("battle needle: rot range now %.1f .. %.1f deg (swing %.0f)", g_brot_lo, g_brot_hi, a);
+		}
+	}
+
+	void battle_card(void *card)
+	{
+		if (f32(card, kElementDims) != 64.0f || f32(card, kElementDims + 4) != 64.0f || now() - g_battle_seen > 0.5)
+			return;
+		void *parent = *reinterpret_cast<void **>(field(card, kElementParent));
+		if (!parent || id_of(parent) != kBattlemodeContainer)
+			return;
+		if (f32(card, kElementZ) != 19.0f)
+		{
+			if (!g_bcard_z_logged)
+			{
+				g_bcard_z_logged = true;
+				log("battle: 64x64 sprite %08x in battlemode_container at z %.2f left alone (cards are z 19)", id_of(card), f32(card, kElementZ));
+			}
+			return;
+		}
+		reinterpret_cast<SetDimsFn>(kSetDims)(card, nullptr, kBCard, kBCard, 0);
+		if (g_bcards++ < 6)
+			log("battle card %08x: 64x64 -> %.1f (our big slot)", id_of(card), kBCard);
+	}
+
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
 		if (element)
+		{
 			needle_remap(element);
+			const float w = f32(element, kElementDims);
+			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
+				battle_needle(element);
+			else if (w == 64.0f)
+				battle_card(element);
+		}
 		if (element && element == g_sp.clip)
 			sp_frame();
 		if (!g_script_swaps_done)
@@ -1244,7 +1333,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.32 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.33 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

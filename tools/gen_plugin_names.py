@@ -4,7 +4,7 @@ usage: python tools/gen_plugin_names.py"""
 import os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import paths, wor_1g  # noqa: E402
+import paths, wor_1g, wor_battle  # noqa: E402
 
 
 def qbkey(s):
@@ -79,6 +79,18 @@ def main():
     for i in range(0, n + 1, 4):
         out.append('	' + ' '.join(f'{{ {x:.2f}f, {y:.2f}f }},' for x, y in pts[i:i + 4]))
     out += ['};', '']
+    # battle (tools/wor_battle.py): the needle slider, its stand-in ids (extendcrc'd per player), its stops; the cards
+    big_card, _ = wor_battle.card_sizes()
+    nd = wor_battle._pow2(wor_battle.NEEDLE_BOX * wor_battle.SS) / wor_battle.SS / wor_battle.SCALE
+    out += ['// battle (tools/wor_battle.py): our needle (texture, layout dims), the DE-turned stand-in ids (p1, p2), the',
+            '// needle offsets from the stand-in on the WoR LED stops (layout units), the slot card size and its container',
+            f'static const uint32_t kBNeedleTex = 0x{qbkey(wor_battle.NEEDLE_TEX):08x};   // {wor_battle.NEEDLE_TEX}',
+            f'static const float kBNeedleDims = {nd:.4f}f;',
+            'static const uint32_t kBNeedleId[2] = { ' + ', '.join(f'0x{qbkey("HUD2D_rock_needle" + p):08x}' for p in ('p1', 'p2'))
+            + ' };   // HUD2D_rock_needle + p1 / p2',
+            'static const float kBNeedleD[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_battle.plugin_needle()) + ' };',
+            f'static const float kBCard = {big_card:.4f}f;   // guitar_battle cards are 64x64',
+            f'static const uint32_t kBattlemodeContainer = 0x{qbkey("battlemode_container"):08x};', '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))
     print('wrote', p)

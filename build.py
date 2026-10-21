@@ -359,7 +359,7 @@ def main():
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}
-    for name, im in wor_battle.textures().items():     # battle health arc, slot rings, name plate
+    for name, im in wor_battle.textures(work).items():     # battle rock tube + needle, slot rings, name plate
         out = os.path.join(work, name + '.png')
         im.save(out)
         pngs.append(out)
@@ -406,7 +406,7 @@ def main():
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
     src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
-                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
+                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0', wor_battle.SECTIONS]) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write(mod_ini('GH5 / Warriors of Rock HUD', MOD_DESCRIPTION, VERSION))
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
@@ -419,7 +419,7 @@ def main():
     sdk('decompile', f'{MOD_NAME}.qb.xen', cwd=rt)
     back = open(os.path.join(rt, f'{MOD_NAME}.txt'), encoding='utf-8', errors='replace').read()
     want = len(re.findall(r'^(?:Section\w+|Script) ', src, re.M))
-    got = len(re.findall(r'(?:Section\w+|Script) \S+\s*(?:babeface\s*)?[\[{]|SectionInteger \S+ -?\d+', back))   # ints: no brace
+    got = len(re.findall(r'(?:Section\w+|Script) \S+\s*(?:babeface\s*)?[\[{]|Section(?:Integer|Float) \S+ -?[\d.]+', back))   # numbers: no brace
     lost = [t for t in re.findall(r'\$printf\$%s\("([^"]+)"\)', src) if t not in back]
     if got != want or lost:
         raise RuntimeError(f'round trip lost sections: {got}/{want} decompiled; missing printf: {lost}')

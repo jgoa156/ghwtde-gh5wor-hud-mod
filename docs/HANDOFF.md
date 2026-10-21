@@ -34,7 +34,31 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
-## Session stopped 2026-10-21 (user request): where to resume
+## Session stopped 2026-10-21, late (user request): where to resume
+
+HEAD = 4fc5bc6 + this note: versus rework v2 + plugin **1.36**, built, tests 25/25, **NOT installed** (the game still has
+the 1.35 build): waiting for the user's approval of mock v2 (`docs/mocks/mock_versus_v2.jpg`, `_zoom.jpg`, sent).
+User feedback that drove it (their WoR 2v2 frame: team bars "x4 | 150" / "137 | x2", per-player bars "+8 | 100"):
+- the DE has teams (p4_pro_faceoff / p8 "Band vs Band": the versus props are per SIDE: band1/2 score, multiplier,
+  streak, SP). Team bar (HUD_band_battle_score, P2 mirrored via WoR_HUD_vs_score(_back)_m) = side multiplier AS TEXT in
+  the square + side score. Multiplier text = baked textures WoR_HUD_vsmult_1..4 / sp2..sp8 ("x" fontgrid_text_a1 +
+  number fontgrid_numeral_A2, white like WoR's uidesc_HUD_band_battle; no SP colour there); plugin 1.36 kVsMult /
+  kVsNixieMap swap the DE's HUD_score_nixie_* names to them on those elements.
+- per-player bars (competitive_meter back/frame/stripe at 640 -/+ PBAR_DX, PBAR_K 0.70): player note streak (NO "+":
+  WoR's "+N" is its point system) | player score, same font/size, SCORE_K 0.26 everywhere. Bound in
+  WoR_HUD_HUD_attach_widget_band_faceoff_meter by AttachHudWidget player1/2_status Score / note_streak ->
+  pscore_N_text / pstreak_N_text, only when current_num_players = 2 (4p still uses the DE's desc). Third square
+  (WoR difficulty icon) empty.
+- every highway keeps its SP tube AND streak meter in face-off: wor_mult_mp's alias_player_multiplier now points at a
+  hidden stand-in (mult_die_standin), so the DE's face-off Die (GH:588-594, the only user of that alias) kills that.
+- the team bar's old "+N" streak window is kept invisible (alias_streak_pN needed by the DE's streak animation).
+Open questions put to the user: show the side streak somewhere (left of the team score?); hide the team row's score
+in 2-player (it duplicates the per-player bar); then 4-player Pro Face-Off (hud_3g1v) next.
+Theme pak 4.10 MB (limit 4 MiB = 4.19 MB): budget textures before adding more.
+Next after approval: `python build.py --install`, copy plugin/build/wor_hud_fixes.asi (1.36) to the game, push, then
+ask for the test run (checklist below, face-off items updated: team bars + per-player bars + streak meter per highway).
+
+## Session stopped 2026-10-21 (earlier): where to resume
 
 Installed in the game = HEAD (mod + plugin 1.35), nothing tested in game since battle test 2. Last user feedback (versus
 score bars, from their WoR frame: team bar "x1 | 1", per-player bar "+1 | 1"):

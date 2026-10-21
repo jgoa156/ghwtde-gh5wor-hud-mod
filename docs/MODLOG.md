@@ -1486,3 +1486,5 @@ docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user'
 - User: score still too big -> SCORE_K 0.30; the streak is just a number in the score bar's first square (WoR '+4 | 64'):
   streak_number_1/2 (the DE's p1/p2_streak_number_text) now visible there (texture x 157 of the bar art), same size.
 
+
+- Versus v2 (user 2026-10-21, WoR 2v2 frame): team bars = side multiplier as text (baked WoR_HUD_vsmult_*, plugin 1.36`n  kVsNixieMap) + side score, P2 mirrored; per-player bars (WoR competitive_meter) = note streak (no +) + score, bound by`n  the face-off wrapper (AttachHudWidget, 2 players only); SCORE_K 0.26; the per-highway streak meter survives face-off`n  (alias_player_multiplier -> hidden stand-in). Mock docs/mocks/mock_versus_v2.jpg; built, not installed, awaiting approval.

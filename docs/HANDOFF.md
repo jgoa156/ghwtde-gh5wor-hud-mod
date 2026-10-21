@@ -1,23 +1,29 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-11, v0.48 WIP)
+# GH5 / WoR HUD mod: session handoff (2026-10-20, 0.49 released, 0.50 WIP)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## Start here (next session, from 2026-10-11)
+## Start here (2026-10-20)
 
-State: everything built from HEAD is installed in the game; all three repos are pushed (this one, ghwtde-ultrawide-fix,
-ghwtde-all-main-menu-music: every game's menu music in one mod, games switched off in its menumusic.ini). Nothing from the last round has been tested in game yet.
+State: HUD **0.49** released (releases/, bundles Ultrawide Fix **1.0**). HEAD adds battle mode in the WoR style
+(plugin 1.32, tools/wor_battle.py, mock verify/mock_battle_v6.jpg approved 10-16) and the bgfx add-on stepping aside on
+DXVK; plugin 1.32 is installed, battle is NOT tested in game. Sibling repos, both released and confirmed working by the
+user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade needed; only release on its repo) and
+**All Main Menu Music 1.0** (10 games in one mod, GitHub Release, World Tour's six always play).
 
-1. **Ask for one test run** (rule: ask before launching): fail a song (fail box vs WoR, overlay method in MODLOG
-   "Round 3"), finish one (YOU ROCK: letters fall, bigger "YOU ROCK!", glow size), watch the rock needle at the colour
-   changes, pause once (gameplay hidden, title case), title screen flashes on ultrawide. Calibrate from screenshots:
-   lay ours over the user's WoR reference (align on a fixed element, as for verify/fail_overlay_v1.jpg).
-2. **Release 0.48** once the user confirms the pause menu: `python build.py --package`, copy the zip to releases/,
-   push (94 MB, under GitHub's 100 MB limit). The ultrawide fix has unreleased changes too (its package.py).
-3. **Open decisions for the user:** popup up/down arrows (WoR's fail box has them).
-4. **Backlog:** WoR highway lines; face-off crash + layouts; multiplayer layouts (mocks in docs/mocks); song list side
-   art (user remastering); drum animations (docs/DRUM_ANIMS_PLAN.md).
+1. **Bundle Ultrawide Fix 1.1** in the HUD package instead of `ghwtde_ultrawide.addon32` 1.0 (ship
+   `ghwtde_ultrawide.asi` + `.ini`; the package already ships the ASI loader); tell 1.0 users to delete the addon32.
+2. **Ask for one test run** (rule: ask before launching): battle mode (health arc, slot rings, name plates, attack
+   cards in our slots), plus the still-unconfirmed 0.48/0.49 items: fail box calibration, YOU ROCK round 3 (letters,
+   gravity 3500, glow, the WoR sound via SoundEvent), rock needle stand-in (plugin 1.31), popup message size.
+3. **Release 0.50** with the above (`python build.py --package`, zip to releases/, push).
+4. **Open decision:** popup up/down arrows (code ships, did not show in game; user: leave it for now).
+5. **Backlog (user order):** face-off crash (enable WER LocalDumps first) + face-off layouts; multiplayer / vocals
+   layouts (rules in docs/MODES_RULES.md, mocks in docs/mocks); song list side art (user remastering); drum
+   animations (docs/DRUM_ANIMS_PLAN.md, not started); full code review of the HUD, ultrawide and menu music repos;
+   WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
+   song list sorting that ignores a leading "The".
 
 ## Where things stand
 
@@ -42,9 +48,10 @@ ghwtde-all-main-menu-music: every game's menu music in one mod, games switched o
 - **Confirmed by the user in game:** pills, menu music, pause (no crash, layout), popup look, loading ball.
   **Awaiting a test (installed):** fail box calibration, You Rock round 3 (gravity, size, glow 128 px), rock needle,
   title-screen flashes (ultrawide), gameplay hidden under pause.
-- **Other repos:** ultrawide fix (loading bars default, YOU ROCK / title flash groups, catalog off by default; not
-  released since 0.2 beta); All Main Menu Music (github.com/jgoa156/ghwtde-all-main-menu-music, `python build.py --install <game>`;
-  2026-10-20: NoWorldTour QB empty array fixed, awaiting a boot test, not released).
+- **Other repos:** Ultrawide Fix 1.1 (github.com/jgoa156/ghwtde-ultrawide-fix: ASI plugin, Hor+ 3D FOV, 2D layer at
+  16:9; its 2D hooks go in at Direct3DCreate9 so wor_hud_fixes.asi still finds 0x5a05e0 untouched); All Main Menu
+  Music 1.0 (github.com/jgoa156/ghwtde-all-main-menu-music, `python build.py --install <game>`; never replace the DE's
+  menu_music_songs from its QBName QB: crashed the game at boot).
 - **Confirmed in game (2026-10-10):** WoR star power highway effect (0.47 / plugin 1.24: cyan rail glows, stars up
   the rails, strikeline rush; MODLOG "v0.47"), career rock needle (plugin 1.22), the new preset, every ultrawide screen
   (title, menus, song list, loading, YOU ROCK themes, song intro, left-pinned menus). User: the occasional crash

@@ -90,6 +90,10 @@ def main():
             + ' };   // HUD2D_rock_needle + p1 / p2',
             'static const float kBNeedleD[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_battle.plugin_needle()) + ' };',
             f'static const float kBCard = {big_card:.4f}f;   // guitar_battle cards are 64x64',
+            '// per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)',
+            'static const float kBSlot[6][5] = {']
+    out += [f'\t{{ {s[0]:.2f}f, {s[1]:.2f}f, {c[0]:.2f}f, {c[1]:.2f}f, {k:.2f}f }},' for s, c, k in wor_battle.plugin_cards()]
+    out += ['};',
             f'static const uint32_t kBattlemodeContainer = 0x{qbkey("battlemode_container"):08x};', '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')
     open(p, 'w', newline='\n').write('\n'.join(out))

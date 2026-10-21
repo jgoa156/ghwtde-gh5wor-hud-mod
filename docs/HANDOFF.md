@@ -13,7 +13,8 @@ battle is NOT tested in game. Sibling repos, both released and confirmed working
 user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade needed; only release on its repo) and
 **All Main Menu Music 1.0** (10 games in one mod, GitHub Release, World Tour's six always play).
 
-1. **Battle mode rework: built (2026-10-21); first test failed, fixes built, awaiting the next test.** Test 1: highways
+1. **Battle mode: test 2 fixes built (plugin 1.34, MODLOG "Battle test 2"), awaiting test 3.** (LEDs,
+   needle direction, cards into the slots, tube glued.) Earlier: test 1 failed, fixed. Test 1: highways
    far too far apart, sets visible on the wrong side during the intro, every other mode hung at loading (MODLOG, end).
    Fixes installed; test quickplay FIRST (the hang), then battle. Calibrated on the user's footage
    (`OneDrive\Videos\2026-10-20 21-49-06.mp4`); v8 approved. Each highway carries the main theme's rock tube on its
@@ -33,7 +34,35 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
-## Where things stand
+## Next: face-off / pro face-off, band, vocals (user 2026-10-21) -- research first
+
+User's current-state clip: `Downloads\Video Project 25.mp4` (0:00-0:53 face-off + pro face-off: the DE's GH3-style top
+score bar and dial, highways touching; 0:53-1:46 battle; 1:46-end band: the DE's WT band meter top-left and per-player
+bars showing "01234567" placeholder text). WoR references: `OneDrive\Videos\GH\WOR_face_off.mp4`,
+`WOR_full_band_gameplay.mp4`, `WOR_microphone_gameplay.mp4`. Earlier parked mock: docs/mocks/mock_modes_v1.jpg,
+rules docs/MODES_RULES.md (update it with the research).
+
+User's requirements:
+- Remove the messages above the highway (Hot Start, Star Power Ready, attack alerts, etc.) in **all modes** for this
+  theme (1-player already ships without them: wor_1g.layout(no_messages=True)).
+- Face-off / Pro Face-Off: WoR versus look: per-player score group (WoR's own score bar design), WoR's versus meter
+  (different texture from the band meter), a placing per player (1st glows), star power tube + multiplier kept, **no
+  rock meter**. Highway spacing like battle. The DE's SP highway effect already works on every highway; the tube not.
+- Band: rock meter, star power tube and streak multiplier kept; WoR star power is per player (the DE's is shared:
+  find a workaround, e.g. show the same amount on every player). Remove the instrument icon from the highway; use WoR's
+  failed-instrument and instrument-icon textures.
+- Research (mechanical, cheaper model): (1) GH wiki (guitarhero.fandom.com) on both games: versus / face-off / pro
+  face-off, band (shared vs per-player SP, band multiplier, revive), multiplier rules per instrument, vocals scoring and
+  the precision wording (WT: "Awesome / Strong / Good / Okay / Messy / Weak"-style vs WoR) -- write findings into
+  docs/MODES_RULES.md with sources. (2) Identify every HUD asset in the three WoR clips and find it in
+  `E:\Dev\ghwt\ghwor-extract` (texture png folders + decompiled descs/scripts: versus meter, score groups, placing
+  badges 1st..4th + glow, multiplier bubble, band score / rocket, instrument icons, failed-instrument icons, vocal
+  highway parts, precision text); list name -> file -> where used in docs/MODES_RULES.md. (3) The same for the DE's
+  current HUD in the user's clip (which descs/layouts the DE uses per mode for our theme: theme rows in hudthemes,
+  e.g. 0x6bd128d8 = battle layout; find the face-off and band ones).
+- Then (expensive model): mocks per mode on frames of the user's clip, approval, build.
+
+
 
 - **Dev folders:** everything lives under `E:\Dev\ghwt`: this repo, `ghwtde-ultrawide-fix` (separate repo, bundled
   in our package), `ghwt-bg-shader`, `tools` (Guitar Hero SDK, NodeROQ), `ghwor-extract`, `ghwt-extract`,

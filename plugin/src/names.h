@@ -120,4 +120,13 @@ static const float kBNeedleDims = 85.3333f;
 static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
 static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.9167f, -51.8508f }, { 49.1272f, -91.2458f }, { 64.5672f, -119.9231f } };
 static const float kBCard = 44.4212f;   // guitar_battle cards are 64x64
+// per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
+static const float kBSlot[6][5] = {
+	{ 306.00f, 214.00f, 581.45f, 584.04f, 44.42f },
+	{ 262.00f, 225.00f, 561.08f, 546.67f, 27.15f },
+	{ 253.00f, 251.00f, 548.16f, 522.96f, 16.04f },
+	{ 980.00f, 214.00f, 1099.89f, 584.04f, 44.42f },
+	{ 1026.00f, 227.00f, 1079.52f, 546.67f, 27.15f },
+	{ 1033.00f, 253.00f, 1066.60f, 522.96f, 16.04f },
+};
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;

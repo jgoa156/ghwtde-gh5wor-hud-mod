@@ -1,7 +1,7 @@
 ﻿"""Battle mode (p2_battle) in the WoR style (mock docs/mocks/mock_battle_v8.jpg, approved 2026-10-20).
 
 The DE draws battle with a GH3-style hud_2d layout: the theme row's 0x6bd128d8 names it (default
-battle_hud_2d_elements). Its rock container holds the health meter (the DE fades the HUD2D_rock_BG_* alphas and turns
+battle_hud_2d_elements). Its rock container holds the health meter (the DE switches the HUD2D_rock_lights_* alphas and turns
 HUD2D_rock_needle by element id) and the attack-slot frame. Our layout WoR_HUD_battle keeps every element id and swaps
 the art, so each battle highway carries the main theme's tubes like the 1-player HUD:
   - health: the 1-player WoR rock tube (RM_Base + red / yellow / green LEDs) glued to the highway's left rail, its
@@ -63,7 +63,7 @@ WOR_CIRCLE = os.path.join(paths.WOR_EXTRACT, 'ui_shared_png', 'Circle.png')     
 RINGS = {'big': (127.0, 178.5, 36.0, 45.5), 'mid': (188.0, 191.0, 22.0, 27.5), 'small': (198.0, 228.5, 13.0, 18.5)}
 RING_TEX = {k: f'WoR_HUD_bslot_{k}' for k in RINGS}
 DISC_TEX = 'WoR_HUD_bslot_disc'
-DISC_RGBA = (10, 10, 14, 215)           # empty slot: dark (mock v8)
+DISC_RGBA = (10, 10, 14, 245)           # empty slot: dark (mock v8; 215 let the highway show through in game)
 CARD_FILL = 0.9                         # a card fills this much of its ring's inner diameter
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
             'green': 'WoR_HUD_btube_green'}
@@ -78,6 +78,9 @@ RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways
 STRIKE_1P, TOP_1P = 638.0, 300.0                     # the 1-player highway (tools/mock_base.py)
 SLOT_OVERLAP = 0.12                     # rings overlap along the tube (the DE's slot frame overlaps them)
+# test 2026-10-21 (user clip "Video Project 25"): on the moved highways the rock tube's centre sat ~24 px off the left
+# rail's outer edge (the 3D highway doesn't move like the pasted mock), leaving a gap; the slots touched their rail
+ROCK_NUDGE = np.array((15.0, 0.0))
 SS = 2.0                                # tube textures: texture px per canvas unit
 SIDE_METER_CALIB = (1.0, 9.0)           # preview_hud.GAME_CALIB of the 1-player side meter (needle) desc
 TUBE_HALF_W = 42.0                      # 1-player canvas: half width of the tube cut (normal to the tube line)
@@ -121,6 +124,7 @@ def tube_maps(sep=SEP):
     cr = lambda y: _border(wor_1g.BORDER_LINE_R, y)
     yb2, yt2 = _y2p(yb), _y2p(yt)
     rock = _affine([(cl(yb), yb), (cl(yt), yt), (cr(yb), yb)], [(L(yb2), yb2), (L(yt2), yt2), (R(yb2), yb2)])
+    rock[:, 2] += ROCK_NUDGE
     sp = _affine([(cr(yb), yb), (cr(yt), yt), (cl(yb), yb)], [(R(yb2), yb2), (R(yt2), yt2), (L(yb2), yb2)])
     return {'rock': rock, 'sp': sp}
 
@@ -396,6 +400,24 @@ def card_offsets():
     return out
 
 
+def plugin_cards():
+    """For the plugin, per slot (P1 big / mid / small, then P2): where guitar_battle sends a card with the stock
+    offsets (screen), our slot centre (screen) and the card size there. Test 2026-10-21: the wrapper's $change$ of
+    battle_hud_2d_elements' card offsets didn't reach the cards (they landed on the stock spots), so the plugin moves
+    each card's morph target from the stock spot to ours."""
+    slots = slots_on_tube()
+    out = []
+    for p in (1, 2):
+        rx, ry = ROCK_POS[p]
+        c1 = STOCK_CARD_OFFS[f'card_1_off_p{p}']
+        big = (rx + c1[0], ry + c1[1])
+        stock = [big] + [(big[0] + STOCK_CARD_OFFS[f'card_{n}_off_p{p}'][0], big[1] + STOCK_CARD_OFFS[f'card_{n}_off_p{p}'][1])
+                         for n in (2, 3)]
+        for (key, c, _, r_in), s in zip(slots, stock):
+            out.append((s, c if p == 1 else _p2(c), 2 * r_in * CARD_FILL))
+    return out
+
+
 def plugin_needle():
     """For the plugin: the needle's local offsets (layout units) from the stand-in (at the health-0 stop) per stop."""
     st = needle_stops()
@@ -427,14 +449,15 @@ def layout_struct():
     t += f'{hdr}StructArray elements\n{hdr}{{\n\t\t\tArrayStruct\n\t\t\t[\n'
     t += ('\t\t\t\tStructHeader\n\t\t\t\t{\n\t\t\t\t\tStructQBKey parent_container\n'
           '\t\t\t\t\tStructQBKey element_id = HUD2D_rock_container\n\t\t\t\t\tStructQBKey pos_type = offscreen_rock_pos\n\t\t\t\t}\n')
-    # health: the rock tube body, the three LED colours the DE fades (green 16 / yellow 15 / red 14)
+    # health: the rock tube body and one LED per zone. The DE (0x465ab0) switches HUD2D_rock_lights_red / _yellow /
+    # _green on below 2/3, 2/3..4/3 and above 4/3 health, like the 1-player LEDs; BG_green / BG_yellow are GH3's dial
+    # crossfade layers over an always-on BG_red (test 2026-10-21: as LEDs they lit all three at once), so blank here.
     (tc, (tw, th)) = tube_box()
     tube = (tw / SS, th / SS)
     t += _elem('HUD2D_rock_body', TUBE_TEX['body'], tc, tube, 13)
-    t += _elem('HUD2D_rock_BG_green', TUBE_TEX['green'], tc, tube, 16)
-    t += _elem('HUD2D_rock_BG_red', TUBE_TEX['red'], tc, tube, 14)
-    t += _elem('HUD2D_rock_BG_yellow', TUBE_TEX['yellow'], tc, tube, 15)
-    for eid in ('HUD2D_rock_lights_all', 'HUD2D_rock_lights_green', 'HUD2D_rock_lights_red', 'HUD2D_rock_lights_yellow'):
+    for c, z, a in (('red', 14, 0), ('yellow', 15, 1), ('green', 16, 0)):    # the song starts at health 1 (yellow)
+        t += _elem(f'HUD2D_rock_lights_{c}', TUBE_TEX[c], tc, tube, z, alpha=a)
+    for eid in ('HUD2D_rock_BG_green', 'HUD2D_rock_BG_red', 'HUD2D_rock_BG_yellow', 'HUD2D_rock_lights_all'):
         t += _elem(eid, BLANK, tc, (4.0, 4.0), 17, alpha=0)
     # needle: the DE turns the stand-in (blank, at the health-0 stop); the plugin slides ours up the tube from it
     st = needle_stops()

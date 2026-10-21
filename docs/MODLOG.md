@@ -1423,3 +1423,22 @@
   cropped to the rendered tube (256 px, was 512 polygon boxes), which takes the theme pak from 4.38 MB (over 4 MiB, 0.49
   was 3.28 MB) back to 3.59 MB. Suspects for the hang: the pak size and the x_offset_p2 changes; not proven which.
 
+### Battle test 2 (user clip `Downloads\Video Project 25.mp4`, 2026-10-21) + plugin 1.34
+
+- Quickplay loads again; battle highways 30 apart; sets slide in from off screen. Remaining, from frames + logs:
+  - LEDs: all three lit at once on P1. 0x465ab0 (decoded): it switches HUD2D_rock_lights_red / _yellow / _green
+    (binary, zones below 2/3, 2/3..4/3, above 4/3 health) and crossfades BG_green / BG_yellow over an always-on BG_red
+    (GH3's dial). Ours put the LEDs on BG_*: now on lights_*, BG_* blank (element ids from the pointer cache 0x467b20:
+    slots 0x1a1 needle, 0x1ad BG_green, 0x1b9 BG_red, 0x1c5 BG_yellow, 0x1e9 lights_red, 0x1f5 lights_green,
+    0x201 lights_yellow).
+  - Needle upside down: lights_green comes on past +A/3, so a positive angle is high health. Plugin 1.34:
+    health = 1 + angle / A (1.33 had 1 - angle / A). Log of the test: angles -21.6 .. +34.7 with A 42.
+  - Cards on the stock spots: they landed on rock_pos + the stock card_1_off (306, 214) although the wrapper printed
+    "moved": its $change$ of battle_hud_2d_elements' fields doesn't reach the scripts that read it. Plugin 1.34 moves each
+    card's morph target (0xec/0xf0; start 0x130) from the stock spot of its slot to ours (kBSlot, P1 / P2 big, mid,
+    small) and sizes it for the slot (dims = size / morph scale target 0x10c, SetScale 0x5a17e0). Cards: z 19 under
+    battlemode_container.
+  - Gap: the rock tubes sat ~24 px (centre) off their left rails on the moved 3D highways (they don't move like the
+    pasted mock): ROCK_NUDGE +15 px; checked on the clip's frames. Slots touch their rail as they are.
+  - Empty slot disc alpha 215 -> 245 (the highway showed through).
+- Plugin 1.34 also logs "battle card <id>: slot n moved to (x, y)".

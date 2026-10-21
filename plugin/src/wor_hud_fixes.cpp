@@ -85,6 +85,8 @@ namespace
 	constexpr size_t kElementDims = 0x1bc;           // float w, h
 	constexpr size_t kElementRot = 0xd0;             // float, radians (SetRot 0x5a1970 takes degrees)
 	constexpr size_t kElementZ = 0x1c8;              // float z_priority
+	constexpr size_t kElementPosTarget = 0xec;       // float x, y: where a move (morph) goes (start at 0x130)
+	constexpr size_t kElementScaleTarget = 0x10c;    // float x, y: the scale a morph goes to
 	constexpr uintptr_t kModeFlag = 0xc0d40e;        // byte: game mode flag 0x8ef82384 (picks the battle needle swing)
 	constexpr uintptr_t kNeedleSwing = 0xa11860;     // float 74, 42: battle needle swing (flag / 1 player, else)
 	constexpr size_t kElementAlpha = 0x94;           // float alpha (tween target at +0x44 = 0xd8)
@@ -741,13 +743,13 @@ namespace
 	}
 
 	// ---- 1.33, battle rock tube (tools/wor_battle.py): the DE turns each player's HUD2D_rock_needle by health
-	// (0x465ab0: rot = A (1 - health) degrees, health 0..2, A = 74 with the game mode flag 0xc0d40e set, else 42). In our
-	// battle layout that element is an invisible stand-in at the tube's health-0 stop, and our needle (WoR_HUD_bneedle,
-	// a sibling in the same rock container) slides up the tube from it on the WoR LED stops (kBNeedleD, layout units).
-	// guitar_battle creates every attack card 64x64 at z 19 under battlemode_container; while our battle needle is on
-	// screen those get our big slot's size (the wrapper sets medium_scale / small_scale for the smaller slots).
+	// (0x465ab0, A = 74 with the game mode flag 0xc0d40e set, else 42): it lights HUD2D_rock_lights_green past +A/3 and
+	// lights_red past -A/3, so a positive angle is high health: health = 1 + angle / A, 0..2 (1.34; 1.33 had it upside
+	// down). In our battle layout that element is an invisible stand-in at the tube's health-0 stop, and our needle
+	// (WoR_HUD_bneedle, a sibling in the same rock container) slides up the tube from it on the WoR LED stops (kBNeedleD,
+	// layout units).
 	double g_battle_seen = -100.0;
-	bool g_bneedle_logged = false, g_bcard_z_logged = false;
+	bool g_bneedle_logged = false;
 	float g_brot_lo = 1e9f, g_brot_hi = -1e9f;
 	int g_brange_logs = 0, g_bcards = 0;
 
@@ -769,7 +771,7 @@ namespace
 		const float *swing = reinterpret_cast<const float *>(kNeedleSwing);
 		const float a = *reinterpret_cast<const uint8_t *>(kModeFlag) ? swing[0] : swing[1];
 		const float deg = f32(src, kElementRot) * 57.2957795f;
-		float h = 1.0f - deg / a;
+		float h = 1.0f + deg / a;
 		h = h < 0.0f ? 0.0f : h > 2.0f ? 2.0f : h;
 		const int i = h < 2.0f / 3.0f ? 0 : h < 4.0f / 3.0f ? 1 : 2;
 		float t = (h - i * (2.0f / 3.0f)) * 1.5f;
@@ -791,25 +793,48 @@ namespace
 		}
 	}
 
+	// guitar_battle creates every attack card 64x64 at z 19 under battlemode_container and morphs it to
+	// battle_hud_2d_elements.rock_pos + card offsets (scale 1 / medium_scale / small_scale). The wrapper's $change$ of
+	// those offsets never reached the cards (test 2026-10-21: they sat on the stock spots), so while our battle needle is
+	// on screen each card's morph target is moved from the stock spot of its slot to our slot (kBSlot), and the card is
+	// sized for that slot (dims = size / the scale the morph goes to).
+	bool close_to(float x, float y, float px, float py) { return (x - px) * (x - px) + (y - py) * (y - py) < 4.0f; }
+
 	void battle_card(void *card)
 	{
-		if (f32(card, kElementDims) != 64.0f || f32(card, kElementDims + 4) != 64.0f || now() - g_battle_seen > 0.5)
+		if (now() - g_battle_seen > 0.5)
 			return;
 		void *parent = *reinterpret_cast<void **>(field(card, kElementParent));
 		if (!parent || id_of(parent) != kBattlemodeContainer)
 			return;
-		if (f32(card, kElementZ) != 19.0f)
+		float &tx = f32(card, kElementPosTarget), &ty = f32(card, kElementPosTarget + 4);
+		int slot = -1;
+		for (int i = 0; i < 6 && slot < 0; ++i)
 		{
-			if (!g_bcard_z_logged)
+			if (close_to(tx, ty, kBSlot[i][0], kBSlot[i][1]))
 			{
-				g_bcard_z_logged = true;
-				log("battle: 64x64 sprite %08x in battlemode_container at z %.2f left alone (cards are z 19)", id_of(card), f32(card, kElementZ));
+				slot = i;
+				if (close_to(f32(card, kElementPos), f32(card, kElementPos + 4), tx, ty))
+				{
+					f32(card, kElementPos) = kBSlot[i][2];      // already parked on the stock spot: jump
+					f32(card, kElementPos + 4) = kBSlot[i][3];
+				}
+				tx = kBSlot[i][2];
+				ty = kBSlot[i][3];
+				if (g_bcards++ < 12)
+					log("battle card %08x: slot %d moved to (%.0f, %.0f)", id_of(card), i, kBSlot[i][2], kBSlot[i][3]);
 			}
-			return;
+			else if (close_to(tx, ty, kBSlot[i][2], kBSlot[i][3]))
+				slot = i;
 		}
-		reinterpret_cast<SetDimsFn>(kSetDims)(card, nullptr, kBCard, kBCard, 0);
-		if (g_bcards++ < 6)
-			log("battle card %08x: 64x64 -> %.1f (our big slot)", id_of(card), kBCard);
+		if (slot < 0)
+			return;
+		const float s = f32(card, kElementScaleTarget);
+		if (s < 0.05f)
+			return;
+		const float d = kBSlot[slot][4] / s;
+		if (fabsf(f32(card, kElementDims) - d) > 0.05f)
+			reinterpret_cast<SetDimsFn>(kSetDims)(card, nullptr, d, d, 0);
 	}
 
 	void __fastcall element_update_hook(void *element, void *edx)
@@ -820,7 +845,7 @@ namespace
 			const float w = f32(element, kElementDims);
 			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
 				battle_needle(element);
-			else if (w == 64.0f)
+			else if (f32(element, kElementZ) == 19.0f)
 				battle_card(element);
 		}
 		if (element && element == g_sp.clip)
@@ -1333,7 +1358,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.33 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.34 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

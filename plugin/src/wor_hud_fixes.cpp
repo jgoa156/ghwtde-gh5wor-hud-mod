@@ -636,7 +636,7 @@ namespace
 		// 1.32: battle attack cards into the WoR slots (tools/wor_battle.py; wrapper moves guitar_battle's card offsets)
 		{ 0xeeec662a /* create_battle_alert_frames */, 0xe44057a9 /* wor_hud_create_battle_alert_frames */, 0x88ff56b0 /* _orig */,
 		  "battle: create_battle_alert_frames wrapped (attack cards in the WoR slots)" },
-		// 1.33: battle highways further apart with the WoR theme (wrapper sets x_offset_p2 before the DE script)
+		// 1.33: battle highways further apart with the WoR theme (wrapper moves the Pos the DE script returns)
 		{ 0x214c3209 /* get_highway_pos_and_scale */, 0x8dd39687 /* wor_hud_get_highway_pos_and_scale */, 0x739598f1 /* _orig */,
 		  "battle: get_highway_pos_and_scale wrapped (highways apart in battle)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)

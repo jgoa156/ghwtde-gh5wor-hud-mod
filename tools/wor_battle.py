@@ -20,8 +20,8 @@ to the same points of the battle highway (same fraction of the highway height ab
 texture px per canvas unit. Rails measured on the user's footage (2026-10-20, tools/mock_battle.py).
 
 The highways move apart by SEP each: WoR_HUD_get_highway_pos_and_scale (plugin swap of get_highway_pos_and_scale)
-sets the global x_offset_p2 to the stock value + SEP in battle with this theme and back otherwise; the highways, and
-the DE's alert containers (640 -+ x_offset_p2), follow it.
+moves the Pos it returns (canvas x, -+x_offset_p2) out by SEP per player in battle with this theme. The DE's alert
+containers (640 -+ x_offset_p2) stay where they were (their design is still open).
 
 The attack cards are created by guitar_battle in screen space at battle_hud_2d_elements.rock_pos + card_*_off (a
 global, not the theme layout), 64x64 at z 19; WoR_HUD_create_battle_alert_frames (plugin swap) moves those offsets into
@@ -50,6 +50,9 @@ STOCK_CARD_OFFS = {                     # guitar_battle's stock card offsets (DE
 }
 STOCK_CARD_SCALES = {'medium_scale': 0.55, 'small_scale': 0.4}    # guitar_battle globals
 CARD_DIMS = 64.0                        # guitar_battle creates every card 64x64
+# where the rock containers wait before sliding in (stock -420 / 1880): our sets reach the screen middle (P1's slots
+# ~600, P2's tube ~650), so the stock ones left them on screen, each on the other side (user footage 2026-10-21)
+OFFSCREEN = {1: (-700.0, 100.0), 2: (2100.0, 100.0)}
 
 # ---- source textures (extracted game files)
 DE_FRAME = os.path.join(paths.DE_EXTRACT, 'z_in_game_png', 'HUD_2p_battle_frame.png')        # DE z_in_game
@@ -181,9 +184,20 @@ def _box(points, margin=2.0):
     return ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2), (_pow2(w), _pow2(h))
 
 
-def tube_box():
+def _cut_box():
     m = tube_maps()['rock']
     return _box([apply(m, p) for p in _tube_cut()])
+
+
+_TUBE_BOX = {}
+
+
+def tube_box(textures_dir=None):
+    """The tube textures' box (screen centre, texture px): power-of-two around the rendered tube (the polygon box
+    was twice as large: 4 x 512 px pushed the theme pak past 4 MiB)."""
+    if 'box' not in _TUBE_BOX:
+        textures(textures_dir)
+    return _TUBE_BOX['box']
 
 
 def needle_stops():
@@ -298,9 +312,15 @@ def textures(textures_dir=None):
     out[DISC_TEX] = Image.open(WOR_CIRCLE).convert('RGBA')
     # rock tube: the body (no LEDs, no needle), each LED alone, the needle alone (LEDs and needle are additive there)
     m = tube_maps()['rock']
-    box = tube_box()
     cut = _tube_cut()
     off = {k: {'alpha': 0.0} for k in ('red_light', 'yellow_light', 'green_light', 'side_meter_needle', 'side_meter_red_ON')}
+    big = _cut_box()
+    body = _warp_crop(_render_1p(textures_dir, vals=off), m, big, cut)
+    x0, y0, x1, y1 = body.getbbox()                     # the LEDs lie inside the body
+    (bx, by), (bw, bh) = big
+    cx, cy = bx + ((x0 + x1) / 2 - bw / 2) / SS, by + ((y0 + y1) / 2 - bh / 2) / SS
+    box = ((cx, cy), (_pow2(x1 - x0 + 8), _pow2(y1 - y0 + 8)))
+    _TUBE_BOX['box'] = box
     out[TUBE_TEX['body']] = _warp_crop(_render_1p(textures_dir, vals=off), m, box, cut)
     for c in ('red', 'yellow', 'green'):
         lay = _render_1p(textures_dir, keep={f'{c}_light'}, vals={f'{c}_light': {'alpha': 1.0}})
@@ -388,7 +408,7 @@ def layout_struct():
     centre = {key: c for key, c, _, _ in slots}
     t = f'SectionStruct {NAME}\n{{\n\tStructHeader\n\t{{\n'
     t += _vec('offset4by3_rock', (0, 0), hdr) + _vec('offset4by3_score', (0, 0), hdr)
-    t += _vec('offscreen_rock_pos_p1', (-420.0, 100.0), hdr) + _vec('offscreen_rock_pos_p2', (1880.0, 100.0), hdr)
+    t += _vec('offscreen_rock_pos_p1', OFFSCREEN[1], hdr) + _vec('offscreen_rock_pos_p2', OFFSCREEN[2], hdr)
     offs = card_offsets()
     for p in (1, 2):
         t += _vec(f'rock_pos_p{p}', ROCK_POS[p], hdr)
@@ -468,33 +488,27 @@ def scripts():
             'Script WoR_HUD_create_battle_alert_frames_orig [\n'
             '\t:i $printf$%s("WoR_HUD: battle alert frames placeholder ran, plugin swap missing")\n'
             '\t:i endfunction\n]\n\n'
-            # highways SEP further apart in battle with this theme: x_offset_p2 (read here and by the alert
-            # containers) is the stock value + SEP, and the stock value again in every other case
+            # highways SEP further apart in battle with this theme: the returned Pos (canvas x, -+x_offset_p2) moved
+            # out by SEP per player. (2026-10-21: changing the global x_offset_p2 instead added SEP on every call.)
             'Script WoR_HUD_get_highway_pos_and_scale [\n'
-            '\t:i if (~$WoR_HUD_x_offset_p2_stock$ = %f(0.0))\n'
-            '\t\t:i $change$$WoR_HUD_x_offset_p2_stock$ = ~$x_offset_p2$\n'
-            '\t:i endif\n'
-            '\t:i $WoR_HUD_wide$ = %i(0)\n'
+            '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
             '\t:i if (~$game_mode$ = $p2_battle$)\n'
-            f'\t\t:i if {is_ours}\n'
-            '\t\t\t:i %GLOBAL%$WoR_HUD_wide$ = %i(1)\n'
+            '\t\t:i if (%GLOBAL%$num_non_vocals_players$ = %i(2))\n'
+            f'\t\t\t:i if {is_ours}\n'
+            '\t\t\t\t:i if (%GLOBAL%$non_vocalist_player$ = %i(1))\n'
+            f'\t\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ - %vec2({SEP:.1f},0.0))\n'
+            '\t\t\t\t:i else \n'
+            f'\t\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ + %vec2({SEP:.1f},0.0))\n'
+            '\t\t\t\t:i endif\n'
+            '\t\t\t:i endif\n'
             '\t\t:i endif\n'
             '\t:i endif\n'
-            '\t:i if (%GLOBAL%$WoR_HUD_wide$ = %i(1))\n'
-            f'\t\t:i $change$$x_offset_p2$ = (~$WoR_HUD_x_offset_p2_stock$ + %f({SEP:.1f}))\n'
-            '\t:i else \n'
-            '\t\t:i $change$$x_offset_p2$ = ~$WoR_HUD_x_offset_p2_stock$\n'
-            '\t:i endif\n'
-            '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
             '\t:i return$Pos$ = %GLOBAL%$Pos$$Scale$ = %GLOBAL%$Scale$\n'
             '\t:i endfunction\n]\n\n'
             'Script WoR_HUD_get_highway_pos_and_scale_orig [\n'
             '\t:i $printf$%s("WoR_HUD: highway pos placeholder ran, plugin swap missing")\n'
             '\t:i return$Pos$ = %vec2(0.0,0.0)$Scale$ = %vec2(1.0,1.0)\n'
             '\t:i endfunction\n]\n')
-
-
-SECTIONS = 'SectionFloat WoR_HUD_x_offset_p2_stock 0.0'
 
 
 def theme_extra():

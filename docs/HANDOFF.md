@@ -13,10 +13,12 @@ battle is NOT tested in game. Sibling repos, both released and confirmed working
 user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade needed; only release on its repo) and
 **All Main Menu Music 1.0** (10 games in one mod, GitHub Release, World Tour's six always play).
 
-1. **Battle mode rework: built (2026-10-21), awaiting the test run.** Calibrated on the user's footage
+1. **Battle mode rework: built (2026-10-21); first test failed, fixes built, awaiting the next test.** Test 1: highways
+   far too far apart, sets visible on the wrong side during the intro, every other mode hung at loading (MODLOG, end).
+   Fixes installed; test quickplay FIRST (the hang), then battle. Calibrated on the user's footage
    (`OneDrive\Videos\2026-10-20 21-49-06.mp4`); v8 approved. Each highway carries the main theme's rock tube on its
    left rail (needle slid by plugin 1.33 from the DE-turned stand-in) and the three attack slots where the SP tube goes,
-   highways 30 apart each (x_offset_p2 + 30 in battle), P2 = P1's set translated, empty slots dark, cards sized to the
+   highways 30 apart each (the wrapper moves the returned Pos; x_offset_p2 untouched), P2 = P1's set translated, empty slots dark, cards sized to the
    slots. **The attack alert / card above the highway is stock on purpose: its design is still to be discussed with
    the user** (WoR template idea: uidesc_quickplay_challenge_alert, `wor_card()` in tools/mock_battle.py). What to read
    in `wor_hud_fixes.log` after the test: "battle needle: ..." (stand-in found, rot range, swing 42 or 74), "battle

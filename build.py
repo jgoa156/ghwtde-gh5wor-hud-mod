@@ -406,7 +406,7 @@ def main():
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
     src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
-                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0', wor_battle.SECTIONS]) + '\n'
+                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write(mod_ini('GH5 / Warriors of Rock HUD', MOD_DESCRIPTION, VERSION))
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)

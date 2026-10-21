@@ -1411,3 +1411,15 @@
   The DE's battle alert containers sit at 640 -+ x_offset_p2, so the stock alerts stay centred over the moved highways.
 - The attack alert / card above the highway is unchanged (user: design still to be discussed).
 - Not tested in game yet.
+
+- Test 2026-10-21 (user footage `2026-10-21 00-33-49.mp4` + logs): (1) battle highways ~180 / ~240 canvas apart
+  instead of 30, clipped by the 16:9 box: the wrapper's "keep the stock x_offset_p2" step ran on every call, so each
+  get_highway_pos_and_scale call (setup + move, both players) added another 30; (2) during the intro the HUD sets sat on
+  screen on the wrong side, then slid across: the stock offscreen_rock_pos (-420 / 1880) no longer hides sets that reach
+  the middle of the screen; (3) every other mode hung at loading (debug.txt: quickplay stops in setup_highway after the
+  button bases, no battle in that session). The battle HUD itself sat exactly where the layout puts it.
+- Fixes: the wrapper no longer touches x_offset_p2; it moves the Pos the DE script returns (canvas x: P1 at
+  640 - x_offset_p2 = 408 measured) by -+30 in p2_battle with our theme; offscreen_rock_pos -700 / 2100; tube textures
+  cropped to the rendered tube (256 px, was 512 polygon boxes), which takes the theme pak from 4.38 MB (over 4 MiB, 0.49
+  was 3.28 MB) back to 3.59 MB. Suspects for the hang: the pak size and the x_offset_p2 changes; not proven which.
+

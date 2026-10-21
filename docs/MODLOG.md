@@ -1483,4 +1483,6 @@ docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user'
   (its square ~40 px on screen) with "1st"/"2nd" fitted to the square's face (RANK_FACE); scores at SCORE_K 0.38 (fit
   the bar's slot). Versus multiplier: our badge (art centred), and plugin 1.35's SetTexture hook maps the DE's stock
   HUD_score_nixie_* names (hard-coded in HUD_attach_widget_band_faceoff_meter) to our WoR_HUD_mult_* on it (kNixieMap).
+- User: score still too big -> SCORE_K 0.30; the streak is just a number in the score bar's first square (WoR '+4 | 64'):
+  streak_number_1/2 (the DE's p1/p2_streak_number_text) now visible there (texture x 157 of the bar art), same size.
 

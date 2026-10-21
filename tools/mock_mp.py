@@ -94,7 +94,8 @@ def faceoff(frame):
     for c in [e for e in root.children if e.local_id == 'lead_2'][0].children:
         c.hidden = True                                   # P1 leads (preview_hud doesn't multiply container alpha)
     _set(root, 'needle', rot=-22.0)
-    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'},
+    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'}, 'streak_number_1': {'text': '64'},
+            'streak_number_2': {'text': '12'},
             'HUD_bb_multiplier_nixie_1': {'texture': 'WoR_HUD_mult_3'},
             'HUD_bb_multiplier_nixie_2': {'texture': 'WoR_HUD_mult_1'}}
     items = [((0.0, 0.0), root, vals)]

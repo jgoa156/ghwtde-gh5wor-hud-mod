@@ -54,7 +54,8 @@ SP_NUDGE = np.array((-15.0, 0.0))          # the right rail's tube, towards the 
 SCORE_FONT = 'WoR_HUD_num_a1'
 NIXIE_K = 0.30                             # our multiplier badges: the 154x137 art top-left in a 256 px texture
 NIXIE_ART = (154.0, 137.0)                 # (the plugin maps the DE's stock nixie names to them, kNixieMap)
-SCORE_K = 0.38                             # score numerals: fit the bar's slot (0.62 overflowed it, user 2026-10-21)
+STREAK_SQ_X = 157.0                         # centre of the score bar art's first square (texture px)
+SCORE_K = 0.30                             # score numerals (0.62 overflowed the bar, 0.38 still too big: user 2026-10-21)
 
 # ---- layout (screen px)
 DIAL_C = (640.0, 322.0)
@@ -241,6 +242,10 @@ def tree():
             # score right-aligned at the bar's right end (WoR: "x1 | 82" / "94 x1")
             E(f'score_{p}', 'TextBlockElement', pos=(bx + bar_w / 2 - 14, BAR_Y + 1), dims=(300, 40), just=(1, 0),
               scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
+            # the streak: just a number in the bar's first square (WoR's "+4 | 64", user 2026-10-21); the square spans
+            # texture x 128..186 of the 512 px art, the visible bar is centred on x 258
+            E(f'streak_number_{p}', 'TextBlockElement', pos=(bx + (STREAK_SQ_X - 258) * BAR_K, BAR_Y + 1), dims=(200, 40),
+              just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
             # the DE's multiplier nixie at the bar's outer end
             # starts on our x1 badge: the plugin maps the DE's stock nixie names to ours on it; pos = the art's centre
             E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(bx + sgn * (bar_w / 2 + 26), BAR_Y),
@@ -261,10 +266,6 @@ def tree():
     for p in (1, 2):
         for k in range(1, 7):
             kids.append(E(f'fill_{p}_{k}', 'SpriteElement', dims=(4, 4), alpha=0.0, z=0.0, texture='WoR_HUD_blank'))
-    # streak numbers: the DE writes them; WoR's versus shows none (hidden)
-    for p in (1, 2):
-        kids.append(E(f'streak_number_{p}', 'TextBlockElement', pos=(0, 0), dims=(10, 10), alpha=0.0, z=1.0,
-                      font=SCORE_FONT, text='0x00000000', shadow=False))
     return E('HUD_meter_band_battle_master', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=kids)
 
 

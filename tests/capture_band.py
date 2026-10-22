@@ -4,7 +4,7 @@ once: it leaves tests/results/capture_band.done and refuses to launch again whil
 allow another run).
 
 Uses GHWT:DE's AutoLaunch setup (Players / Part<n> / Bot<n>, run from the title screen by the mod's [WoR_HUD]
-TestAutoLaunch=1 hook) and plain screenshots timed from the song start (wor_hud_fixes.log). GHWTDE.ini is backed up and restored after every run. Frames (PNG) land in tests/results/band-<stamp>/.
+TestAutoLaunch=1 hook) and plain screenshots on a clock from the launch (every 15 s from +90 s until the game quits after the song). GHWTDE.ini is backed up and restored after every run. Frames (PNG) land in tests/results/band-<stamp>/.
 
 usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 150] [--frames 5]
 exit code: 0 frames captured, 1 no gameplay frame (do NOT rerun: report), 2 refused (already ran / game running)
@@ -23,7 +23,7 @@ LINEUPS = {
 }
 
 
-SHOT_AT = [15, 35, 55, 80, 110]        # seconds after the song start (aboutagirl is ~3:30; band SP comes ~1 min in)
+SHOT_FROM, SHOT_EVERY = 90, 15        # seconds after the launch (the song plays ~T+100..320 s)
 
 
 def game_windows(pid):
@@ -104,41 +104,33 @@ def run(name, parts, a, out):
         print(f'[{name}] launched PID {proc.pid} ({"+".join(parts)})', flush=True)
         # the game only advances while it is the foreground window (boot screen frozen otherwise): keep it in front
         # and count how often that worked (keep_in_front returns whether the game holds the foreground)
-        # Frames: plain screenshots (PIL ImageGrab; the ghwt_bgfx dump add-on writes nothing on this install, run
-        # 2026-10-22), timed from the song start: the plugin logs "score font: loaded" when the HUD is created
-        # (wor_hud_fixes.log, readable while the game runs; the DE's debug.txt is locked). Shots at SHOT_AT seconds
-        # after it, then the game is closed.
+        # Frames: plain screenshots (PIL ImageGrab; the ghwt_bgfx dump add-on writes nothing on this install) on a
+        # clock from the launch: every SHOT_EVERY s from SHOT_FROM s until the game closes. Both the DE's debug.txt and
+        # the plugin's log are locked while the game runs, so nothing in game can time them. Runs 2026-10-22 (bots,
+        # 4 players, aboutagirl): gameplay from ~T+100 s to ~T+320 s, results screen, then the game quits by itself
+        # (~T+350 s). Pick the gameplay frames afterwards.
         from PIL import ImageGrab
-        plugin_log = os.path.join(H.GAME, 'wor_hud_fixes.log')
         held = tries = 0
-        song_t = None
-        deadline = time.time() + a.wait + 240
-        while time.time() < deadline and proc.poll() is None and len(got) < len(SHOT_AT):
-            time.sleep(1 if song_t else 5)
-            tries += 1
-            held += bool(keep_in_front(proc.pid))
-            if tries == 3:
-                for w in game_windows(proc.pid):
-                    print(f'[{name}] window {w[0]:#x} class={w[1]!r} title={w[2]!r} area={w[3]} owner={w[4]:#x}', flush=True)
-            if song_t is None:
-                try:
-                    with open(plugin_log, encoding='utf-8', errors='replace') as f:
-                        if 'score font: loaded' in f.read():
-                            song_t = time.time()
-                            print(f'[{name}] song started (HUD created), shots at +{SHOT_AT} s', flush=True)
-                except OSError:
-                    pass
-                continue
-            if time.time() - song_t >= SHOT_AT[len(got)]:
-                dst = os.path.join(out, f'{name}_{len(got)}_t{SHOT_AT[len(got)]}.png')
+        t0 = time.time()
+        next_shot = t0 + SHOT_FROM
+        deadline = t0 + a.wait + 300
+        while time.time() < deadline and proc.poll() is None:
+            time.sleep(1)
+            if int(time.time() - t0) % 5 == 0:
+                tries += 1
+                held += bool(keep_in_front(proc.pid))
+                if tries == 3:
+                    for w in game_windows(proc.pid):
+                        print(f'[{name}] window {w[0]:#x} class={w[1]!r} title={w[2]!r} area={w[3]} owner={w[4]:#x}', flush=True)
+            if time.time() >= next_shot:
+                dst = os.path.join(out, f'{name}_t{int(time.time() - t0):03d}.png')
                 ImageGrab.grab().save(dst)
                 got.append(dst)
                 print(f'[{name}] frame {dst}', flush=True)
+                next_shot += SHOT_EVERY
         print(f'[{name}] foreground held {held}/{tries} checks', flush=True)
-        if song_t is None and proc.poll() is None:
-            print(f'[{name}] the song never started (no HUD in wor_hud_fixes.log): automation did not get past the menus', flush=True)
         if proc.poll() is not None:
-            print(f'[{name}] game exited early (code {proc.returncode}): closed by hand, or crashed (check %LOCALAPPDATA%/CrashDumps)', flush=True)
+            print(f'[{name}] game closed (code {proc.returncode}) after {int(time.time() - t0)} s (it quits by itself after the song)', flush=True)
     finally:
         if proc is not None and proc.poll() is None:
             subprocess.run(['taskkill', '/PID', str(proc.pid), '/F'], capture_output=True)

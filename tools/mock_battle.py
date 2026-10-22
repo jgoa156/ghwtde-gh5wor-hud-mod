@@ -114,17 +114,38 @@ CURRENT_BOXES = [(158, 505, 236, 622), (526, 503, 622, 620), (668, 505, 752, 622
                  (788, 268, 952, 366)]
 
 
-def clean_current(frame):
-    """A frame of the current build (tools/mock_mp.register): highways already SEP apart, our HUD inpainted away."""
+FRAME_SEP = 30.0                        # the spacing the clip was recorded with (build of 2026-10-21)
+
+
+def clean_current(frame, sep=SEP):
+    """A frame of the current build (tools/mock_mp.register): our HUD inpainted away, then the highways (recorded
+    FRAME_SEP apart each) moved to sep."""
     import cv2
     import mock_mp
-    im = mock_mp.register(frame)
+    raw = mock_mp.register(frame)
     mask = Image.new('L', (1280, 720), 0)
     d = ImageDraw.Draw(mask)
     for b in CURRENT_BOXES:
         d.rectangle(b, fill=255)
-    clean = cv2.inpaint(np.array(im), np.array(mask.filter(ImageFilter.MaxFilter(5))), 9, cv2.INPAINT_TELEA)
-    return im, Image.fromarray(clean).convert('RGBA')
+    im = Image.fromarray(cv2.inpaint(np.array(raw), np.array(mask.filter(ImageFilter.MaxFilter(5))), 9,
+                                     cv2.INPAINT_TELEA))
+    hw1 = [(x - FRAME_SEP, y) for x, y in HW_P1]
+    hw2 = [_mirror_pt(p) for p in hw1]
+    mask = Image.new('L', (1280, 720), 0)
+    d = ImageDraw.Draw(mask)
+    d.polygon(hw1, fill=255)
+    d.polygon(hw2, fill=255)
+    out = Image.fromarray(cv2.inpaint(np.array(im), np.array(mask.filter(ImageFilter.MaxFilter(5))), 9,
+                                      cv2.INPAINT_TELEA)).convert('RGBA')
+    for poly, dx in ((hw1, FRAME_SEP - sep), (hw2, sep - FRAME_SEP)):
+        hm = Image.new('L', (1280, 720), 0)
+        ImageDraw.Draw(hm).polygon(poly, fill=255)
+        src = im.convert('RGBA')
+        src.putalpha(hm.filter(ImageFilter.GaussianBlur(1.2)))
+        lay = Image.new('RGBA', (1280, 720), (0, 0, 0, 0))
+        lay.paste(src, (int(round(dx)), 0), src)
+        out.alpha_composite(lay)
+    return raw, out
 
 
 def needle_at(health):
@@ -140,7 +161,7 @@ def build(frame, sep=SEP, health=(1.6, 0.5), cards=('icon', None), current=False
     """The frame cleaned and the highways moved apart, with the built battle layout drawn like the game would: every
     texture of tools/wor_battle.py at its layout position and size (P2 = P1 translated), the needle where the plugin
     puts it, a card (64 px art at the big slot's card size) in P1's big slot."""
-    im, out = clean_current(frame) if current else clean_and_move(frame, sep)
+    im, out = clean_current(frame, sep) if current else clean_and_move(frame, sep)
     tex = wor_battle.textures()
     icon = Image.open(ICON).convert('RGBA')
     tc, (tw, th) = wor_battle.tube_box()

@@ -47,8 +47,15 @@ User (2026-10-21, night, with their WoR 1v1 frame): Face-Off, Pro Face-Off and B
   streak meter visor (our WoR_HUD_mult_1 art: ring + arm) three times where the SP tube goes, scales 1 / 0.85 /
   0.72 up the rail, one behind the other, arms on the rail, baked in the battle orientation (WoR_HUD_bvisor; hud_2d
   elements don't rotate); cards in the glass (CARD_FILL), the DE's empty-slot icon blank. The DE rings, disc and
-  their textures are gone. Card table changed (kBCard 44 -> 32): **plugin 1.37** built (plugin/build/), not installed.
-- Mocks: `docs/mocks/mock_versus_v5.jpg` (+ `_zoom`), `docs/mocks/mock_battle_v10.jpg` (+ `_zoom`; frame: the user's
+  their textures are gone. Card table changed (kBCard 44 -> 31): **plugin 1.37** built (plugin/build/), not installed.
+  User on battle v10 / v11 (2026-10-22): keep the ring and its SHORT arm (the bit joining it to the rail), cut only
+  the long stick glued to that arm, which ran behind the stacked rings (VISOR_ARM box kept, the art cut at the rim
+  elsewhere; VISOR_RING re-measured: ring centre 113.5, 96.5, rim r 40). v11 wrongly cut the short arm too.
+- **Highway spacing (user 2026-10-22):** the games' 2-player highways touch; ours must too, corrected for the WoR
+  border's thickness: SEP 30 -> 19 (the clip at 30 showed a 22.5 px gap between the borders at the screen's bottom
+  edge; at stock spacing they overlap ~37 px). Every 2-highway layout, the wrapper and the card table follow SEP;
+  plugin 1.37 rebuilt with it. mock_battle --current moves the clip's highways from FRAME_SEP 30 to SEP.
+- Mocks: `docs/mocks/mock_versus_v6.jpg` (+ `_zoom`), `docs/mocks/mock_battle_v12.jpg` (+ `_zoom`; frame: the user's
   clip 1:15, `python tools/mock_battle.py <frame> <out> --current` for frames of the current build). The grey smear
   on the battle rails is the mock's inpainting of the old rings, not the layout.
 - **Face-off crash (2026-10-21 23:48, build v2 + 1.36):** not the HUD. debug.txt: face-off's random venue pick

@@ -59,12 +59,13 @@ OFFSCREEN = {1: (-700.0, 100.0), 2: (2100.0, 100.0)}
 # ---- source textures (extracted game files)
 WOR_GAMERTAG = os.path.join(paths.WOR_EXTRACT, 'band_lobby_png', 'bandlobby_bord_gamertag_color.png')   # Xbox, x360img
 
-# attack slots (user 2026-10-21): the streak meter's visor (WoR's multiplier ring with its arm, our WoR_HUD_mult_1:
+# attack slots (user 2026-10-21): the streak meter's visor (WoR's multiplier ring + its short arm, no stick; our WoR_HUD_mult_1:
 # the x1 art, empty) three times where the SP tube goes, smaller each time up the rail, one behind the other, each
 # arm on the rail; the cards sit in the glass
 VISOR_SRC = 'WoR_HUD_mult_1'            # built 1-player texture (preview_hud name)
 VISOR_TEX = 'WoR_HUD_bvisor'
-VISOR_RING = (111.0, 93.0, 33.0, 42.0)  # in that art: glass centre (texture px), glass radius, rim radius
+VISOR_RING = (113.5, 96.5, 31.5, 40.0)  # in that art: ring centre (texture px), glass radius, rim's outer radius
+VISOR_ARM = (50, 101, 84, 126)          # in that art: the short arm joining the ring (kept; the stick above it is cut)
 VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 px texture)
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.94                        # ring centres this many rim radii apart along the rail (a little overlap)
@@ -77,7 +78,11 @@ BLANK = 'WoR_HUD_blank'
 GAMERTAG_TEX = 'WoR_HUD_gamertag_bg'
 
 # ---- battle highway geometry, measured on the user's footage (P1, stock spacing, canvas units)
-SEP = 30.0                              # extra x_offset_p2 (each highway moves this far outwards)
+# extra x_offset_p2 (each highway moves this far outwards). The games' 2-player highways touch; the WoR border is
+# thicker than the stock sidebars, so at stock spacing the two borders overlapped ~37 px at the screen's bottom edge.
+# User 2026-10-22: they must touch, corrected for the thickness: the user's clip (1:15) showed a 22.5 px gap there at
+# 30, so 30 - 22.5 / 2 makes the borders meet at the bottom edge.
+SEP = 19.0
 RAIL_L = ((320.0, 395.0), (170.0, 700.0))           # P1 left / right rail lines (top, bottom)
 RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways
@@ -328,6 +333,16 @@ def textures(textures_dir=None):
                   [0.0, 0.0, 1.0]])
     t = inv @ o                                            # texture px -> art px
     art = Image.open(os.path.join(textures_dir, VISOR_SRC + '.png')).convert('RGBA')
+    # the ring and its short arm only (user 2026-10-22): the long stick glued to the arm, which ran behind the stacked
+    # rings, is cut off (the art kept inside the rim and the arm's box)
+    ya, xa = np.mgrid[0:art.height, 0:art.width]
+    d = np.hypot(xa - VISOR_RING[0], ya - VISOR_RING[1])
+    x0, y0, x1, y1 = VISOR_ARM
+    keep = np.maximum(np.clip(VISOR_RING[3] + 1.0 - d, 0.0, 1.0),
+                      ((xa >= x0) & (xa <= x1) & (ya >= y0) & (ya <= y1)).astype(float))
+    aa = np.array(art)
+    aa[..., 3] = (aa[..., 3] * keep).astype(np.uint8)
+    art = Image.fromarray(aa)
     out[VISOR_TEX] = art.transform((tw, th), Image.AFFINE, tuple(t[:2].ravel()), resample=Image.BICUBIC)
     # rock tube: the body (no LEDs, no needle), each LED alone, the needle alone (LEDs and needle are additive there)
     m = tube_maps()['rock']

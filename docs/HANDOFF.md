@@ -34,7 +34,7 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
-## 2026-10-22: 2-player modes redone from scratch (mocks v5 / battle v10, built, NOT installed)
+## 2026-10-22: 2-player modes redone from scratch (face-off v6 / battle v12: INSTALLED 01:30, not tested in game)
 
 User (2026-10-21, night, with their WoR 1v1 frame): Face-Off, Pro Face-Off and Battle are 2-player only in the DE, so:
 - **Face-Off / Pro Face-Off** (tools/wor_versus.py): WoR's 1v1 layout only: the dial + one score box per player
@@ -63,7 +63,7 @@ User (2026-10-21, night, with their WoR 1v1 frame): Face-Off, Pro Face-Off and B
   zone"), then apply_band_logo_to_venue -> "CRITICAL: Zone not found" and the DE's crash handler closed the game.
   Pick a venue by hand to test face-off. The earlier dumps (19:13, GHWT_Definitive.exe.39224.dmp) are a different
   crash: access violation in the render path (+0x100fab inside a d3d9 call), mode unknown.
-- Next after approval: `python build.py --install`, copy plugin/build/wor_hud_fixes.asi (1.37) to the game, test
+- **Approved and installed 2026-10-22 01:30** (`build.py --install` + plugin 1.37 copied, hash checked). Next: test
   face-off (a fixed venue) and battle.
 
 ## Session stopped 2026-10-21, late (user request): where to resume

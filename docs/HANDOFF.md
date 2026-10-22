@@ -396,3 +396,20 @@ eshade-6.8.0`, ASI loader:
   GHWTDE.ini now `HUDTheme=ghwor`. Next test = extract the Desktop zip into the game folder (+ the optional folder's
   contents) as a clean user would. Release notes: `docs/RELEASE_NOTES.md`.
 - Known issue: the game still crashes SOMETIMES (not only on theme switch); log it, no fix yet.
+
+## 2026-10-22 late 2: 60 fps plasma (built, NOT installed) + band -> face-off crash (open)
+
+- Plasma back to 60 fps / 120 frames: the frames now go into the always-loaded UI pak (wor_hud_ui, 18.35 MB, no 4 MiB
+  cap there; the plugin swaps them in by name). Theme pak 3.27 -> 2.17 MB, so ~2 MB of theme budget is free again.
+  Plugin rebuilt (names.h regenerated) but neither the mod nor the plugin is installed.
+- Crash (user, 1.40): played band, then face-off, crashed entering the song list. Dump
+  `%LOCALAPPDATA%\CrashDumps\GHWT_Definitive.exe.3328.dmp` = same as the 03:47 one: exception 0xc00001a5
+  (invalid exception handler) at exe+0x5728f2, an MSVC EH funclet (`mov eax, 0xae8314; jmp __CxxFrameHandler`), so a
+  C++ exception was thrown and the SEH chain was rejected. wor_hud_fixes.asi+0x2e3b on the stack = set_parent_hook
+  (map: plugin/build_map.bat on HEAD's names.h). Last plugin log line: "missing parent: element 318f3a0f asked for
+  parent 4ac58b9f" = custom_setlist_continue_helper under custom_setlist_helper_container (DE
+  scripts/guitar/menu/states/layouts/ui_setlist: setup_custom_setlist_helpers creates the "continue" pill under that
+  container, which ui_create_setlist only makes when for_custom_setlist = 1 and ui_destroy_setlist destroys).
+  Next: find why the container is gone in face-off (stale for_custom_setlist / num_songs after band?), and make the
+  guard safer: attach orphans to root_window by id instead of parent 0, or skip creating them. Then check whether the
+  stock DE (mod off) crashes the same way.

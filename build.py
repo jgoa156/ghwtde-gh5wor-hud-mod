@@ -237,6 +237,7 @@ def main():
     # in build/texture_sources.json and verified by the offline tests. The only exception is the fully transparent
     # placeholder used to hide sprites the DE drives but WoR doesn't show.
     pngs, sources = [], {}
+    ui_pngs = []                                   # textures for the UI pak (build_ui_pak)
 
     def ship(name, src, box=None, size=None, flip=False):
         p = os.path.join(work, name + '.png')
@@ -323,10 +324,12 @@ def main():
     wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon).save(full)
     frames = [wor_1g.bake_screen_needle(f, neon) for f in frames]
 
+    # the plasma frames ride in the always-loaded UI pak (no 4 MiB cap there): the plugin swaps them in by name, so
+    # they need not be in the theme pak; the _b fill (picked by the DE itself) stays in the theme pak
     for name, im in zip(wor_1g.SP_PLASMA_NAMES + [wor_1g.SP_FULL_NAMES[1]], frames + [frames[0]]):
         out = os.path.join(work, name + '.png')
         im.save(out)
-        pngs.append(out)
+        (ui_pngs if name in wor_1g.SP_PLASMA_NAMES else pngs).append(out)
         sources[name] = {'src': glow02, 'noise': noise, 'shape': full, 'arc': arc_src, 'box': None, 'flip': False}
     # ready burst: WoR's Ball_lightning01 (4x4 cells of 32 px)
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
@@ -390,7 +393,7 @@ def main():
     preview = os.path.join(ROOT, 'build', 'preview')
     shutil.rmtree(preview, ignore_errors=True)
     os.makedirs(preview)
-    for p in pngs:
+    for p in pngs + ui_pngs:
         shutil.copy(p, preview)
     if pngs:
         # all DXT5: raw PNG inside the theme pak made the DE fall back to the stock HUD pak (no textures at all)
@@ -398,7 +401,7 @@ def main():
     sdk('createpak', pak_src, '-out', os.path.join(OUT, f'{PAK_NAME}.pak.xen'), cwd=os.path.dirname(SDK))
     assert os.path.exists(os.path.join(OUT, f'{PAK_NAME}.pak.xen')), 'createpak failed'
     build_border_gempak(work)
-    build_ui_pak()
+    build_ui_pak(ui_pngs)
     dark_load, dark_secs = dark_metal_sections(work)
 
     # Register the pak with the HUD pak-links table through the DE's own AddToGlobalStruct helper (0x325bc724),
@@ -719,12 +722,15 @@ def menu_music():
     return mods
 
 
-def build_ui_pak():
-    """wor_hud_ui.pak (tools/wor_ui.py): WoR helper pill caps and the WoR loading screen, loaded at mod load."""
+def build_ui_pak(extra=()):
+    """wor_hud_ui.pak (tools/wor_ui.py): WoR helper pill caps and the WoR loading screen, loaded at mod load, plus
+    `extra` (DXT5 HUD textures too big for the theme pak's 4 MiB: the star power plasma frames)."""
     src = os.path.join(ROOT, 'build', 'pak_src', wor_ui.UI_PAK)
     shutil.rmtree(src, ignore_errors=True)
     os.makedirs(src)
     pngs = wor_ui.pill_images(src) + wor_menus.images(src) + wor_yourock.ui_images(src)
+    if extra:
+        run(['node', os.path.join(TOOLS, 'png2img.js'), src, *extra], TOOLS)
     art = os.path.join(src, wor_ui.LOAD_TEX + '.png')
     wor_ui.loading_art().save(art)
     pngs.append(art)

@@ -336,8 +336,8 @@ SP_MARKER_K = 1.25              # GH5's divider spans the whole tube
 # loop, plus the white-hot cap at the fill top (WoR needle_white 1.0 + needle_color 0.5, SB_Tubeglow01);
 # crossing 50%: a ball-lightning burst at the fill top (Ball_lightning01, 16 frames at 20 fps, WoR material rate).
 SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
-SP_PLASMA_FPS = 30                             # 60 -> 30 (2026-10-22: theme pak budget; 120 frames were ~2 MB)
-SP_PLASMA_FRAMES = 60                         # 2 s loop
+SP_PLASMA_FPS = 60                             # back to 60 (2026-10-22): the frames moved to the UI pak, no budget cap
+SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)

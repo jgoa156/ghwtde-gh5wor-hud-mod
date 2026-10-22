@@ -36,8 +36,9 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
 
 ## Session stopped 2026-10-21, late (user request): where to resume
 
-HEAD = 4fc5bc6 + this note: versus rework v2 + plugin **1.36**, built, tests 25/25, **NOT installed** (the game still has
-the 1.35 build): waiting for the user's approval of mock v2 (`docs/mocks/mock_versus_v2.jpg`, `_zoom.jpg`, sent).
+HEAD = 4fc5bc6 + this note: versus rework v2 + plugin **1.36**, built, tests 25/25. **Installed 2026-10-21** (user said
+to apply the plan: `build.py --install` + plugin 1.36 copied to the game, hash checked); **not tested in game yet**.
+Mock v2: `docs/mocks/mock_versus_v2.jpg`, `_zoom.jpg`.
 User feedback that drove it (their WoR 2v2 frame: team bars "x4 | 150" / "137 | x2", per-player bars "+8 | 100"):
 - the DE has teams (p4_pro_faceoff / p8 "Band vs Band": the versus props are per SIDE: band1/2 score, multiplier,
   streak, SP). Team bar (HUD_band_battle_score, P2 mirrored via WoR_HUD_vs_score(_back)_m) = side multiplier AS TEXT in
@@ -55,8 +56,8 @@ User feedback that drove it (their WoR 2v2 frame: team bars "x4 | 150" / "137 | 
 Open questions put to the user: show the side streak somewhere (left of the team score?); hide the team row's score
 in 2-player (it duplicates the per-player bar); then 4-player Pro Face-Off (hud_3g1v) next.
 Theme pak 4.10 MB (limit 4 MiB = 4.19 MB): budget textures before adding more.
-Next after approval: `python build.py --install`, copy plugin/build/wor_hud_fixes.asi (1.36) to the game, push, then
-ask for the test run (checklist below, face-off items updated: team bars + per-player bars + streak meter per highway).
+Done: install + push. Next: ask for the test run (checklist below, face-off items updated: team bars + per-player bars
++ streak meter per highway), and get answers to the two open questions above.
 
 ## Session stopped 2026-10-21 (earlier): where to resume
 

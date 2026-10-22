@@ -118,6 +118,9 @@ def main():
             '// versus needle (wor_versus NEEDLE_K): the visible needle = the hidden twin\'s angle x K',
             f'static const uint32_t kVsNeedleTex = 0x{qbkey("WoR_HUD_vs_needle"):08x};',
             f'static const float kVsNeedleSrcDims = {wor_versus.NEEDLE_SRC_DIMS:.4f}f, kVsNeedleK = {wor_versus.NEEDLE_K:.4f}f;',
+            '// the DE\'s stock streak light names (bulb_textures of HUD_attach_widget_player_multiplier) -> state 0..2',
+            'static const uint32_t kStockLights[12][2] = { ' + ', '.join(
+                f'{{ 0x{qbkey(f"HUD_score_light_{s}{c}"):08x}, {s} }}' for c in ('', '_green', '_purple', '_blue') for s in range(3)) + ' };',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

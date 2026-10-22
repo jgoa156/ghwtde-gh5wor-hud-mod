@@ -85,6 +85,8 @@ DIAL_RED_GAIN = (1.07, 0.84, 0.56)
 NEEDLE_K = 1.65
 NEEDLE_SRC_DIMS = 3.125
 BOX_TUCK = 15.0                            # the boxes' inner ends this far under the dial (user 2026-10-22: no gap)
+STREAK_K = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
+                                           # user 2026-10-22: one size that fits 4 digits)
 STREAK_FIT = 0.9                           # the streak text shrinks to fit this share of its square (3-4 digits)
 
 
@@ -267,9 +269,9 @@ def tree():
     # the dial's arc centre on screen (needle pivot); the glows are quarters left / right of it
     piv = (DIAL_C[0], DIAL_C[1] + (194 - 128) * dk)
     glow_l = _sprite('glow_l', 'WoR_HUD_vs_glow_l', (piv[0] - 60 * dk * 0.95, piv[1] - 64 * dk * 0.95 + 4),
-                     (128 * dk * 1.05, 128 * dk * 1.05), 4.0, rgba=P_RGBA[1])
+                     (128 * dk * 1.05, 128 * dk * 1.05), 4.0, rgba=P_RGBA[1], blend='Add')
     glow_r = _sprite('glow_r', 'WoR_HUD_vs_glow_r', (piv[0] + 60 * dk * 0.95, piv[1] - 64 * dk * 0.95 + 4),
-                     (128 * dk * 1.05, 128 * dk * 1.05), 4.0, rgba=P_RGBA[2])
+                     (128 * dk * 1.05, 128 * dk * 1.05), 4.0, rgba=P_RGBA[2], blend='Add')
     # score bars: inner end next to the dial
     bar_w = 268 * BAR_K
     half_dial = 98 * dk
@@ -312,7 +314,7 @@ def tree():
                   E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=(sq_w, STREAK_SQ_H), just=(-1, -1), z=8.0,
                     children=[
                         E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1),
-                          dims=(sq_w * STREAK_FIT / SCORE_K, 40), just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0,
+                          dims=(sq_w * STREAK_FIT / STREAK_K, 40), just=(0, 0), scale=(STREAK_K, STREAK_K), z=8.0,
                           font=SCORE_FONT, text='0x00000000', shadow=False,
                           fit_width='scale each line if larger')])]),
         ]))

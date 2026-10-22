@@ -34,6 +34,22 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## 2026-10-22 03:xx: user's test of 1.38 (OPEN, work these first)
+
+Face-off: highway spacing OK now (pieces still not glued). Versus dial: the leader's colour must be shinier. Empty
+streak lights show the wrong (DE) texture until the first note. 3-4 digit streak fit did NOT work (fit_width
+ignored?). Score thousands separators (as in quickplay) not applied to the versus scores. SP tube: not tracked, no
+animated lightning when ready (the per-player tube rework). Battle: the slot visors are tilted (the same art on the
+streak meter is upright: use it unrotated); the power-up cards still too big.
+DONE + INSTALLED 03:30 (plugin 1.39): leader glow blend Add; streak STREAK_K 0.155 (4 digits fit; fit_width is
+ignored by the DE); stock light names -> ours on our meters (kStockLights, SetTexture hook: empty state at start);
+separators also while the versus needle / battle meter is up (g_vs_seen, g_battle_seen); battle visors upright
+(visor_affine: rail map's size only, no rail rotation); CARD_FILL 0.66. Battle needle: 'battle track' log shows the
+needle zones and the DE's LEDs agree (green at deg 16.2 > A/3 = 14, A = 42 confirmed by the clamp at 42.0): ask the
+user what they expected before changing it.
+NEW FEATURE REQUEST (user 2026-10-22): WoR's 6th star: when the last note is hit with 100% notes, the 5-star badge
+goes to 6 with the same star animation (quickplay, single and band); user's WoR crop: the gold star shows '6'.
+
 ## 2026-10-22: user's in-game test of face-off v6 / battle v12 (OPEN, work these)
 
 Clip `OneDrive\Videos\GH\WTDE_current_faceoff_battle.mp4` + the user's crops (WoR reference: versus meter frames).

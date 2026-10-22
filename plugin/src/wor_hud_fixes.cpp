@@ -808,6 +808,7 @@ namespace
 	// (WoR_HUD_bneedle, a sibling in the same rock container) slides up the tube from it on the WoR LED stops (kBNeedleD,
 	// layout units).
 	double g_battle_seen = -100.0;
+	double g_vs_seen = -100.0;          // 1.39: our versus needle last updated (2-player WoR HUD up)
 	bool g_bneedle_logged = false;
 	float g_brot_lo = 1e9f, g_brot_hi = -1e9f;
 	int g_brange_logs = 0, g_bcards = 0;
@@ -933,6 +934,7 @@ namespace
 			    fabsf(f32(c, kElementDims + 4) - kVsNeedleSrcDims) > 0.01f)
 				continue;
 			f32(needle, kElementRot) = f32(c, kElementRot) * kVsNeedleK;
+			g_vs_seen = now();
 			if (!g_vs_needle_logged)
 			{
 				g_vs_needle_logged = true;
@@ -987,6 +989,15 @@ namespace
 					}
 				break;
 			}
+			// 1.39: the DE writes its stock light names on a meter outside set_lights (the empty state at song start:
+			// user test 2026-10-22, wrong lights until the first note): on our lights, ours (x1 set, same state)
+			for (const auto &sl : kStockLights)
+				if (sl[0] == texture)
+				{
+					if (is_ours(texture_of(element)))
+						texture = kLights[0][sl[1]];
+					break;
+				}
 			// 1.36: the versus bars show the multiplier as text ("x1"): the same DE names, our text textures there
 			for (const auto &n : kVsNixieMap)
 			{
@@ -1144,7 +1155,9 @@ namespace
 	int __cdecl score_text_hook(wchar_t *buf, size_t count, const wchar_t *fmt, int value)
 	{
 		const auto orig = reinterpret_cast<int(__cdecl *)(wchar_t *, size_t, const wchar_t *, int)>(kSnwprintf);
-		if (!g_sp.star_bar || value < 0 || count < 2)
+		// 1.39: also in the 2-player modes (no 1-player star bar there): while our versus needle or battle meter is up
+		const bool ours = g_sp.star_bar || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0;
+		if (!ours || value < 0 || count < 2)
 			return orig(buf, count, fmt, value);
 		wchar_t digits[12];
 		int n = 0;
@@ -1525,7 +1538,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.38 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.39 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

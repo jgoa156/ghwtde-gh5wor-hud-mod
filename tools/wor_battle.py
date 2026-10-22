@@ -70,7 +70,7 @@ VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.94                        # ring centres this many rim radii apart along the rail (a little overlap)
 VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
-CARD_FILL = 0.8                         # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
+CARD_FILL = 0.66                        # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
                                         # 2026-10-22, the slot's border must show around the card)
 VISOR_INSET = 4.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
                                         # arms should barely show)
@@ -157,9 +157,14 @@ def visor_affine(sep=SEP):
     se = wor_1g.BADGE_STICK_END
     m = tube_maps(sep)['sp']
 
+    # upright like the streak meter's own badge (user 2026-10-22: the rail-mapped visors looked tilted): the arm's end
+    # goes through the rail map, the art only scales by the map's size (no rail rotation / shear)
+    a2 = apply(m, anchor)
+    k = math.sqrt(abs(np.linalg.det(m[:, :2])))
+
     def f(q):
         v = wor_1g.rot(((q[0] - se[0]) * e.scale[0], (q[1] - se[1]) * e.scale[1]), e.rot)
-        return apply(m, (anchor[0] + v[0], anchor[1] + v[1]))
+        return (a2[0] + k * v[0], a2[1] + k * v[1])
     return _affine([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], [f((0.0, 0.0)), f((1.0, 0.0)), f((0.0, 1.0))])
 
 

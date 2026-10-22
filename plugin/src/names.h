@@ -125,15 +125,15 @@ static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
 static const float kBNeedleDims = 85.3333f;
 static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
 static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.9167f, -51.8508f }, { 49.1272f, -91.2458f }, { 64.5672f, -119.9231f } };
-static const float kBCard = 27.2532f;   // guitar_battle cards are 64x64
+static const float kBCard = 22.4839f;   // guitar_battle cards are 64x64
 // per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
 static const float kBSlot[6][5] = {
-	{ 306.00f, 214.00f, 612.36f, 582.45f, 27.25f },
-	{ 262.00f, 225.00f, 590.82f, 551.35f, 23.17f },
-	{ 253.00f, 251.00f, 572.47f, 524.99f, 19.62f },
-	{ 980.00f, 214.00f, 1114.79f, 582.45f, 27.25f },
-	{ 1026.00f, 227.00f, 1093.25f, 551.35f, 23.17f },
-	{ 1033.00f, 253.00f, 1074.91f, 524.99f, 19.62f },
+	{ 306.00f, 214.00f, 610.38f, 583.52f, 22.48f },
+	{ 262.00f, 225.00f, 589.14f, 552.26f, 19.11f },
+	{ 253.00f, 251.00f, 571.05f, 525.77f, 16.19f },
+	{ 980.00f, 214.00f, 1112.82f, 583.52f, 22.48f },
+	{ 1026.00f, 227.00f, 1091.58f, 552.26f, 19.11f },
+	{ 1033.00f, 253.00f, 1073.49f, 525.77f, 16.19f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 
@@ -151,4 +151,6 @@ static const uint32_t kVsNixieMap[8][2] = { { 0xb373f287, 0xaa48caf2 }, { 0x985e
 // versus needle (wor_versus NEEDLE_K): the visible needle = the hidden twin's angle x K
 static const uint32_t kVsNeedleTex = 0xfab273ed;
 static const float kVsNeedleSrcDims = 3.1250f, kVsNeedleK = 1.6500f;
+// the DE's stock streak light names (bulb_textures of HUD_attach_widget_player_multiplier) -> state 0..2
+static const uint32_t kStockLights[12][2] = { { 0xb2f82657, 0 }, { 0xc5ff16c1, 1 }, { 0x5cf6477b, 2 }, { 0x316255c3, 0 }, { 0x97155e77, 1 }, { 0xa6fd44ea, 2 }, { 0x7662e684, 0 }, { 0xbac8e61a, 1 }, { 0x3447e1f9, 2 }, { 0x677f40d9, 0 }, { 0xac23937c, 1 }, { 0x2ab7e1d2, 2 } };
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

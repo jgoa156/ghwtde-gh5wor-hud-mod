@@ -189,8 +189,9 @@ def _append_children(d, lid, blocks):
     return d[:a] + blk + d[b:]
 
 
-def _set_player_meter(d, g, offset):
-    """player_meter of container g: our desc, placed so its screen-authored content lands right."""
+def _set_player_meter(d, g, offset, scale=None):
+    """player_meter of container g: our desc, placed so its screen-authored content lands right (scale: the element's
+    Scale, for highways smaller than the 2-player ones)."""
     import re
     import desc_edit
     a, b = V._element_bounds(d, g)
@@ -204,6 +205,10 @@ def _set_player_meter(d, g, offset):
     p, n3 = re.subn(r'(StructArray just\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000', p, count=1)
     p, n4 = re.subn(r'(StructArray pos_anchor\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000', p, count=1)
     p = re.sub(r'StructFloat rot_angle = [-\d.]+', 'StructFloat rot_angle = 0.00', p, count=1)
+    if scale is not None:
+        p, n5 = re.subn(r'StructFloatX2 Scale\s*\{\s*Floats \[[-\d.]+, [-\d.]+\]',
+                        f'StructFloatX2 Scale\n{{\n\tFloats [{scale:.5f}, {scale:.5f}]', p, count=1)
+        assert n5 == 1, (g, 'Scale')
     assert n1 == n2 == n3 == n4 == 1, (g, n1, n2, n3, n4)
     blk = blk[:pa] + p + blk[pb:]
     return d[:a] + blk + d[b:]
@@ -249,6 +254,58 @@ def edit_two_highways(d):
         new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=2.0, desc=SP_NAME).render(0),
                E('BAND_side_meter', 'descinterface', pos=(off[0] + ROCK_MP_DX, off[1]), dims=(1280, 720), just=(-1, -1), z=3.0, alpha=0.0,
                  desc=SIDE_NAME).render(0)]     # hidden until the DE attaches health (WoR_HUD_HUD_attach_widget_player_health)
+        d = _append_children(d, g, new)
+    return d
+
+
+# ---- hud_3g1v (3 instruments, with or without vocals; 4-player band): the 2-player pieces mapped onto each highway
+# Rails measured on the bot captures of 2026-10-22 (tests/capture_band.py, canvas = the centred 16:9 part of the
+# 2560x1080 shot): the orange border's centre line, ((x, y) at y 450, (x, y) at y 700). hud_3g and hud_3g1v place the
+# highways identically. The 2-player pieces are placed right in game (2g capture), so each 3-highway set is that set
+# under one uniform scale + shift (the 1-player angle kept, user rule) fitted on the rails, points matched by their
+# fraction of the highway between the vanishing point and the strikeline.
+RAILS_2G_P1 = (((275.0, 450.0), (163.5, 700.0)), ((500.5, 450.0), (612.0, 700.0)))
+RAILS_3G = [(((136.0, 450.0), (45.0, 700.0)), ((333.5, 450.0), (424.5, 700.0))),
+            (((541.0, 450.0), (450.0, 700.0)), ((738.5, 450.0), (829.5, 700.0))),
+            (((946.0, 450.0), (855.0, 700.0)), ((1143.5, 450.0), (1234.5, 700.0)))]
+STRIKE_Y = 635.0                           # gem rings, both layouts
+
+
+def _vanish_y(rails):
+    (l0, l1), (r0, r1) = rails
+    w0, w1 = r0[0] - l0[0], r1[0] - l1[0]
+    return l0[1] - w0 * (l1[1] - l0[1]) / (w1 - w0)
+
+
+def highway_map(dst, src=RAILS_2G_P1):
+    """(s, (tx, ty)): screen p on the 2-player P1 highway -> s * p + t on the highway with rails dst (least squares)."""
+    yv_s, yv_d = _vanish_y(src), _vanish_y(dst)
+    a, b = [], []
+    for side in (0, 1):
+        for y in np.linspace(520.0, 660.0, 12):          # where the tubes and the multiplier sit
+            f = (y - yv_s) / (STRIKE_Y - yv_s)
+            yd = yv_d + f * (STRIKE_Y - yv_d)
+            xs, xd = B._line_x(src[side], y), B._line_x(dst[side], yd)
+            a += [[xs, 1.0, 0.0], [y, 0.0, 1.0]]
+            b += [xd, yd]
+    s, tx, ty = np.linalg.lstsq(np.array(a), np.array(b), rcond=None)[0]
+    return float(s), (float(tx), float(ty))
+
+
+def edit_three_highways(d):
+    """hud_3g1v: our star power tube, rock tube and multiplier on g1..g3 (the DE's own player_meter, with its tiny
+    multiplier and pink streak lights, replaced; the layout has no Star_Power / BAND_side_meter children, ours are
+    added under the DE's local ids so its attach scripts find them)."""
+    for g, rails in zip(('g1', 'g2', 'g3'), RAILS_3G):
+        s, (tx, ty) = highway_map(rails)
+        tl = _container_topleft(d, g)
+        # 2-player P1 content: screen = p + (MP_DX, 0) (+ ROCK_MP_DX for the rock tube) -> here s * that + t
+        off = (s * MP_DX + tx - tl[0], ty - tl[1])
+        d = _set_player_meter(d, g, off, scale=s)
+        new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), scale=(s, s), z=2.0,
+                 desc=SP_NAME).render(0),
+               E('BAND_side_meter', 'descinterface', pos=(off[0] + s * ROCK_MP_DX, off[1]), dims=(1280, 720),
+                 just=(-1, -1), scale=(s, s), z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)]
         d = _append_children(d, g, new)
     return d
 

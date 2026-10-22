@@ -200,6 +200,9 @@ def main():
     extra += '\t\t\t\tStructInt WoR_HUD_sp_highway = 1\n'
     # our own flag: WoR's 6th star at 100% notes in quickplay (SIXTH_STAR_SCRIPT)
     extra += '\t\t\t\tStructInt WoR_HUD_sixth_star = 1\n'
+    # cd149bb0: the DE's highway_streak_glow returns at once with this theme flag, so band play gets no orange neon
+    # sidebars (Sidebar_NSGLOW_left/right): the highways look like singleplayer (user 2026-10-22, bot captures)
+    extra += '\t\t\t\tStructInt 0xcd149bb0 = 1\n'
     # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
     sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'

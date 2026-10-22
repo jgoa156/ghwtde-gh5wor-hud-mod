@@ -19,11 +19,13 @@ LINEUPS = {
     '2g': ['guitar', 'drum'],
     '1g1v': ['guitar', 'vocals'],
     '2g1v': ['guitar', 'drum', 'vocals'],
+    '3g': ['guitar', 'bass', 'drum'],              # 3 instruments, no vocals: hud_3g1v without its vocal highway
     '3g1v': ['guitar', 'bass', 'drum', 'vocals'],
 }
 
 
-SHOT_FROM, SHOT_EVERY = 90, 15        # seconds after the launch (the song plays ~T+100..320 s)
+SHOT_FROM, SHOT_EVERY, SHOT_UNTIL = 90, 15, 330   # seconds after the launch (the song plays ~T+100..320 s); the game
+# then sits on the results screen (user 2026-10-22: it does not proceed), so it is closed at SHOT_UNTIL
 
 
 def game_windows(pid):
@@ -113,7 +115,7 @@ def run(name, parts, a, out):
         held = tries = 0
         t0 = time.time()
         next_shot = t0 + SHOT_FROM
-        deadline = t0 + a.wait + 300
+        deadline = t0 + SHOT_UNTIL
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
             if int(time.time() - t0) % 5 == 0:

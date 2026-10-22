@@ -397,6 +397,8 @@ def edit_layout(config, d):
         d = _set_alpha(d, lid, 0.0)
     if config in ('hud_2g', 'hud_2g1v'):          # two instrument highways (+ vocals): our per-player pieces
         d = wor_mp.edit_two_highways(d)
+    elif config == 'hud_3g1v':                    # three instrument highways (+ vocals): the same pieces, scaled
+        d = wor_mp.edit_three_highways(d)
     return d
 
 

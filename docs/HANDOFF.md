@@ -34,6 +34,31 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## 2026-10-22: 2-player modes redone from scratch (mocks v5 / battle v10, built, NOT installed)
+
+User (2026-10-21, night, with their WoR 1v1 frame): Face-Off, Pro Face-Off and Battle are 2-player only in the DE, so:
+- **Face-Off / Pro Face-Off** (tools/wor_versus.py): WoR's 1v1 layout only: the dial + one score box per player
+  (HUD_band_battle_score, P2 mirrored, blue / red stripe): note streak in the small outer square (the DE's
+  p1/p2_streak_number_text in the slide window: shown only while the DE's streak is on, its own threshold), score
+  in the wide window (commas: plugin hook on the native seinttostring). **Dropped:** placing badges + burst,
+  per-player bars, difficulty icons (their textures too: theme pak 3.99 MB). The DE's multiplier nixie lands on a
+  hidden element (kVsNixieMap still needs the WoR_HUD_vsmult_* names). Highways keep SP tube + streak meter.
+- **Battle** (tools/wor_battle.py): rock tube kept; no streak meter / note streak / SP tube; attack slots = the
+  streak meter visor (our WoR_HUD_mult_1 art: ring + arm) three times where the SP tube goes, scales 1 / 0.85 /
+  0.72 up the rail, one behind the other, arms on the rail, baked in the battle orientation (WoR_HUD_bvisor; hud_2d
+  elements don't rotate); cards in the glass (CARD_FILL), the DE's empty-slot icon blank. The DE rings, disc and
+  their textures are gone. Card table changed (kBCard 44 -> 32): **plugin 1.37** built (plugin/build/), not installed.
+- Mocks: `docs/mocks/mock_versus_v5.jpg` (+ `_zoom`), `docs/mocks/mock_battle_v10.jpg` (+ `_zoom`; frame: the user's
+  clip 1:15, `python tools/mock_battle.py <frame> <out> --current` for frames of the current build). The grey smear
+  on the battle rails is the mock's inpainting of the old rings, not the layout.
+- **Face-off crash (2026-10-21 23:48, build v2 + 1.36):** not the HUD. debug.txt: face-off's random venue pick
+  (quickplay_choose_random_venue) chose venue 0xc53f60c5, no zone pak loaded ("changing reverb settings to None
+  zone"), then apply_band_logo_to_venue -> "CRITICAL: Zone not found" and the DE's crash handler closed the game.
+  Pick a venue by hand to test face-off. The earlier dumps (19:13, GHWT_Definitive.exe.39224.dmp) are a different
+  crash: access violation in the render path (+0x100fab inside a d3d9 call), mode unknown.
+- Next after approval: `python build.py --install`, copy plugin/build/wor_hud_fixes.asi (1.37) to the game, test
+  face-off (a fixed venue) and battle.
+
 ## Session stopped 2026-10-21, late (user request): where to resume
 
 HEAD = 4fc5bc6 + this note: versus rework v2 + plugin **1.36**, built, tests 25/25. **Installed 2026-10-21** (user said

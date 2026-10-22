@@ -7,9 +7,10 @@ the art, so each battle highway carries the main theme's tubes like the 1-player
   - health: the 1-player WoR rock tube (RM_Base + red / yellow / green LEDs) glued to the highway's left rail, its
     glowing needle sliding up the tube. The DE turns HUD2D_rock_needle (here an invisible stand-in); the HUD fixes
     plugin (1.33) reads that angle and slides our needle (WoR_HUD_bneedle) along the tube on the WoR LED stops;
-  - attack slots: the DE's own three slot rings (HUD_2p_battle_frame, pixels unchanged, cut apart) where the star power
-    tube goes on the right rail, big at the bottom, the cluster about the SP tube's length, overlapping a little like
-    the DE's frame; empty slots dark (WoR's Circle, tinted);
+  - attack slots (user 2026-10-21): the streak meter's visor (WoR's multiplier ring with its arm) three times where
+    the star power tube goes on the right rail, big at the bottom, smaller each time up the rail, one behind the
+    other, every arm on the rail (baked in the battle orientation: hud_2d elements don't rotate); the attack cards sit
+    in the glass, an empty slot shows the dark glass. No streak meter, note streak or star power tube in battle;
   - P2 gets the same set translated onto its highway (rock tube on its left rail, slots on its right rail);
   - name plate (theme c2bf76cf): the DE's gamertag desc with WoR's band lobby gamertag bar (tinted by the team colour).
 The attack alerts above the highway stay stock (their design is still open).
@@ -56,16 +57,19 @@ CARD_DIMS = 64.0                        # guitar_battle creates every card 64x64
 OFFSCREEN = {1: (-700.0, 100.0), 2: (2100.0, 100.0)}
 
 # ---- source textures (extracted game files)
-DE_FRAME = os.path.join(paths.DE_EXTRACT, 'z_in_game_png', 'HUD_2p_battle_frame.png')        # DE z_in_game
 WOR_GAMERTAG = os.path.join(paths.WOR_EXTRACT, 'band_lobby_png', 'bandlobby_bord_gamertag_color.png')   # Xbox, x360img
-WOR_CIRCLE = os.path.join(paths.WOR_EXTRACT, 'ui_shared_png', 'Circle.png')                  # solid white disc
 
-# slot rings in the DE texture: centre, inner and outer radius (alpha profile), texture px
-RINGS = {'big': (127.0, 178.5, 36.0, 45.5), 'mid': (188.0, 191.0, 22.0, 27.5), 'small': (198.0, 228.5, 13.0, 18.5)}
-RING_TEX = {k: f'WoR_HUD_bslot_{k}' for k in RINGS}
-DISC_TEX = 'WoR_HUD_bslot_disc'
-DISC_RGBA = (10, 10, 14, 245)           # empty slot: dark (mock v8; 215 let the highway show through in game)
-CARD_FILL = 0.9                         # a card fills this much of its ring's inner diameter
+# attack slots (user 2026-10-21): the streak meter's visor (WoR's multiplier ring with its arm, our WoR_HUD_mult_1:
+# the x1 art, empty) three times where the SP tube goes, smaller each time up the rail, one behind the other, each
+# arm on the rail; the cards sit in the glass
+VISOR_SRC = 'WoR_HUD_mult_1'            # built 1-player texture (preview_hud name)
+VISOR_TEX = 'WoR_HUD_bvisor'
+VISOR_RING = (111.0, 93.0, 33.0, 42.0)  # in that art: glass centre (texture px), glass radius, rim radius
+VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 px texture)
+VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
+VISOR_GAP = 0.94                        # ring centres this many rim radii apart along the rail (a little overlap)
+VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
+CARD_FILL = 0.9                         # a card fills this much of its visor's glass diameter
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
             'green': 'WoR_HUD_btube_green'}
 NEEDLE_TEX = 'WoR_HUD_bneedle'          # the visible needle (the plugin finds it by this name)
@@ -78,7 +82,6 @@ RAIL_L = ((320.0, 395.0), (170.0, 700.0))           # P1 left / right rail lines
 RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways
 STRIKE_1P, TOP_1P = 638.0, 300.0                     # the 1-player highway (tools/mock_base.py)
-SLOT_OVERLAP = 0.12                     # rings overlap along the tube (the DE's slot frame overlaps them)
 # test 2026-10-21 (user clip "Video Project 25"): on the moved highways the rock tube's centre sat ~24 px off the left
 # rail's outer edge (the 3D highway doesn't move like the pasted mock), leaving a gap; the slots touched their rail
 ROCK_NUDGE = np.array((15.0, 0.0))
@@ -135,29 +138,62 @@ def p2_dx(sep=SEP):
     return (1280.0 - _line_x(RAIL_R, STRIKE_2P) + sep) - (_line_x(RAIL_L, STRIKE_2P) - sep)
 
 
-def ring_canvas(k):
-    n = 2 * int(RINGS[k][3] + 2) + 1
-    return 1 << (n - 1).bit_length()
+def visor_affine(sep=SEP):
+    """2x3 affine: visor art px -> P1 battle screen. The 1-player streak meter badge (nixie of wor_mult_1g: its arm's
+    end on the SP tube's top) mapped onto the battle highway like the tubes (tube_maps 'sp')."""
+    import desc_gen, preview_hud, wor_1g
+    wor_1g.all_descs()
+    e = next(c for c in desc_gen.ROOTS['wor_mult_1g_ghwor'].children if c.local_id == 'nixie')
+    cal = preview_hud.GAME_CALIB['wor_mult_1g_ghwor']
+    anchor = (e.pos[0] + wor_1g.G1[0] + cal[0], e.pos[1] + wor_1g.G1[1] + cal[1])     # the element's just = arm end
+    se = wor_1g.BADGE_STICK_END
+    m = tube_maps(sep)['sp']
+
+    def f(q):
+        v = wor_1g.rot(((q[0] - se[0]) * e.scale[0], (q[1] - se[1]) * e.scale[1]), e.rot)
+        return apply(m, (anchor[0] + v[0], anchor[1] + v[1]))
+    return _affine([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], [f((0.0, 0.0)), f((1.0, 0.0)), f((0.0, 1.0))])
 
 
-def slots_on_tube(sep=SEP):
-    """[(slot, centre, ring texture size, inner radius)] along P1's SP tube line (big at the bottom), the cluster about
-    the tube's length (screen units)."""
+def _visor_box(a0):
+    """(centre, texture size) of the baked visor at scale 1: the art's corners through a0, SS texture px per unit."""
+    pts = [apply(a0, q) for q in ((0, 0), (VISOR_ART[0], 0), (0, VISOR_ART[1]), VISOR_ART)]
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    return ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2), (_pow2((max(xs) - min(xs)) * SS + 6),
+                                                                 _pow2((max(ys) - min(ys)) * SS + 6))
+
+
+def visors(sep=SEP):
+    """[(slot, element centre, element dims, glass centre, glass radius)] on P1 (screen): big at the bottom of the SP
+    tube's place, mid and small above it, each one the scale-1 visor shrunk about its arm's end and slid along the
+    rail (so every arm stays on the rail)."""
     import wor_1g
+    a0 = visor_affine(sep)
     m = tube_maps(sep)['sp']
     a = apply(m, wor_1g.RIGHT.at(wor_1g.LED_BOTTOM))
     b = apply(m, wor_1g.RIGHT.at(wor_1g.LED_TOP))
-    length = math.hypot(b[0] - a[0], b[1] - a[1])
-    radii = {k: RINGS[k][3] for k in ('big', 'mid', 'small')}
-    k = length / (2 * sum(radii.values()) * (1 - SLOT_OVERLAP))
-    v = ((b[0] - a[0]) / length, (b[1] - a[1]) / length)
-    out, t = [], 0.0
+    n = math.hypot(b[0] - a[0], b[1] - a[1])
+    v = ((b[0] - a[0]) / n, (b[1] - a[1]) / n)
+    k = math.sqrt(abs(np.linalg.det(a0[:, :2])))         # screen units per art px
+    arm = apply(a0, wor_1g.BADGE_STICK_END)
+    ring = apply(a0, VISOR_RING[:2])
+    (bc, (tw, th)) = _visor_box(a0)
+    along = lambda p: (p[0] - a[0]) * v[0] + (p[1] - a[1]) * v[1]
+    shrink = lambda p, s, tau: (arm[0] + s * (p[0] - arm[0]) + v[0] * tau, arm[1] + s * (p[1] - arm[1]) + v[1] * tau)
+    out, t, prev = [], 0.0, None
     for key in ('big', 'mid', 'small'):
-        r = radii[key] * k
-        t += r
-        out.append((key, (a[0] + v[0] * t, a[1] + v[1] * t), 2 * r * ring_canvas(key) / (2 * radii[key]), RINGS[key][2] * k))
-        t += r * (1 - 2 * SLOT_OVERLAP)
+        s = VISOR_SCALES[key]
+        rim = VISOR_RING[3] * k * s
+        t = rim if prev is None else t + (prev + rim) * VISOR_GAP
+        tau = t - along(shrink(ring, s, 0.0))              # slide so the glass centre lands at t along the rail
+        out.append((key, shrink(bc, s, tau), (s * tw / SS, s * th / SS), shrink(ring, s, tau), VISOR_RING[2] * k * s))
+        prev = rim
     return out
+
+
+def slots_on_tube(sep=SEP):
+    """[(slot, glass centre, element dims, glass radius)] of the visors (the cards' slots), P1 screen."""
+    return [(key, c, dims, r) for key, _, dims, c, r in visors(sep)]
 
 
 def card_sizes():
@@ -283,38 +319,16 @@ def textures(textures_dir=None):
     from PIL import Image
     textures_dir = textures_dir or os.path.join(paths.REPO, 'build', 'preview')
     out = {}
-    frame = Image.open(DE_FRAME).convert('RGBA')
-    fa = np.array(frame)
-    fy, fx = np.mgrid[0:256, 0:256]
-    order = ['big', 'mid', 'small']                        # drawn on top of each other in this order in the DE texture
-
-    def band(k):
-        cx, cy, r_in, r_out = RINGS[k]
-        d = np.hypot(fx - cx, fy - cy)
-        return (d >= r_in - 1.0) & (d <= r_out + 1.0)
-    for k, (cx, cy, r_in, r_out) in RINGS.items():
-        half = int(r_out + 2)
-        x0, y0 = int(cx) - half, int(cy) - half
-        a = fa.copy()
-        mine = band(k)
-        # pixels the rings above this one cover (or never drew): taken from the same ring's mirrored side
-        hidden = mine & (a[..., 3] < 180)
-        for j in order[:order.index(k)]:
-            hidden |= mine & band(j)
-        for mx, my in ((True, False), (False, True), (True, True)):
-            sx = np.clip(np.round(2 * cx - fx if mx else fx).astype(int), 0, 255)
-            sy = np.clip(np.round(2 * cy - fy if my else fy).astype(int), 0, 255)
-            ok = hidden & ~hidden[sy, sx] & (fa[sy, sx, 3] >= 180)
-            a[ok] = fa[sy[ok], sx[ok]]
-            hidden &= ~ok
-        a[..., 3] = np.where(mine, a[..., 3], 0)            # the ring only: no dial or neighbour pixels
-        a = a[y0:y0 + 2 * half + 1, x0:x0 + 2 * half + 1]
-        ring = Image.fromarray(a)
-        canvas = Image.new('RGBA', (ring_canvas(k),) * 2)           # power-of-two texture, ring centred
-        o = (canvas.width - ring.width) // 2
-        canvas.alpha_composite(ring, (o, o))
-        out[RING_TEX[k]] = canvas
-    out[DISC_TEX] = Image.open(WOR_CIRCLE).convert('RGBA')
+    # the visor at scale 1, baked in its battle orientation (hud_2d elements don't rotate): each output texel's centre
+    # taken back through the art -> screen affine
+    a0 = visor_affine()
+    (bc, (tw, th)) = _visor_box(a0)
+    inv = np.linalg.inv(np.vstack([a0, (0.0, 0.0, 1.0)]))
+    o = np.array([[1.0 / SS, 0.0, bc[0] - tw / (2 * SS) + 0.5 / SS], [0.0, 1.0 / SS, bc[1] - th / (2 * SS) + 0.5 / SS],
+                  [0.0, 0.0, 1.0]])
+    t = inv @ o                                            # texture px -> art px
+    art = Image.open(os.path.join(textures_dir, VISOR_SRC + '.png')).convert('RGBA')
+    out[VISOR_TEX] = art.transform((tw, th), Image.AFFINE, tuple(t[:2].ravel()), resample=Image.BICUBIC)
     # rock tube: the body (no LEDs, no needle), each LED alone, the needle alone (LEDs and needle are additive there)
     m = tube_maps()['rock']
     cut = _tube_cut()
@@ -343,8 +357,8 @@ def textures(textures_dir=None):
 
 
 def sources():
-    s = {RING_TEX[k]: {'src': DE_FRAME, 'ring': list(v)} for k, v in RINGS.items()}
-    s[DISC_TEX] = {'src': WOR_CIRCLE}
+    s = {VISOR_TEX: {'src': VISOR_SRC + ' (the 1-player streak meter visor, mapped onto the battle rail)',
+                     'battle_tube': True}}
     s[GAMERTAG_TEX] = {'src': WOR_GAMERTAG}
     import wor_1g
     tube = {'body': 'WoR_HUD_rm_base', 'red': 'WoR_HUD_rm_red', 'yellow': 'WoR_HUD_rm_yellow', 'green': 'WoR_HUD_rm_green'}
@@ -465,12 +479,12 @@ def layout_struct():
     nd = _pow2(NEEDLE_BOX * SS) / SS
     t += _elem('HUD2D_rock_needle', BLANK, st[0], (4.0, 4.0), 18.4)
     t += _elem('WoR_HUD_battle_needle', NEEDLE_TEX, ((st[1][0] + st[2][0]) / 2, (st[1][1] + st[2][1]) / 2), (nd, nd), 18.5)
-    # attack slots: the DE rings over the cards (z 19), a dark disc in each empty slot (the DE's default icons)
-    for key, c, size, r_in in slots:
-        t += _elem(RING_TEX[key], RING_TEX[key], c, (size, size), 20)
-    for n, (key, c, size, r_in) in enumerate(slots, 1):
-        d = 2 * r_in + 3.0
-        t += _elem(f'HUD2D_battle_default_icon2_{n}', DISC_TEX, c, (d, d), 18.9, rgba=DISC_RGBA)
+    # attack slots: the three visors under the cards (z 19); the DE's default icon of an empty slot stays blank (the
+    # visor's own dark glass shows)
+    for key, ec, dims, c, r_in in visors():
+        t += _elem(f'WoR_HUD_bvisor_{key}', VISOR_TEX, ec, dims, VISOR_Z[key])
+    for n, (key, c, dims, r_in) in enumerate(slots, 1):
+        t += _elem(f'HUD2D_battle_default_icon2_{n}', BLANK, c, (2 * r_in, 2 * r_in), 18.9)
     t += '\t\t\t]\n\t\t}\n\t}\n}'
     return t
 

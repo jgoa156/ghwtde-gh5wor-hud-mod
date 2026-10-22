@@ -18,7 +18,8 @@ tools/wor_battle.py (the tubes baked from our 1-player HUD, each element at its 
 the needle where plugin 1.33 puts it), so the mock and the game can't drift apart. wor_card() keeps the v8 alert card
 idea for the card design still to be discussed.
 
-usage: python tools/mock_battle.py <frame.png (2560x1080 or 1280x720)> <out.jpg> [SEP]
+usage: python tools/mock_battle.py <frame.png (2560x1080 or 1280x720)> <out.jpg> [SEP] [--current]
+(--current: a frame of the current build, e.g. straight from the user clip: highways already apart)
 """
 import os, sys
 import numpy as np
@@ -107,6 +108,25 @@ def clean_and_move(frame, sep):
     return im, out
 
 
+# our v9 battle HUD in the user's clip (Video Project 25, 1:15, registered like tools/mock_mp.py): rock tubes, the DE
+# rings on the right rails, the attack card above P2's highway
+CURRENT_BOXES = [(158, 505, 236, 622), (526, 503, 622, 620), (668, 505, 752, 622), (1046, 503, 1142, 620),
+                 (788, 268, 952, 366)]
+
+
+def clean_current(frame):
+    """A frame of the current build (tools/mock_mp.register): highways already SEP apart, our HUD inpainted away."""
+    import cv2
+    import mock_mp
+    im = mock_mp.register(frame)
+    mask = Image.new('L', (1280, 720), 0)
+    d = ImageDraw.Draw(mask)
+    for b in CURRENT_BOXES:
+        d.rectangle(b, fill=255)
+    clean = cv2.inpaint(np.array(im), np.array(mask.filter(ImageFilter.MaxFilter(5))), 9, cv2.INPAINT_TELEA)
+    return im, Image.fromarray(clean).convert('RGBA')
+
+
 def needle_at(health):
     """Where the plugin puts the battle needle (screen, P1): the WoR LED stops, linear between them."""
     st = wor_battle.needle_stops()
@@ -116,11 +136,11 @@ def needle_at(health):
     return (st[i][0] + (st[i + 1][0] - st[i][0]) * t, st[i][1] + (st[i + 1][1] - st[i][1]) * t)
 
 
-def build(frame, sep=SEP, health=(1.6, 0.5), cards=('icon', None)):
+def build(frame, sep=SEP, health=(1.6, 0.5), cards=('icon', None), current=False):
     """The frame cleaned and the highways moved apart, with the built battle layout drawn like the game would: every
     texture of tools/wor_battle.py at its layout position and size (P2 = P1 translated), the needle where the plugin
     puts it, a card (64 px art at the big slot's card size) in P1's big slot."""
-    im, out = clean_and_move(frame, sep)
+    im, out = clean_current(frame) if current else clean_and_move(frame, sep)
     tex = wor_battle.textures()
     icon = Image.open(ICON).convert('RGBA')
     tc, (tw, th) = wor_battle.tube_box()
@@ -135,17 +155,12 @@ def build(frame, sep=SEP, health=(1.6, 0.5), cards=('icon', None)):
         n = tex[wor_battle.NEEDLE_TEX]
         nd = int(round(n.width / wor_battle.SS))
         _paste(hud, n.resize((nd, nd), Image.LANCZOS), needle_at(hp))
-        for key, c, size, r_in in wor_battle.slots_on_tube(sep):
-            d = int(round(2 * r_in + 3))
-            disc = tex[wor_battle.DISC_TEX].resize((d, d), Image.LANCZOS)
-            a = np.array(disc).astype(np.float32)
-            a[..., :3] = np.array(wor_battle.DISC_RGBA[:3], np.float32)
-            a[..., 3] *= wor_battle.DISC_RGBA[3] / 255.0
-            _paste(hud, Image.fromarray(a.astype(np.uint8)), c)
+        for key, ec, dims, c, r_in in reversed(wor_battle.visors(sep)):       # small first: the big one in front
+            _paste(hud, tex[wor_battle.VISOR_TEX].resize((int(round(dims[0])), int(round(dims[1]))), Image.LANCZOS), ec)
+        for key, c, dims, r_in in wor_battle.slots_on_tube(sep):               # the cards over the glass (z 19)
             if player == 1 and key == 'big' and cards[0]:
                 k = int(round(big_card))
                 _paste(hud, icon.resize((k, k), Image.LANCZOS), c)
-            _paste(hud, tex[wor_battle.RING_TEX[key]].resize((int(size),) * 2, Image.LANCZOS), c)
         if player == 2:
             shifted = Image.new('RGBA', (1280, 720), (0, 0, 0, 0))
             shifted.paste(hud, (int(round(dx)), 0), hud)
@@ -156,14 +171,16 @@ def build(frame, sep=SEP, health=(1.6, 0.5), cards=('icon', None)):
 
 def main():
     frame, dst = sys.argv[1], sys.argv[2]
-    sep = float(sys.argv[3]) if len(sys.argv) > 3 else SEP
-    before, after = build(frame, sep)
+    current = '--current' in sys.argv
+    args = [a for a in sys.argv[3:] if a != '--current']
+    sep = float(args[0]) if args else SEP
+    before, after = build(frame, sep, current=current)
     sheet = Image.new('RGB', (1280, 1440 + 60), (16, 16, 16))
     d = ImageDraw.Draw(sheet)
     d.text((10, 8), 'NOW (in game, 2026-10-20)', fill=(255, 220, 120))
     sheet.paste(before, (0, 26))
     d.text((10, 752), f'BUILD PREVIEW (tools/wor_battle.py layout): highways {sep:.0f} further apart each; rock tube left '
-                      'rail, attack slots where the SP tube goes; alert card stock (not drawn)', fill=(255, 220, 120))
+                      'rail, attack slots = 3 streak meter visors where the SP tube goes; alert card stock (not drawn)', fill=(255, 220, 120))
     sheet.paste(after, (0, 772))
     sheet.save(dst, quality=90)
     print('wrote', dst)

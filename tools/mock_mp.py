@@ -111,16 +111,10 @@ def faceoff(frame):
     root = copy.deepcopy(V.tree())
     for c in [e for e in root.children if e.local_id == 'lead_2'][0].children:
         c.hidden = True                                   # P1 leads (preview_hud doesn't multiply container alpha)
-    for e in [e for e in root.children if e.local_id.startswith('score_container_')]:
-        for c in e.children:
-            c.hidden = True                               # team bars: alpha 0 in 2-player (same reason)
     _set(root, 'needle', rot=-22.0)
-    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'}, 
-            'HUD_bb_multiplier_nixie_1': {'texture': 'WoR_HUD_vsmult_3'},
-            'HUD_bb_multiplier_nixie_2': {'texture': 'WoR_HUD_vsmult_1'},
-            'pscore_1': {'text': '45,625'}, 'pscore_2': {'text': '31,210'}, 'pstreak_1': {'text': '64'},
-            'pstreak_2': {'text': '12'}, 'pdiff_1': {'texture': V.DIFF_TEX['expert']},
-            'pdiff_2': {'texture': V.DIFF_TEX['hard']}}
+    # P1 on a streak (its number in the box's square), P2 below the DE's streak threshold (square empty)
+    vals = {'score_1': {'text': '45,625'}, 'score_2': {'text': '31,210'},
+            'streak_number_1': {'text': '64'}, 'streak_number_2': {'text': ''}}
     items = [((0.0, 0.0), root, vals)]
     for p, sp, mult in ((1, 0.7, 3), (2, 0.3, 1)):     # each highway keeps its streak meter (user 2026-10-21)
         base = (0.0 if p == 1 else B.p2_dx(), 0.0)
@@ -148,8 +142,8 @@ def main():
     preview_hud.PREVIEW = os.path.join(paths.REPO, 'build', 'preview')
     preview_hud.GAME_TEXT['on'] = False
     try:
-        rows = [('FACE-OFF NOW (user clip 0:36)', 'FACE-OFF MOCK: WoR versus meter + placing (1st glows) + per-player WoR star '
-                 'power tube; no rock meter, no messages; highways apart'),
+        rows = [('FACE-OFF NOW (user clip 0:36)', 'FACE-OFF MOCK: WoR 1v1 dial + score boxes (streak | score, P2 '
+                 'mirrored); each highway: SP tube + streak meter; no rock meter, no messages; highways apart'),
                 ('BAND NOW (user clip 2:08)', 'BAND MOCK: per-player WoR rock tube (one LED + needle), star power tube, '
                  'multiplier (no instrument icon); placeholder bar hidden; band meter unchanged')]
         pics = [faceoff(fo), band(bd)]

@@ -56,8 +56,20 @@ User feedback that drove it (their WoR 2v2 frame: team bars "x4 | 150" / "137 | 
 User's answers (2026-10-21, late): (1) the side streak is shown: in 2-player a side is one player, so that is the
 streak in the per-player bar on the highway (kept); in the 4-player team layout it goes left of the team score;
 (2) no team layout with only 2 players. Done: the team bars (score_container_N) are alpha 0 in our desc (2-player only;
-elements kept for the DE's props and alias_streak_pN). Mock v3 `docs/mocks/mock_versus_v3.jpg` / `_zoom.jpg`: built,
-tests 25/25, **NOT installed, awaiting approval** (install = `python build.py --install`; plugin unchanged, 1.36).
+elements kept for the DE's props and alias_streak_pN). Mock v3 `docs/mocks/mock_versus_v3.jpg` / `_zoom.jpg`.
+User on v3 (2026-10-21, late), done in mock v4 (`docs/mocks/mock_versus_v4.jpg` / `_zoom.jpg`), built, tests 25/25,
+**NOT installed, awaiting approval** (install = `python build.py --install`; plugin unchanged, 1.36):
+- **The mocks v1-v3 were mis-registered:** the clip frames are the 2560x1080 game letterboxed, and the mocks drew the
+  canvas over the whole squashed frame. tools/mock_mp.py `register()` now takes the centred 16:9 part (like
+  mock_battle); feed it frames straight from the clip (ffmpeg -ss 36 / 128, 1920x1080). The layout geometry
+  (wor_battle rails) was right; PBAR_DX had been tuned on the bad mock: the per-player bars now sit on
+  highway_top_centre (that was the "streak counter not aligned on the 2nd highway").
+- WT streak lights: frame residue in the mock (the DE's player_meter lights; in game our wor_mult_mp replaces that
+  desc); the mock now inpaints the DE elements before moving the highways.
+- 1st place: the starburst gold (BURST_RGBA, WoR clip hue ~44 deg), normal blend (added, it washed out to white).
+- Sides: P1 blue, P2 red (P_RGBA swapped); the dial mirrored (FLIPPED: blue half + blue arc on the left).
+- Difficulty: WoR's icon_difficulty_* in the per-player bar's third square (pdiff_N, set by the face-off wrapper from
+  playerN_status.difficulty with plain ifs). Theme pak 4.13 MB (limit 4.19 MB).
 Then 4-player Pro Face-Off (hud_3g1v): team bars + side streak left of the team score.
 Theme pak 4.10 MB (limit 4 MiB = 4.19 MB): budget textures before adding more.
 Done: install + push. Next: ask for the test run (checklist below, face-off items updated: team bars + per-player bars

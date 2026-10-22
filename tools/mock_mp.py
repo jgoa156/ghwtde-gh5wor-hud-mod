@@ -3,7 +3,7 @@
 (GH3-style versus bar, "01234567" placeholder bar, per-player multipliers / streak lights / instrument icons) and the
 highways moved apart like battle. Drawn from the built descs and textures (run build.py first).
 
-usage: python tools/mock_mp.py <faceoff frame> <band frame> <out.jpg>
+usage: python tools/mock_mp.py <faceoff frame> <band frame> <out.jpg>   (frames straight from the clip, letterboxed)
 """
 import copy, os, sys
 
@@ -18,13 +18,31 @@ FACEOFF_REMOVE = [(360, 278, 925, 356), (555, 505, 615, 610), (1015, 505, 1075, 
 BAND_REMOVE = [(268, 280, 1015, 352), (548, 470, 615, 610), (1010, 470, 1080, 610)]
 
 
+def register(frame):
+    """The frame in canvas units: the clip is the 2560x1080 game letterboxed (in 1920x1080 or 1280x720); the HUD canvas
+    is its centred 16:9 part (Ultrawide Fix: 2D layer = the centred 1920x1080), as in mock_battle."""
+    im = Image.open(frame).convert('RGB')
+    r = np.array(im.convert('L')).astype(int).mean(axis=1)
+    rows = np.nonzero(r > 8)[0]
+    y0, y1 = int(rows[0]), int(rows[-1]) + 1
+    cw = round((y1 - y0) * 16 / 9)
+    x0 = (im.size[0] - cw) // 2
+    return im.crop((x0, y0, x0 + cw, y1)).resize((1280, 720), Image.LANCZOS)
+
+
 def clean_and_move(frame, boxes, sep=B.SEP):
     import cv2
-    im = Image.open(frame).convert('RGB')
+    raw = im = register(frame)
+    # the DE elements first (some sit on the highways' rails: the WT streak lights), so the highways moved below
+    # carry none of them
     mask = Image.new('L', (1280, 720), 0)
     d = ImageDraw.Draw(mask)
     for b in boxes:
         d.rectangle(b, fill=255)
+    im = Image.fromarray(cv2.inpaint(np.array(im), np.array(mask.filter(ImageFilter.MaxFilter(5))), 9,
+                                     cv2.INPAINT_TELEA))
+    mask = Image.new('L', (1280, 720), 0)
+    d = ImageDraw.Draw(mask)
     hw1 = mock_battle.HW_P1
     hw2 = [(1280 - x, y) for x, y in hw1]
     d.polygon(hw1, fill=255)
@@ -39,7 +57,7 @@ def clean_and_move(frame, boxes, sep=B.SEP):
         lay = Image.new('RGBA', (1280, 720), (0, 0, 0, 0))
         lay.paste(src, (int(dx), 0), src)
         out.alpha_composite(lay)
-    return im, out
+    return raw, out
 
 
 def _set(root, lid, **kw):
@@ -101,7 +119,8 @@ def faceoff(frame):
             'HUD_bb_multiplier_nixie_1': {'texture': 'WoR_HUD_vsmult_3'},
             'HUD_bb_multiplier_nixie_2': {'texture': 'WoR_HUD_vsmult_1'},
             'pscore_1': {'text': '45,625'}, 'pscore_2': {'text': '31,210'}, 'pstreak_1': {'text': '64'},
-            'pstreak_2': {'text': '12'}}
+            'pstreak_2': {'text': '12'}, 'pdiff_1': {'texture': V.DIFF_TEX['expert']},
+            'pdiff_2': {'texture': V.DIFF_TEX['hard']}}
     items = [((0.0, 0.0), root, vals)]
     for p, sp, mult in ((1, 0.7, 3), (2, 0.3, 1)):     # each highway keeps its streak meter (user 2026-10-21)
         base = (0.0 if p == 1 else B.p2_dx(), 0.0)

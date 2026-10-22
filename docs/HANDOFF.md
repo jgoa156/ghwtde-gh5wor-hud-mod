@@ -34,6 +34,27 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## 2026-10-22: user's in-game test of face-off v6 / battle v12 (OPEN, work these)
+
+Clip `OneDrive\Videos\GH\WTDE_current_faceoff_battle.mp4` + the user's crops (WoR reference: versus meter frames).
+1. Versus meter: WoR tints each half: active side bright (P1 blue / P2 red), inactive side dark (dark blue / dark
+   red, not brown). Both score boxes are glued to the dial: each box's inner TOP corner touches the dial's bottom
+   corner on its side, boxes drawn IN FRONT of the dial. Streak counts of 3-4 digits overflow the square: size per
+   digit count, or one size that fits 4 digits.
+2. Where the two highways touch, the WoR border sits a few px too high (gap at the bottom): lower the border, then
+   move the highways a bit further apart so the borders don't touch.
+3. Multiplayer highways (face-off): pieces not glued to the highway; streak lights show the wrong textures (the
+   1-player fix from long ago is missing here); SP tube doesn't track (0:36-0:38 P1 has half a bar: no glow, no
+   electricity, not at half; texture looks wrong; 0:42 activation drains from below the bottom). Goal: the exact
+   1-player (quickplay) setup on every player.
+4. Versus needle stops at ~70% of a side (the DE's -51.5..51.5 deg vs our 180-degree dial): remap like the
+   quickplay rock needle fix.
+5. Battle: rock tube not glued to the highway; highway gap issue in every multiplayer mode (band has more issues,
+   later). Slots look perfect: move them a little further under the highway so the arms barely show.
+6. Battle cards: right place; shrink the card radius a bit so the slot border shows; z order wrong: the first card
+   must be in front, then the next, etc.
+Plugin log of the run: battle needle stand-in found, rot range grew to -21.6..37.4 (swing 42); cards moved to slots.
+
 ## 2026-10-22: 2-player modes redone from scratch (face-off v6 / battle v12: INSTALLED 01:30, not tested in game)
 
 User (2026-10-21, night, with their WoR 1v1 frame): Face-Off, Pro Face-Off and Battle are 2-player only in the DE, so:

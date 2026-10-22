@@ -16,7 +16,9 @@ team-coloured glows + needle, a score bar per player with the team stripe) plus 
     plugin keeps out of its single-tube smooth fill);
   - team bars (user 2026-10-21, WoR 2v2 frame "x4 | 150" / "137 | x2"): the side's multiplier as text in the bar's
     square (P2's bar mirrored: score, then square), the side's score (the DE: a player in 2-player, the team's sum in
-    4-player Pro Face-Off); the DE's side streak (p1/p2_streak_number_text) is not shown there;
+    4-player Pro Face-Off); the DE's side streak (p1/p2_streak_number_text) is not shown there. HIDDEN in this desc
+    (2-player only: a side is one player, so the bar repeats the per-player bar; user 2026-10-21); the team layout is
+    for 4-player Pro Face-Off, with the side streak left of the team score (user 2026-10-21);
   - per-player bars at each highway (WoR competitive_meter: streak | score | difficulty square), the player's own note
     streak (no "+": WoR's "+N" there is its point system) and score, both bound by the faceoff wrapper
     (AttachHudWidget player_status Score / note_streak -> pscore_N_text / pstreak_N_text), same font and size;
@@ -321,7 +323,9 @@ def tree():
         score_x = bx + bar_w / 2 - 14 if p == 1 else sq_x - (STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K / 2 - 10
         m = '_m' if p == 2 else ''
         mult_h = STREAK_SQ_H * 1.05
-        kids.append(E(f'score_container_{p}', 'ContainerElement', just=(-1, -1), dims=(1280, 720), z=5.0, children=[
+        # hidden: this desc is 2-player only, where the team bar repeats the per-player bar (user 2026-10-21); kept for
+        # the props the DE writes (score, nixie, alias_streak_pN) and for the 4-player team layout to come
+        kids.append(E(f'score_container_{p}', 'ContainerElement', just=(-1, -1), dims=(1280, 720), z=5.0, alpha=0.0, children=[
             _sprite(f'score_back_{p}', 'WoR_HUD_vs_score_back' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),
                     (512 * BAR_K, 64 * BAR_K), 5.0),
             _sprite(f'score_frame_{p}', 'WoR_HUD_vs_score' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),

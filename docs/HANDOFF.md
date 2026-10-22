@@ -53,8 +53,12 @@ User feedback that drove it (their WoR 2v2 frame: team bars "x4 | 150" / "137 | 
 - every highway keeps its SP tube AND streak meter in face-off: wor_mult_mp's alias_player_multiplier now points at a
   hidden stand-in (mult_die_standin), so the DE's face-off Die (GH:588-594, the only user of that alias) kills that.
 - the team bar's old "+N" streak window is kept invisible (alias_streak_pN needed by the DE's streak animation).
-Open questions put to the user: show the side streak somewhere (left of the team score?); hide the team row's score
-in 2-player (it duplicates the per-player bar); then 4-player Pro Face-Off (hud_3g1v) next.
+User's answers (2026-10-21, late): (1) the side streak is shown: in 2-player a side is one player, so that is the
+streak in the per-player bar on the highway (kept); in the 4-player team layout it goes left of the team score;
+(2) no team layout with only 2 players. Done: the team bars (score_container_N) are alpha 0 in our desc (2-player only;
+elements kept for the DE's props and alias_streak_pN). Mock v3 `docs/mocks/mock_versus_v3.jpg` / `_zoom.jpg`: built,
+tests 25/25, **NOT installed, awaiting approval** (install = `python build.py --install`; plugin unchanged, 1.36).
+Then 4-player Pro Face-Off (hud_3g1v): team bars + side streak left of the team score.
 Theme pak 4.10 MB (limit 4 MiB = 4.19 MB): budget textures before adding more.
 Done: install + push. Next: ask for the test run (checklist below, face-off items updated: team bars + per-player bars
 + streak meter per highway), and get answers to the two open questions above.

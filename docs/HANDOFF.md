@@ -54,6 +54,21 @@ Clip `OneDrive\Videos\GH\WTDE_current_faceoff_battle.mp4` + the user's crops (Wo
 6. Battle cards: right place; shrink the card radius a bit so the slot border shows; z order wrong: the first card
    must be in front, then the next, etc.
 Plugin log of the run: battle needle stand-in found, rot range grew to -21.6..37.4 (swing 42); cards moved to slots.
+BUILT 2026-10-22 (plugin 1.38 + mod, tests 25/25, NOT installed, mocks docs/mocks/mock_versus_v7_zoom.jpg,
+mock_battle_v13.jpg): item 1 (dial red half tinted DIAL_RED_GAIN, boxes hang from the dial corners DIAL_ART /
+BOX_ART, in front; streak text fit_width 'scale each line if larger' STREAK_FIT), item 2 (wor_1g.BORDER_DY 4 on the
+theme's border offsets + SEP 19 -> 22: UNVERIFIED, needs the game), item 4 (needle_src twin + plugin vs_needle x
+NEEDLE_K 1.65), item 5 slots (VISOR_INSET 4 px towards the highway), item 6 (CARD_FILL 0.8; plugin sets card z
+19 + (3 - slot) * 0.02, cards recognised by z 19..19.1), item 3 lights (plugin set_lights picks the colour set from
+the meter's own badge texture kOurMult; the multiplier query returned x1 in face-off).
+STILL OPEN: item 3 star power tube per player + gluing, item 5 rock tube gluing. Cause found: the DE moves 2-player
+highways in 3D (get_highway_pos_and_scale Pos, scale 1), so on screen the shift shrinks towards the horizon (~y 213,
+where RAIL_L / RAIL_R meet); our maps move pieces by a constant SEP (hence ROCK_NUDGE). Plan: (a) a shift(y)
+linear in y, zero at the horizon, fitted on the user's clip (f37.5: canvas = crop (240,135,1680,945) of the
+letterboxed 1920x1080 frame); (b) per-player 1-player tube: every 1-player sp_* element carried through the player's
+rail map (sprites rotated / scaled, clip + feather windows as screen boxes), plus a per-tube geometry table so the
+plugin's tube engine (smooth fill, plasma, glows, burst, feathers) runs per tube (StarPower array, widget with 3
+segments accepted).
 
 ## 2026-10-22: 2-player modes redone from scratch (face-off v6 / battle v12: INSTALLED 01:30, not tested in game)
 

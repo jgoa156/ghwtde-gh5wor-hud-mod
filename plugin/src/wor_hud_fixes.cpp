@@ -235,9 +235,25 @@ namespace
 			return;
 		}
 		const int player = *reinterpret_cast<int *>(field(widget, 0xc)) - 1;
-		const int mult = reinterpret_cast<GetMultiplierFn>(kGetMultiplier)(*reinterpret_cast<void **>(kPlayerInfo), nullptr, player, 1);
-		const bool sp = reinterpret_cast<IsStarPowerFn>(kIsStarPower)(*reinterpret_cast<void **>(kStarPower), nullptr, player);
-		const int set = sp ? 4 : mult >= 4 ? 3 : mult == 3 ? 2 : mult == 2 ? 1 : 0;   // pink, orange, green, purple, blue
+		int set = -1;
+		// 1.38: the colour set from the meter's own badge (a sibling showing one of our multiplier textures, which the
+		// DE sets correctly in every mode); the multiplier query below returned x1 in face-off (user test 2026-10-22:
+		// pink lights at x4 on the multiplayer meters)
+		if (void *parent = *reinterpret_cast<void **>(field(elements[0], kElementParent)))
+			for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c && set < 0;
+			     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+				for (int k = 0; k < 8; ++k)
+					if (texture_of(c) == kOurMult[k])
+					{
+						set = k >= 4 ? 4 : k;     // x1 pink, x2 orange, x3 green, x4 purple, star power blue
+						break;
+					}
+		if (set < 0)
+		{
+			const int mult = reinterpret_cast<GetMultiplierFn>(kGetMultiplier)(*reinterpret_cast<void **>(kPlayerInfo), nullptr, player, 1);
+			const bool sp = reinterpret_cast<IsStarPowerFn>(kIsStarPower)(*reinterpret_cast<void **>(kStarPower), nullptr, player);
+			set = sp ? 4 : mult >= 4 ? 3 : mult == 3 ? 2 : mult == 2 ? 1 : 0;   // pink, orange, green, purple, blue
+		}
 
 		// same mark maths as the game: 10 marks over 5 lights, 2 marks per light
 		int s = streak < 0 ? 0 : streak > 30 ? 30 : streak;
@@ -867,6 +883,36 @@ namespace
 		const float d = kBSlot[slot][4] / s;
 		if (fabsf(f32(card, kElementDims) - d) > 0.05f)
 			reinterpret_cast<SetDimsFn>(kSetDims)(card, nullptr, d, d, 0);
+		// 1.38: the first card (big slot) in front, then the next (user 2026-10-22: they stacked the other way);
+		// z stays within 19.0..19.1, which is how cards are recognised
+		const float z = 19.0f + (3 - slot % 3) * 0.02f;
+		if (f32(card, kElementZ) != z)
+			f32(card, kElementZ) = z;
+	}
+
+	// 1.38, versus needle (tools/wor_versus.py): the DE turns the needle only -51.5..51.5 deg, short of the WoR dial's
+	// ends. Its angle goes to a hidden twin (a sibling with dims kVsNeedleSrcDims); the visible needle takes it x K.
+	bool g_vs_needle_logged = false;
+
+	void vs_needle(void *needle)
+	{
+		void *parent = *reinterpret_cast<void **>(field(needle, kElementParent));
+		if (!parent)
+			return;
+		for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c;
+		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+		{
+			if (c == needle || fabsf(f32(c, kElementDims) - kVsNeedleSrcDims) > 0.01f ||
+			    fabsf(f32(c, kElementDims + 4) - kVsNeedleSrcDims) > 0.01f)
+				continue;
+			f32(needle, kElementRot) = f32(c, kElementRot) * kVsNeedleK;
+			if (!g_vs_needle_logged)
+			{
+				g_vs_needle_logged = true;
+				log("versus needle: twin found, angle x %.2f", kVsNeedleK);
+			}
+			return;
+		}
 	}
 
 	void __fastcall element_update_hook(void *element, void *edx)
@@ -874,10 +920,12 @@ namespace
 		if (element)
 		{
 			needle_remap(element);
+			if (texture_of(element) == kVsNeedleTex)
+				vs_needle(element);
 			const float w = f32(element, kElementDims);
 			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
 				battle_needle(element);
-			else if (f32(element, kElementZ) == 19.0f)
+			else if (f32(element, kElementZ) >= 19.0f && f32(element, kElementZ) < 19.1f)
 				battle_card(element);
 		}
 		if (element && element == g_sp.clip)
@@ -1450,7 +1498,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.37 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.38 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

@@ -74,7 +74,17 @@ DIAL_C = (640.0, 322.0)
 DIAL_K = 0.62                              # the 256 px dial art
 BAR_K = 0.62                               # the 512x64 score bar art (visible 268 px)
 BAR_Y = 344.0                              # the score boxes, by the dial
-BAR_GAP = 8.0                              # between the dial's outer edge and a bar's inner end
+BAR_GAP = 8.0                              # (unused since 2026-10-22: the boxes hang from the dial's corners)
+DIAL_ART = (32.0, 226.0, 95.0, 192.0)      # the dial art's visible box in its 256 px texture (x0, x1, y0, y1)
+BOX_ART = (121.0, 391.0, 8.0, 59.0)        # the score box art's visible box in its 512x64 texture
+# WoR's dark (inactive) red half, from the user's WoR frames (73, 26, 14) against ours in game (68, 31, 25)
+DIAL_RED_GAIN = (1.07, 0.84, 0.56)
+# the needle: the DE turns it -51.5..51.5 deg (faceoff_ratio); WoR's dial spans ~180 deg, so a full lead stopped at
+# ~70% of a side (user 2026-10-22). The DE's angle goes to a hidden twin (marked by its dims); plugin 1.38 turns the
+# visible needle by that angle x NEEDLE_K.
+NEEDLE_K = 1.65
+NEEDLE_SRC_DIMS = 3.125
+STREAK_FIT = 0.9                           # the streak text shrinks to fit this share of its square (3-4 digits)
 
 
 def _p2(pt, p):
@@ -190,6 +200,7 @@ def textures(textures_dir=None):
     out = {k: Image.open(v).convert('RGBA') for k, v in TEX.items()}
     for k in FLIPPED:
         out[k] = out[k].transpose(Image.FLIP_LEFT_RIGHT)
+    out['WoR_HUD_vs_dial'] = _dial_colours(out['WoR_HUD_vs_dial'])
     for ours, _, label in VSMULT:
         out[ours] = mult_text(label)
     for m, src in MIRRORED.items():
@@ -208,10 +219,21 @@ def textures(textures_dir=None):
     return out
 
 
+def _dial_colours(im):
+    """The inactive red half (right, P2's, after the flip) nearer WoR's dark red (user 2026-10-22: ours read brown)."""
+    from PIL import Image
+    a = np.array(im).astype(np.float32)
+    half = a[:, 128:, :3]
+    half *= np.array(DIAL_RED_GAIN, np.float32)
+    a[:, 128:, :3] = half
+    return Image.fromarray(a.clip(0, 255).astype(np.uint8))
+
+
 def sources():
     s = {k: {'src': v} for k, v in TEX.items()}
     for k in FLIPPED:
         s[k]['flip'] = True
+    s['WoR_HUD_vs_dial']['red_half_gain'] = list(DIAL_RED_GAIN)
     for ours, _, label in VSMULT:
         s[ours] = {'src': WOR_NUM_A2, 'x_font': 'fontgrid_text_a1', 'text': 'x' + label}
     for m, src in MIRRORED.items():
@@ -238,7 +260,9 @@ def tree():
                       # the needle pivots at its texture centre (the visible blade is the upper half); WoR puts it
                       # at the dial's arc centre: texture (128, 194) of the 256 px dial
                       E('needle', 'SpriteElement', pos=(128 * dk, 194 * dk), dims=(32 * dk, 256 * dk), just=(0, 0),
-                        z=12.0, texture='WoR_HUD_vs_needle')]))
+                        z=12.0, texture='WoR_HUD_vs_needle'),
+                      E('needle_src', 'SpriteElement', pos=(128 * dk, 194 * dk), dims=(NEEDLE_SRC_DIMS, NEEDLE_SRC_DIMS),
+                        just=(0, 0), z=0.0, alpha=0.0, texture='WoR_HUD_blank')]))
     # the dial's arc centre on screen (needle pivot); the glows are quarters left / right of it
     piv = (DIAL_C[0], DIAL_C[1] + (194 - 128) * dk)
     glow_l = _sprite('glow_l', 'WoR_HUD_vs_glow_l', (piv[0] - 60 * dk * 0.95, piv[1] - 64 * dk * 0.95 + 4),
@@ -248,10 +272,16 @@ def tree():
     # score bars: inner end next to the dial
     bar_w = 268 * BAR_K
     half_dial = 98 * dk
+    # each box's inner top corner on the dial's bottom corner on its side, the boxes in front of the dial (user
+    # 2026-10-22, WoR frames)
+    corner_dx = (DIAL_ART[1] - DIAL_ART[0]) / 2 * dk
+    corner_y = DIAL_C[1] + (DIAL_ART[3] - 128) * dk
+    box_y = corner_y - (BOX_ART[2] - 32) * BAR_K                         # the art's centre height
     for p in (1, 2):
         sgn = -1 if p == 1 else 1
-        bx = DIAL_C[0] + sgn * (half_dial + BAR_GAP + bar_w / 2)       # visible bar centre
-        art_c = (bx - (258 - 256) * BAR_K, BAR_Y)                     # the art's visible part is centred on x 258
+        art_x = DIAL_C[0] + sgn * (corner_dx + (BOX_ART[1] - 256) * BAR_K)
+        art_c = (art_x if p == 1 else art_x, box_y)
+        bx = art_x - sgn * (258 - 256) * BAR_K                         # visible bar centre (art visible centre x 258)
         sq = ((STREAK_SQ[0] + STREAK_SQ[1]) / 2 - 258) * BAR_K        # the square's centre, from the art's visible centre
         sq_x = bx + (sq if p == 1 else -sq)                            # P2's bar is mirrored
         score_x = bx + bar_w / 2 - 14 if p == 1 else sq_x - (STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K / 2 - 10
@@ -264,25 +294,26 @@ def tree():
         # slides it out of the window on playerN_streak_ended and back on _started (the DE's threshold).
         sq_w = (STREAK_SQ[1] - STREAK_SQ[0]) * BAR_K
         kids.append(E(f'score_container_{p}', 'ContainerElement', just=(-1, -1), dims=(1280, 720), z=5.0, children=[
-            _sprite(f'score_back_{p}', 'WoR_HUD_vs_score_back' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),
+            _sprite(f'score_back_{p}', 'WoR_HUD_vs_score_back' + m, art_c,
                     (512 * BAR_K, 64 * BAR_K), 5.0),
-            _sprite(f'score_frame_{p}', 'WoR_HUD_vs_score' + m, (bx + (art_c[0] - bx) * (1 if p == 1 else -1), BAR_Y),
+            _sprite(f'score_frame_{p}', 'WoR_HUD_vs_score' + m, art_c,
                     (512 * BAR_K, 64 * BAR_K), 6.0),
-            _sprite(f'stripe_{p}', 'WoR_HUD_vs_stripe', (bx, BAR_Y - 3), (256 * BAR_K * 1.072, 64 * BAR_K), 7.0,
+            _sprite(f'stripe_{p}', 'WoR_HUD_vs_stripe', (bx, box_y - 3), (256 * BAR_K * 1.072, 64 * BAR_K), 7.0,
                     rgba=P_RGBA[p]),
-            E(f'score_{p}', 'TextBlockElement', pos=(score_x, BAR_Y + 1), dims=(300, 40), just=(1, 0),
+            E(f'score_{p}', 'TextBlockElement', pos=(score_x, box_y + 1), dims=(300, 40), just=(1, 0),
               scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000', shadow=False),
             # the DE writes the side's multiplier texture here (plugin kVsNixieMap): kept, hidden
-            E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(sq_x, BAR_Y + 1),
+            E(f'HUD_bb_multiplier_nixie_{p}', 'SpriteElement', pos=(sq_x, box_y + 1),
               dims=(mult_h * VSMULT_CANVAS[0] / VSMULT_CANVAS[1], mult_h), just=(0, 0), z=9.0, alpha=0.0,
               texture=VSMULT[0][0]),
-            E(f'streak_mask_{p}', 'windowelement', pos=(sq_x - sq_w / 2, BAR_Y - STREAK_SQ_H / 2),
+            E(f'streak_mask_{p}', 'windowelement', pos=(sq_x - sq_w / 2, box_y - STREAK_SQ_H / 2),
               dims=(sq_w, STREAK_SQ_H), just=(-1, -1), z=8.0, children=[
                   E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=(sq_w, STREAK_SQ_H), just=(-1, -1), z=8.0,
                     children=[
-                        E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1), dims=(200, 40),
-                          just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0, font=SCORE_FONT, text='0x00000000',
-                          shadow=False)])]),
+                        E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1),
+                          dims=(sq_w * STREAK_FIT / SCORE_K, 40), just=(0, 0), scale=(SCORE_K, SCORE_K), z=8.0,
+                          font=SCORE_FONT, text='0x00000000', shadow=False,
+                          fit_width='scale each line if larger')])]),
         ]))
     # who leads: the dial's glow on the leader's side (the DE fades these containers; amber = P1, violet = P2)
     for p, glow in ((1, glow_l), (2, glow_r)):
@@ -298,7 +329,7 @@ def tree():
 
 def versus_desc():
     root = tree()
-    props = [('hud_band_battle_meter_needle_rot_angle', 'needle', 'rot_angle'),
+    props = [('hud_band_battle_meter_needle_rot_angle', 'needle_src', 'rot_angle'),
              ('hud_band_battle_meter_amber_on_alpha', 'lead_1', 'alpha'),
              ('hud_band_battle_meter_violet_on_alpha', 'lead_2', 'alpha'),
              ('score_1_text', 'score_1', 'text'), ('score_2_text', 'score_2', 'text'),

@@ -48,7 +48,8 @@ class E:
             ij = self.extra.get('internal_just', self.just)
             L += [f'StructQBStringQs text = {self.extra.get("text", "0x00000000")}',
                   f'StructQBKey font = {self.extra["font"]}', 'StructQBKey material = 0x00000000',
-                  'StructQBKey single_line = true', 'StructQBKey fit_width = expand dims',
+                  'StructQBKey single_line = true',
+                  f'StructQBKey fit_width = {self.extra.get("fit_width", "expand dims")}',
                   'StructQBKey fit_height = expand dims', 'StructQBKey scale_mode = proportional',
                   'StructQBKey text_case = Original',
                   f'StructArray internal_just\n{{\n\tArrayFloat\n\t[\n\t\t{_f(ij[0])}\n\t\t{_f(ij[1])}\n\t]\n}}',

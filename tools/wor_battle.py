@@ -70,7 +70,10 @@ VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.94                        # ring centres this many rim radii apart along the rail (a little overlap)
 VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
-CARD_FILL = 0.9                         # a card fills this much of its visor's glass diameter
+CARD_FILL = 0.8                         # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
+                                        # 2026-10-22, the slot's border must show around the card)
+VISOR_INSET = 4.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
+                                        # arms should barely show)
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
             'green': 'WoR_HUD_btube_green'}
 NEEDLE_TEX = 'WoR_HUD_bneedle'          # the visible needle (the plugin finds it by this name)
@@ -82,7 +85,7 @@ GAMERTAG_TEX = 'WoR_HUD_gamertag_bg'
 # thicker than the stock sidebars, so at stock spacing the two borders overlapped ~37 px at the screen's bottom edge.
 # User 2026-10-22: they must touch, corrected for the thickness: the user's clip (1:15) showed a 22.5 px gap there at
 # 30, so 30 - 22.5 / 2 makes the borders meet at the bottom edge.
-SEP = 19.0
+SEP = 22.0                              # 19 -> 22 (user 2026-10-22): the borders, lowered (wor_1g.BORDER_DY), must not touch
 RAIL_L = ((320.0, 395.0), (170.0, 700.0))           # P1 left / right rail lines (top, bottom)
 RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways
@@ -193,7 +196,11 @@ def visors(sep=SEP):
         tau = t - along(shrink(ring, s, 0.0))              # slide so the glass centre lands at t along the rail
         out.append((key, shrink(bc, s, tau), (s * tw / SS, s * th / SS), shrink(ring, s, tau), VISOR_RING[2] * k * s))
         prev = rim
-    return out
+    nx, ny = -v[1], v[0]
+    if nx > 0:                                          # the normal pointing at the highway (left of P1's right rail)
+        nx, ny = -nx, -ny
+    move = lambda p: (p[0] + nx * VISOR_INSET, p[1] + ny * VISOR_INSET)
+    return [(key, move(c), dims, move(g), r) for key, c, dims, g, r in out]
 
 
 def slots_on_tube(sep=SEP):

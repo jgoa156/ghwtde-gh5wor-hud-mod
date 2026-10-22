@@ -872,6 +872,9 @@ BOLT_KEY = 0x9d12571c                # checksum of tex\models\highway\big_lighni
 BOLT_SRC = paths.wor('basic_gems_png', '0c30522c.png')
 BORDER_X_SCALE = 2.6
 BORDER_OFFSET = 17.4
+# the border ends a few px above the highway's end (user 2026-10-22: a gap where two highways meet at the screen's
+# bottom): moved down by this much (the theme offsets are x, y; ~1 unit = 1 px)
+BORDER_DY = 4.0
 
 
 def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3):

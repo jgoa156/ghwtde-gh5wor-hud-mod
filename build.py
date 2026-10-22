@@ -199,8 +199,8 @@ def main():
     # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
     sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'
-              f'\t\t\t\tStructFloatX2 0x3dacb46b\n\t\t\t\t{{\n\t\t\t\t\tFloats [{-off_:.5f}, 0.00000]\n\t\t\t\t}}\n'
-              f'\t\t\t\tStructFloatX2 0x4dd26977\n\t\t\t\t{{\n\t\t\t\t\tFloats [{off_:.5f}, 0.00000]\n\t\t\t\t}}\n')
+              f'\t\t\t\tStructFloatX2 0x3dacb46b\n\t\t\t\t{{\n\t\t\t\t\tFloats [{-off_:.5f}, {wor_1g.BORDER_DY:.5f}]\n\t\t\t\t}}\n'
+              f'\t\t\t\tStructFloatX2 0x4dd26977\n\t\t\t\t{{\n\t\t\t\t\tFloats [{off_:.5f}, {wor_1g.BORDER_DY:.5f}]\n\t\t\t\t}}\n')
     # in-play message font (note streaks, Hot Start, band streaks, drum fills, fail hint; DE default
     # fontgrid_text_a6): stock themes set d5927557 and bf72b22c to their own font. The copied WT+ row already has
     # bf72b22c, so it is replaced, not duplicated.

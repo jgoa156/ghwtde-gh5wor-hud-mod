@@ -115,6 +115,9 @@ def main():
             'static const uint32_t kVsMult[8] = { ' + ', '.join(f'0x{qbkey(o):08x}' for o, _, _ in wor_versus.VSMULT) + ' };',
             'static const uint32_t kVsNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(s):08x}, 0x{qbkey(o):08x} }}'
                                                        for o, s, _ in wor_versus.VSMULT) + ' };',
+            '// versus needle (wor_versus NEEDLE_K): the visible needle = the hidden twin\'s angle x K',
+            f'static const uint32_t kVsNeedleTex = 0x{qbkey("WoR_HUD_vs_needle"):08x};',
+            f'static const float kVsNeedleSrcDims = {wor_versus.NEEDLE_SRC_DIMS:.4f}f, kVsNeedleK = {wor_versus.NEEDLE_K:.4f}f;',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

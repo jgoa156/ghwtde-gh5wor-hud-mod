@@ -228,6 +228,10 @@ def _hide_child(d, g, child):
 # 21-28 px right of the rail model (battle pieces, outside these containers, landed on it), so the offset into the
 # centred player containers is off by this much; corrected once for the SP tube, streak meter and rock tube
 MP_DX = -24.0
+# measured 2026-10-22 on the user's 1.39 band frame (2 instruments, hud_2g; canvas = (X - 250) * 0.853 of the 2000 px
+# ultrawide shot): the rock tube sat +74 right of the rail model on both highways (slope = the model's, the 1-player
+# angle), the star power tube +16; after MP_DX the rock tube is still ~50 right, inside the highway on the first gem
+ROCK_MP_DX = -50.0
 
 
 def edit_two_highways(d):
@@ -243,7 +247,7 @@ def edit_two_highways(d):
         off = (shift - tl[0] + MP_DX, -tl[1])    # desc content in P1 screen px -> this container
         d = _set_player_meter(d, g, off)
         new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=2.0, desc=SP_NAME).render(0),
-               E('BAND_side_meter', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=3.0, alpha=0.0,
+               E('BAND_side_meter', 'descinterface', pos=(off[0] + ROCK_MP_DX, off[1]), dims=(1280, 720), just=(-1, -1), z=3.0, alpha=0.0,
                  desc=SIDE_NAME).render(0)]     # hidden until the DE attaches health (WoR_HUD_HUD_attach_widget_player_health)
         d = _append_children(d, g, new)
     return d

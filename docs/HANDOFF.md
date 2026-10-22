@@ -451,3 +451,46 @@ eshade-6.8.0`, ASI loader:
   DE's own scrolling Drum_fill material (mat_drum_fill / mat_drum_fill2, DE colour (1,1,1,0.3)) via build.py
   DRUM_FILL_RGBA (None = off; recolour_materials in dark_metal_sections). Mock docs/mocks/mock_drumfill_v1.jpg: soft
   (0.58,0,1,0.5) vs strong (0.58,0,1,0.8). WAITING for the user's pick.
+
+## 2026-10-22 late 5: BAND / MULTIPLAYER = TOP PRIORITY. Next session (cheaper model): capture + calibrate
+
+User 2026-10-22: "what about the band stuff? ... all problems were there, high priority to multiplayer modes fixing,
+remember the elements are not tilted in a different way than in singleplay, dont stop till you're done". The user
+approved the bot captures below but wants them run on a cheaper model. Rule unchanged: the user starts that session.
+
+### Step 1: capture (bot-played, no player; the user approved this run)
+`python tests/capture_band.py` (all four line-ups, ~3.5 min each; the game takes focus, don't touch the PC). Frames:
+`tests/results/band-<stamp>/<lineup>_<n>.bmp` (2560x1080) + `<lineup>_wor_hud_fixes.log`. GHWTDE.ini restored per run.
+`--only 2g,3g1v` for a subset. Line-ups -> DE layout: 2g = guitar+drum (hud_2g), 1g1v = guitar+vocals (hud_1g1v),
+2g1v = guitar+drum+vocals (hud_2g1v), 3g1v = guitar+bass+drum+vocals (hud_3g1v).
+
+### Step 2: what is wrong / what to do (in this order)
+1. **hud_1g1v and hud_3g1v have NONE of our per-player pieces** (wor_versus.edit_layout only runs
+   wor_mp.edit_two_highways for hud_2g / hud_2g1v). Every band with a vocalist and every 4-player band shows the
+   DE's stock pieces. Generalise edit_two_highways to N instrument containers (g1..g3) with a rail model per layout
+   (measure each highway's left / right rail lines in the captures, like RAIL_L / RAIL_R in tools/wor_battle.py).
+2. **Angle rule (user, repeated):** every piece keeps the 1-PLAYER angle: uniform scale + translation of the 1-player
+   piece (wor_battle.tube_maps does this: no shear / rotation). Only position and size change per highway.
+3. **Rock tube offset (hud_2g):** measured on the user's 1.39 band frame (images/79.jpg of session 7a7f6617; canvas =
+   (X - 250) * 0.853, Y * 0.853 for the 2000x844 shot): rock tube +74 right of the rail model on BOTH highways (slope
+   matched the model), SP tube +16. 1.40's MP_DX -24 left the rock tube ~+50 inside the highway (on the first gem).
+   Applied now (installed, NOT verified): wor_mp.ROCK_MP_DX = -50 on BAND_side_meter only. Verify in 2g_*.bmp: the
+   tube should sit just outside the left border like quickplay.
+4. **P2 multiplier = a white rectangle** in band (1.39 frame): the instrument-icon swap (plugin set_texture_hook,
+   kHighwayIcons) only fires when the badge already shows one of our textures (kOurMult). Check the 1.41 captures; if
+   still white, also swap when the element belongs to our mult desc (or set our x1 texture in mult_desc's initial state).
+5. **Band top-left WT "ROCK" band meter** still shows (band_meter desc). Item 9-11 wanted the quickplay score group
+   top right (wor_band, done in 1.40) and no huge instrument icon; check whether the WT dial must go (ask the user if
+   unclear: WoR has no such dial).
+6. Then items still open from the 1.39 / 1.40 lists (HANDOFF sections above): band score group padding with vocals,
+   bulb grow, every tube shows band SP.
+Mock each change on the captures before installing (rule: mock first), batch, install, then ask for the next test.
+
+### Crash notes (2026-10-22, both dumps re-read with the ORIGINAL exception)
+The 0xc00001a5 "invalid exception handler" is secondary: the real exception record is on the stack (scan for code
+c0000005 in the thread's stack memory). 05:13 dump: access violation at 0x4e6022 (read [ecx+0x214], ecx 0) on the
+setlist path (the orphan pill; 1.41 root_window guard). 06:37 dump (1.41, quickplay mid-song, crowd -> GOOD): access
+violation at 0x5b88a4 (read [0+4]) in vtable slot 10 of Obj::CCompositeObject / CCompositeObjectInstance / CPlayer
+(RTTI): a 3D game object's lookup by its own id returned null. No mod frame on the stack: most likely the DE's venue
+object bug (same family as "Zone not found"), not the HUD. Tools used: scratchpad scripts mdexc.py / mdctx.py / rtti.py
+(session 6b994b8a); worth moving into tools/dump_info.py if crashes continue.

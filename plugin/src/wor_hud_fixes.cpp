@@ -714,6 +714,10 @@ namespace
 		// 1.41: WoR's 6th star at 100% notes in quickplay (build.py SIXTH_STAR_SCRIPT wraps the DE's star rating)
 		{ 0xdbc9b21e /* star rating (guitar_progression) */, 0x128fac03 /* wor_hud_star_rating */, 0x3b1ad767 /* _orig */,
 		  "6th star: star rating wrapped (6 stars at 100% notes in quickplay)" },
+		// 1.42: test harness (build.py TEST_AUTOLAUNCH_SCRIPT): with [WoR_HUD] TestAutoLaunch=1 the title screen runs the
+		// DE's AutoLaunch setup (tests/capture_band.py); stock title screen otherwise
+		{ 0x7ebab753 /* ui_create_boot_iis */, 0x4829489f /* wor_hud_ui_create_boot_iis */, 0xeb505f15 /* _orig */,
+		  "test harness: ui_create_boot_iis wrapped ([WoR_HUD] TestAutoLaunch=1 boots into [AutoLaunch])" },
 		// 1.41: battle pieces fade in like the other modes' hud_root (tools/wor_battle.py)
 		{ 0x3ff49f85 /* setup_hud */, 0x7cd1f1ed /* wor_hud_setup_hud */, 0x08c53c35 /* _orig */,
 		  "battle: setup_hud wrapped (battle pieces start hidden)" },
@@ -1652,7 +1656,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.41 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.42 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

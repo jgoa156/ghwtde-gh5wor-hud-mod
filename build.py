@@ -428,7 +428,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -605,6 +605,31 @@ CAREER_METER_SCRIPT = ('Script WoR_HUD_career_side_meter [\n'
 # 6 when it already says 5, no note was missed ([454d9e8b], set at song start, cleared by GuitarEvent_MissedNote) and
 # every shown player has hit as many notes as both total_notes and max_notes (whichever is the chart's count, that only
 # holds on the final note). The meter then animates 5 -> 6 itself (new count above its last shown count).
+# Test harness hook (tests/capture_band.py): the DE's [AutoLaunch] only runs for WTDE developers (guitar_startup skips
+# it while WTDE_IsUser, cd840670, is true: that needs the devs' babe.face key), so for players the game always boots
+# to the title screen. With [WoR_HUD] TestAutoLaunch=1 in GHWTDE.ini (opt-in, set and reverted by the harness), the
+# title screen instead runs the DE's own AutoLaunch setup script 0x581325cc with [AutoLaunch] Venue: players, parts,
+# bots, difficulty and song from [AutoLaunch], straight into the song. Without the key the title screen is stock.
+# The developer check itself is left alone (it also gates the devs' tools).
+TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
+                          '\t:i $WoR_HUD_ui_create_boot_iis_orig$ isNull\n'
+                          '\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestAutoLaunch")$default$ = %i(0)\n'
+                          '\t:i if (%GLOBAL%$value$ = %i(1))\n'
+                          '\t\t:i $SpawnScriptLater$$WoR_HUD_test_autolaunch$\n'
+                          '\t:i endif\n'
+                          '\t:i endfunction\n]\n\n'
+                          'Script WoR_HUD_ui_create_boot_iis_orig [\n'
+                          '\t:i $printf$%s("WoR_HUD: boot screen placeholder ran, plugin swap missing")\n'
+                          '\t:i endfunction\n]\n\n'
+                          'Script WoR_HUD_test_autolaunch [\n'
+                          '\t:i $wait$%f(1.0)$seconds$\n'
+                          '\t:i $[40f2dacd]$$section$ = %s("AutoLaunch")$key$ = %s("Venue")$default$ = %s("z_frathouse")\n'
+                          '\t:i $printf$%s("WoR_HUD: test autolaunch into %g")$g$ = %GLOBAL%$[3684fc56]$\n'
+                          '\t:i $change$$primary_controller_assigned$ = %i(1)\n'
+                          '\t:i $[581325cc]$$venue_string$ = %GLOBAL%$[3684fc56]$\n'
+                          '\t:i endfunction\n]\n')
+
+
 SIXTH_STAR_SCRIPT = ('Script WoR_HUD_star_rating [\n'
                      '\t:i $WoR_HUD_star_rating_orig$ isNull\n'
                      '\t:i $stars$ = %GLOBAL%$[a59e86b4]$\n'

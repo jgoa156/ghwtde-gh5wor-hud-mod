@@ -458,11 +458,11 @@ User 2026-10-22: "what about the band stuff? ... all problems were there, high p
 remember the elements are not tilted in a different way than in singleplay, dont stop till you're done". The user
 approved the bot captures below but wants them run on a cheaper model. Rule unchanged: the user starts that session.
 
-### Step 1: capture (bot-played, no player; the user approved this run)
-`python tests/capture_band.py` (ONE launch, one line-up: default 3g1v = full band, ~4 min; one-shot marker tests/results/capture_band.done). Frames:
-`tests/results/band-<stamp>/<lineup>_<n>.bmp` (2560x1080) + `<lineup>_wor_hud_fixes.log`. GHWTDE.ini restored per run.
-`--only 2g,3g1v` for a subset. Line-ups -> DE layout: 2g = guitar+drum (hud_2g), 1g1v = guitar+vocals (hud_1g1v),
-2g1v = guitar+drum+vocals (hud_2g1v), 3g1v = guitar+bass+drum+vocals (hud_3g1v).
+### Step 1: frames come from the USER (automation dropped 2026-10-22)
+A bot-played capture script (AutoLaunch + window focus) was tried twice and dropped: the game stayed on the title
+screen and the focus handling blanked it (user: "looks fucking useless"). Do not rebuild it. The user sends
+screenshots of a quickplay band with vocals (ideally guitar + bass + drums + vocals = hud_3g1v, plus guitar + vocals =
+hud_1g1v), 2-3 per line-up incl. one with star power. Calibrate from those.
 
 ### Step 2: what is wrong / what to do (in this order)
 1. **hud_1g1v and hud_3g1v have NONE of our per-player pieces** (wor_versus.edit_layout only runs

@@ -4,7 +4,7 @@ once: it leaves tests/results/capture_band.done and refuses to launch again whil
 allow another run).
 
 Uses GHWT:DE's AutoLaunch setup (Players / Part<n> / Bot<n>, run from the title screen by the mod's [WoR_HUD]
-TestAutoLaunch=1 hook) and plain screenshots on a clock from the launch (every 15 s from +90 s until the game quits after the song). GHWTDE.ini, GHWTDE.sav and the Profiles\*.car are backed up and restored after every run (the bot run would save over them). Frames (PNG) land in tests/results/band-<stamp>/.
+TestAutoLaunch=1 hook) and plain screenshots on a clock from the launch (every 15 s from +90 s until the game quits after the song). GHWTDE.ini, GHWTDE.sav and the Profiles/*.car are backed up and restored after every run (the bot run would save over them). Frames (PNG) land in tests/results/band-<stamp>/.
 
 usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 150] [--frames 5]
 exit code: 0 frames captured, 1 no gameplay frame (do NOT rerun: report), 2 refused (already ran / game running)

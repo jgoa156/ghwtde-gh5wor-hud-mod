@@ -6,7 +6,7 @@ allow another run).
 Uses GHWT:DE's AutoLaunch (Players / Part<n> / Bot<n>) and the ghwt_bgfx add-on's frame dump (final_shown.bmp), like
 tests/ingame_smoke.py. GHWTDE.ini is backed up and restored after every run. Frames land in tests/results/band-<stamp>/.
 
-usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 120] [--frames 5]
+usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 150] [--frames 5]
 exit code: 0 frames captured, 1 no gameplay frame (do NOT rerun: report), 2 refused (already ran / game running)
 """
 import argparse, glob, os, shutil, subprocess, sys, time
@@ -44,8 +44,8 @@ def run(name, parts, a, out):
         # the game only advances while it is the foreground window (boot screen frozen otherwise): keep it in front
         # and count how often that worked (H.focus_window returns whether the game holds the foreground)
         held = tries = 0
-        for _ in range(a.wait // 2):
-            time.sleep(2)
+        for _ in range(a.wait // 5):
+            time.sleep(5)
             if proc.poll() is not None:
                 break
             tries += 1
@@ -92,7 +92,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--lineup', default='3g1v', choices=sorted(LINEUPS))
     ap.add_argument('--song', default='aboutagirl')
-    ap.add_argument('--wait', type=int, default=120)
+    ap.add_argument('--wait', type=int, default=150)
     ap.add_argument('--frames', type=int, default=5)
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')

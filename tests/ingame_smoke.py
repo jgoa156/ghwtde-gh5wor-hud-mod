@@ -77,10 +77,13 @@ def focus_window(pid):
     # stopped after 8 s). Workaround: a synthetic Alt tap lifts the lock, and attaching to the current foreground
     # thread's input lets SetForegroundWindow / BringWindowToTop through.
     kernel32 = ctypes.windll.kernel32
+    # touch the window only when needed: restoring / re-focusing a borderless fullscreen game that already has the
+    # foreground blanks the screen (user 2026-10-22: "keeps blanking the game in the title screen")
     for hwnd in found:
-        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-        if user32.GetForegroundWindow() == hwnd:
+        if user32.GetForegroundWindow() == hwnd and not user32.IsIconic(hwnd):
             continue
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
         user32.keybd_event(0x12, 0, 0, 0)        # VK_MENU down
         user32.keybd_event(0x12, 0, 2, 0)        # VK_MENU up
         fg_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)

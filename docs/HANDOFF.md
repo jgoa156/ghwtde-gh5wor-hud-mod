@@ -61,7 +61,14 @@ theme's border offsets + SEP 19 -> 22: UNVERIFIED, needs the game), item 4 (need
 NEEDLE_K 1.65), item 5 slots (VISOR_INSET 4 px towards the highway), item 6 (CARD_FILL 0.8; plugin sets card z
 19 + (3 - slot) * 0.02, cards recognised by z 19..19.1), item 3 lights (plugin set_lights picks the colour set from
 the meter's own badge texture kOurMult; the multiplier query returned x1 in face-off).
-STILL OPEN: item 3 star power tube per player + gluing, item 5 rock tube gluing. Cause found: the DE moves 2-player
+User 2026-10-22 on that: streak lights must keep singleplayer colours (x1 IS pink); the real bug is the DE's stock light
+textures on the multiplayer meters -> reverted the badge-colour change; plugin our_meter() now also recognises a
+meter by any of its lights or a sibling multiplier badge (kOurMult), + log 'streak lights: widget ... set'. Score boxes
+tucked BOX_TUCK 15 under the dial (mock docs/mocks/mock_versus_v8_zoom.jpg). Battle rock needle poorly tracked (user
+crop: red LED lit, needle at the red / yellow boundary): plugin logs 'battle track: deg / health / zone / t | alphas'
+once a second for the next test (compare the zone with the DE-driven LED alphas; then fix kBNeedleD stops or the
+angle -> health map). Plugin 1.38 rebuilt, still NOT installed.
+STILL OPEN: item 3 star power tube per player + gluing, item 5 rock tube gluing (+ needle tracking above). Cause found: the DE moves 2-player
 highways in 3D (get_highway_pos_and_scale Pos, scale 1), so on screen the shift shrinks towards the horizon (~y 213,
 where RAIL_L / RAIL_R meet); our maps move pieces by a constant SEP (hence ROCK_NUDGE). Plan: (a) a shift(y)
 linear in y, zero at the horizon, fitted on the user's clip (f37.5: canvas = crop (240,135,1680,945) of the

@@ -1,4 +1,4 @@
-﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -226,33 +226,44 @@ namespace
 
 	uint8_t *field(void *base, size_t off) { return static_cast<uint8_t *>(base) + off; }
 
+	// 1.38: our meter = its first light shows one of our light names (the desc starts it on WoR_HUD_light_0), or a
+	// sibling shows one of our multiplier badges. The multiplayer meters were missed by the first test alone (user
+	// test 2026-10-22: the DE's stock light textures on them, as if ours didn't load), so their lights kept the
+	// DE's names.
+	bool our_meter(void **elements)
+	{
+		if (elements[0] == nullptr)
+			return false;
+		for (int k = 0; k < 5; ++k)
+			if (elements[k] && is_ours(texture_of(elements[k])))
+				return true;
+		if (void *parent = *reinterpret_cast<void **>(field(elements[0], kElementParent)))
+			for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c;
+			     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+				for (uint32_t m : kOurMult)
+					if (texture_of(c) == m)
+						return true;
+		return false;
+	}
+
+	int g_light_logs = 0;
+
 	void __fastcall set_lights_hook(void *widget, void *edx, int streak)
 	{
 		void **elements = reinterpret_cast<void **>(field(widget, 0x1c));
-		if (elements[0] == nullptr || !is_ours(*reinterpret_cast<uint32_t *>(field(elements[0], kElementTexture))))
+		if (!our_meter(elements))
 		{
 			g_original(widget, edx, streak);
 			return;
 		}
 		const int player = *reinterpret_cast<int *>(field(widget, 0xc)) - 1;
-		int set = -1;
-		// 1.38: the colour set from the meter's own badge (a sibling showing one of our multiplier textures, which the
-		// DE sets correctly in every mode); the multiplier query below returned x1 in face-off (user test 2026-10-22:
-		// pink lights at x4 on the multiplayer meters)
-		if (void *parent = *reinterpret_cast<void **>(field(elements[0], kElementParent)))
-			for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c && set < 0;
-			     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
-				for (int k = 0; k < 8; ++k)
-					if (texture_of(c) == kOurMult[k])
-					{
-						set = k >= 4 ? 4 : k;     // x1 pink, x2 orange, x3 green, x4 purple, star power blue
-						break;
-					}
-		if (set < 0)
+		const int mult = reinterpret_cast<GetMultiplierFn>(kGetMultiplier)(*reinterpret_cast<void **>(kPlayerInfo), nullptr, player, 1);
+		const bool sp = reinterpret_cast<IsStarPowerFn>(kIsStarPower)(*reinterpret_cast<void **>(kStarPower), nullptr, player);
+		const int set = sp ? 4 : mult >= 4 ? 3 : mult == 3 ? 2 : mult == 2 ? 1 : 0;   // pink, orange, green, purple, blue
+		if (g_light_logs < 8 && streak > 0)
 		{
-			const int mult = reinterpret_cast<GetMultiplierFn>(kGetMultiplier)(*reinterpret_cast<void **>(kPlayerInfo), nullptr, player, 1);
-			const bool sp = reinterpret_cast<IsStarPowerFn>(kIsStarPower)(*reinterpret_cast<void **>(kStarPower), nullptr, player);
-			set = sp ? 4 : mult >= 4 ? 3 : mult == 3 ? 2 : mult == 2 ? 1 : 0;   // pink, orange, green, purple, blue
+			++g_light_logs;
+			log("streak lights: widget %p player %d streak %d mult %d sp %d -> set %d", widget, player + 1, streak, mult, sp, set);
 		}
 
 		// same mark maths as the game: 10 marks over 5 lights, 2 marks per light
@@ -831,6 +842,22 @@ namespace
 			g_bneedle_logged = true;
 			log("battle needle: stand-in %08x at (%.1f, %.1f), rot %.2f deg, swing %.0f -> health %.2f",
 			    id_of(src), f32(src, kElementPos), f32(src, kElementPos + 4), deg, a, h);
+		}
+		// 1.38: tracking log (user test 2026-10-22: red LED lit with the needle up at the red / yellow boundary): once
+		// a second, the DE's angle, our health and zone, and the DE-driven siblings' alphas (its LED / BG layers)
+		static double s_track_t = 0.0;
+		static int s_track_logs = 0;
+		if (s_track_logs < 120 && g_battle_seen - s_track_t >= 1.0)
+		{
+			s_track_t = g_battle_seen;
+			++s_track_logs;
+			char buf[256];
+			int n = snprintf(buf, sizeof(buf), "battle track: deg %.1f health %.2f zone %d t %.2f | alphas", deg, h, i, t);
+			for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c && n < 240;
+			     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+				if (c != needle && c != src && f32(c, kElementAlpha) > 0.01f)
+					n += snprintf(buf + n, sizeof(buf) - n, " %08x=%.2f", texture_of(c), f32(c, kElementAlpha));
+			log("%s", buf);
 		}
 		if ((deg < g_brot_lo - 2.0f || deg > g_brot_hi + 2.0f) && g_brange_logs < 24)
 		{

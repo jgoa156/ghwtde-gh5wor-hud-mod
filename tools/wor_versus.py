@@ -84,6 +84,7 @@ DIAL_RED_GAIN = (1.07, 0.84, 0.56)
 # visible needle by that angle x NEEDLE_K.
 NEEDLE_K = 1.65
 NEEDLE_SRC_DIMS = 3.125
+BOX_TUCK = 15.0                            # the boxes' inner ends this far under the dial (user 2026-10-22: no gap)
 STREAK_FIT = 0.9                           # the streak text shrinks to fit this share of its square (3-4 digits)
 
 
@@ -279,7 +280,7 @@ def tree():
     box_y = corner_y - (BOX_ART[2] - 32) * BAR_K                         # the art's centre height
     for p in (1, 2):
         sgn = -1 if p == 1 else 1
-        art_x = DIAL_C[0] + sgn * (corner_dx + (BOX_ART[1] - 256) * BAR_K)
+        art_x = DIAL_C[0] + sgn * (corner_dx - BOX_TUCK + (BOX_ART[1] - 256) * BAR_K)
         art_c = (art_x if p == 1 else art_x, box_y)
         bx = art_x - sgn * (258 - 256) * BAR_K                         # visible bar centre (art visible centre x 258)
         sq = ((STREAK_SQ[0] + STREAK_SQ[1]) / 2 - 258) * BAR_K        # the square's centre, from the art's visible centre

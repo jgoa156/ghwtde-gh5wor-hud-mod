@@ -299,12 +299,15 @@ def edit_three_highways(d):
     for g, rails in zip(('g1', 'g2', 'g3'), RAILS_3G):
         s, (tx, ty) = highway_map(rails)
         tl = _container_topleft(d, g)
-        # 2-player P1 content: screen = p + (MP_DX, 0) (+ ROCK_MP_DX for the rock tube) -> here s * that + t
-        off = (s * MP_DX + tx - tl[0], ty - tl[1])
+        # 2-player P1 content (its own screen px) -> s * p + t here. MP_DX / ROCK_MP_DX are NOT carried over: they
+        # correct hud_2g only (its highways are moved apart by our x_offset_p2 change); with them the 3-highway
+        # capture of 2026-10-22 showed the SP tubes ~17 px and the rock tubes ~65 px left of their rails, which is
+        # s * MP_DX and s * (MP_DX + ROCK_MP_DX) within a few px
+        off = (tx - tl[0], ty - tl[1])
         d = _set_player_meter(d, g, off, scale=s)
         new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), scale=(s, s), z=2.0,
                  desc=SP_NAME).render(0),
-               E('BAND_side_meter', 'descinterface', pos=(off[0] + s * ROCK_MP_DX, off[1]), dims=(1280, 720),
+               E('BAND_side_meter', 'descinterface', pos=off, dims=(1280, 720),
                  just=(-1, -1), scale=(s, s), z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)]
         d = _append_children(d, g, new)
     return d

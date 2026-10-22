@@ -77,8 +77,8 @@ def state(health, sp, mult):
         v['sp_feather_fill0'] = {'texture': os.environ['MOCK_PLASMA'], 'alpha': 1.0}
     v['Score'] = {'text': '45625'}
     v['streak_number'] = {'text': '135'}
-    v['star_meter_num'] = {'text': '3'}
-    v['star_filler'] = {'scale': (0.7 * 0.55, 1.0)}
+    v['star_meter_num'] = {'text': os.environ.get('MOCK_STARS', '3')}
+    v['star_filler'] = {'scale': (0.7 * (1.0 if os.environ.get('MOCK_STARS') else 0.55), 1.0)}
     return v
 
 

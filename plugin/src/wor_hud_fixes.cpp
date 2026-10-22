@@ -711,6 +711,14 @@ namespace
 		// 1.33: battle highways further apart with the WoR theme (wrapper moves the Pos the DE script returns)
 		{ 0x214c3209 /* get_highway_pos_and_scale */, 0x8dd39687 /* wor_hud_get_highway_pos_and_scale */, 0x739598f1 /* _orig */,
 		  "battle: get_highway_pos_and_scale wrapped (highways apart in battle)" },
+		// 1.41: WoR's 6th star at 100% notes in quickplay (build.py SIXTH_STAR_SCRIPT wraps the DE's star rating)
+		{ 0xdbc9b21e /* star rating (guitar_progression) */, 0x128fac03 /* wor_hud_star_rating */, 0x3b1ad767 /* _orig */,
+		  "6th star: star rating wrapped (6 stars at 100% notes in quickplay)" },
+		// 1.41: battle pieces fade in like the other modes' hud_root (tools/wor_battle.py)
+		{ 0x3ff49f85 /* setup_hud */, 0x7cd1f1ed /* wor_hud_setup_hud */, 0x08c53c35 /* _orig */,
+		  "battle: setup_hud wrapped (battle pieces start hidden)" },
+		{ 0x3e6a9eb0 /* move_2d_elements_to_default */, 0x4ad1e01b /* wor_hud_move_2d_elements_to_default */, 0xae083847 /* _orig */,
+		  "battle: move_2d_elements_to_default wrapped (battle pieces fade in with the intro)" },
 		// 1.35: no messages above the highway in any mode with the WoR theme (tools/wor_modes.py)
 		{ 0x8a3b4c01 /* hud_create_message */, 0xbca8b3cd /* wor_hud_hud_create_message */, 0x68c30716 /* _orig */,
 		  "messages: hud_create_message wrapped (none above the highway with the WoR theme)" },

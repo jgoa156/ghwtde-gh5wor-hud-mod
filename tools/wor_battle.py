@@ -591,6 +591,47 @@ def scripts():
             'Script WoR_HUD_get_highway_pos_and_scale_orig [\n'
             '\t:i $printf$%s("WoR_HUD: highway pos placeholder ran, plugin swap missing")\n'
             '\t:i return$Pos$ = %vec2(0.0,0.0)$Scale$ = %vec2(1.0,1.0)\n'
+            '\t:i endfunction\n]\n\n'
+            # 2026-10-22 (user item 0): the battle pieces fade in like every other mode's HUD. The other modes fade
+            # hud_root (created at alpha 0, faded to 1 over 0.25 s by move_2d_elements_to_default after its intro
+            # loop); battle's layout has no desc_interface, so no hud_root, and HUD_2D_Container<p> sits at full alpha.
+            # setup_hud's wrapper hides each player's container; move_2d_elements_to_default's wrapper runs the DE
+            # script and fades both containers at the moment it fades hud_root.
+            'Script WoR_HUD_setup_hud [\n'
+            '\t:i $WoR_HUD_setup_hud_orig$ isNull\n'
+            f'\t:i if {is_ours}\n'
+            '\t\t:i if (~$game_mode$ = $p2_battle$)\n'
+            '\t\t\t:i $FormatText$$checksumname$ = $container$%s("HUD_2D_Container%p")$p$ = %GLOBAL%$player_text$\n'
+            '\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$container$\n'
+            '\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$container$$alpha$ = %i(0)\n'
+            '\t\t\t:i endif\n'
+            '\t\t:i endif\n'
+            '\t:i endif\n'
+            '\t:i endfunction\n]\n\n'
+            'Script WoR_HUD_setup_hud_orig [\n'
+            '\t:i $printf$%s("WoR_HUD: setup_hud placeholder ran, plugin swap missing")\n'
+            '\t:i endfunction\n]\n\n'
+            'Script WoR_HUD_move_2d_elements_to_default [\n'
+            f'\t:i if {is_ours}\n'
+            '\t\t:i if (~$game_mode$ = $p2_battle$)\n'
+            '\t\t\t:i $spawnscriptnow$$WoR_HUD_move_2d_elements_to_default_orig$$params$ = :s{$morph_time$ = %GLOBAL%$morph_time$:s}\n'
+            '\t\t\t:i if $[af530ac6]$\n'
+            '\t\t\t\t:i $wait$%f(0.5)$seconds$\n'
+            '\t\t\t:i endif\n'
+            '\t\t\t:i $wait$%GLOBAL%$morph_time$$seconds$\n'
+            '\t\t\t:i if $ScreenElementExists$$id$ = $HUD_2D_Containerp1$\n'
+            '\t\t\t\t:i $HUD_2D_Containerp1$.$se_setprops$:s{$alpha$ = %i(1)$time$ = %f(0.25):s}\n'
+            '\t\t\t:i endif\n'
+            '\t\t\t:i if $ScreenElementExists$$id$ = $HUD_2D_Containerp2$\n'
+            '\t\t\t\t:i $HUD_2D_Containerp2$.$se_setprops$:s{$alpha$ = %i(1)$time$ = %f(0.25):s}\n'
+            '\t\t\t:i endif\n'
+            '\t\t\t:i return\n'
+            '\t\t:i endif\n'
+            '\t:i endif\n'
+            '\t:i $WoR_HUD_move_2d_elements_to_default_orig$ isNull\n'
+            '\t:i endfunction\n]\n\n'
+            'Script WoR_HUD_move_2d_elements_to_default_orig [\n'
+            '\t:i $printf$%s("WoR_HUD: 2d hud move placeholder ran, plugin swap missing")\n'
             '\t:i endfunction\n]\n')
 
 

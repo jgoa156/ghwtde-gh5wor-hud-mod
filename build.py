@@ -198,6 +198,8 @@ def main():
     extra += '\t\t\t\tStructInt WoR_HUD_career_meter = 1\n'
     # our own flag: WoR's highway star power effect runs with this theme (SP_HIGHWAY_SCRIPTS)
     extra += '\t\t\t\tStructInt WoR_HUD_sp_highway = 1\n'
+    # our own flag: WoR's 6th star at 100% notes in quickplay (SIXTH_STAR_SCRIPT)
+    extra += '\t\t\t\tStructInt WoR_HUD_sixth_star = 1\n'
     # WoR highway border: the DE's sidebar sprite width x sidebar_x_scale, offset outwards
     sx_, off_ = wor_1g.BORDER_X_SCALE, wor_1g.BORDER_OFFSET
     extra += (f'\t\t\t\tStructFloat sidebar_x_scale = {sx_}\n'
@@ -426,7 +428,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -596,6 +598,56 @@ CAREER_METER_SCRIPT = ('Script WoR_HUD_career_side_meter [\n'
                        '\t:i return$false$\n'
                        '\t:i endfunction\n]\n')
 
+
+# WoR / GH5's 6th star (user 2026-10-22: deliberate, not a glitch): in quickplay (single and band), hitting the last
+# note with 100% notes takes the 5-star badge to 6 with the usual star animation. The DE's star rating dbc9b21e (polled
+# every frame by the star meter, guitar_progression) caps at 5; the plugin (1.41) swaps in this wrapper, which returns
+# 6 when it already says 5, no note was missed ([454d9e8b], set at song start, cleared by GuitarEvent_MissedNote) and
+# every shown player has hit as many notes as both total_notes and max_notes (whichever is the chart's count, that only
+# holds on the final note). The meter then animates 5 -> 6 itself (new count above its last shown count).
+SIXTH_STAR_SCRIPT = ('Script WoR_HUD_star_rating [\n'
+                     '\t:i $WoR_HUD_star_rating_orig$ isNull\n'
+                     '\t:i $stars$ = %GLOBAL%$[a59e86b4]$\n'
+                     '\t:i $progress$ = %GLOBAL%$[fcd2f8a1]$\n'
+                     '\t:i if (%GLOBAL%$stars$ = %i(5))\n'
+                     '\t\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sixth_star$\n'
+                     '\t\t\t:i $gamemode_gettype$\n'
+                     '\t\t\t:i if (%GLOBAL%$type$ = $quickplay$)\n'
+                     '\t\t\t\t:i if (~$[454d9e8b]$ = %i(1))\n'
+                     '\t\t\t\t\t:i $GameMode_GetNumPlayersShown$\n'
+                     '\t\t\t\t\t:i $all_hit$ = %i(1)\n'
+                     '\t\t\t\t\t:i $player$ = %i(1)\n'
+                     '\t\t\t\t\t:i while \n'
+                     '\t\t\t\t\t\t:i $getplayerinfo$%GLOBAL%$player$$notes_hit$\n'
+                     '\t\t\t\t\t\t:i $getplayerinfo$%GLOBAL%$player$$total_notes$\n'
+                     '\t\t\t\t\t\t:i $getplayerinfo$%GLOBAL%$player$$max_notes$\n'
+                     '\t\t\t\t\t\t:i if (%GLOBAL%$notes_hit$ < %i(1))\n'
+                     '\t\t\t\t\t\t\t:i $all_hit$ = %i(0)\n'
+                     '\t\t\t\t\t\t:i endif\n'
+                     '\t\t\t\t\t\t:i if NOT (%GLOBAL%$notes_hit$ = %GLOBAL%$total_notes$)\n'
+                     '\t\t\t\t\t\t\t:i $all_hit$ = %i(0)\n'
+                     '\t\t\t\t\t\t:i endif\n'
+                     '\t\t\t\t\t\t:i if NOT (%GLOBAL%$notes_hit$ = %GLOBAL%$max_notes$)\n'
+                     '\t\t\t\t\t\t\t:i $all_hit$ = %i(0)\n'
+                     '\t\t\t\t\t\t:i endif\n'
+                     '\t\t\t\t\t\t:i %GLOBAL%$player$ = (%GLOBAL%$player$ + %i(1))\n'
+                     '\t\t\t\t\t:i loop_to %GLOBAL%$num_players_shown$\n'
+                     '\t\t\t\t\t:i if (%GLOBAL%$all_hit$ = %i(1))\n'
+                     '\t\t\t\t\t\t:i $stars$ = %i(6)\n'
+                     '\t\t\t\t\t\t:i $progress$ = %f(1.0)\n'
+                     '\t\t\t\t\t:i endif\n'
+                     '\t\t\t\t:i endif\n'
+                     '\t\t\t:i endif\n'
+                     '\t\t:i endif\n'
+                     '\t:i endif\n'
+                     '\t:i return$[a59e86b4]$ = %GLOBAL%$stars$$[fcd2f8a1]$ = %GLOBAL%$progress$\n'
+                     '\t:i endfunction\n]\n\n'
+                     # placeholder: the plugin moves the DE script's data here
+                     'Script WoR_HUD_star_rating_orig [\n'
+                     '\t:i $printf$%s("WoR_HUD: star rating placeholder ran, plugin swap missing")\n'
+                     '\t:i return$[a59e86b4]$ = %i(0)$[fcd2f8a1]$ = %f(0.0)\n'
+                     '\t:i endfunction\n]\n')
+
 def needle_script(work):
     """The DE's rock needle script (0x3205f550, tb.pak) as WoR_HUD_side_meter_needle: with the WoR HUD theme (its own
     flag WoR_HUD_career_meter) one non-vocal player gets wor_1g.needle_knots(); otherwise the DE's path. The plugin
@@ -621,6 +673,11 @@ DARK_K = 0.58         # colour multiplier for the highway's metal (user-approved
 # Coloured ring edges (col_now_*_dark), lit caps and gems are left alone.
 DARK_MATERIALS = ['sys_sidebar2D_sys_sidebar2D', 'sys_fretbar_large_sys_fretbar_large',
                   'sys_fretbar_medium_sys_fretbar_medium', 'sys_fretbar_small_sys_fretbar_small', 'Mat_NB_Neck']
+# Drum fill / freeform sections: WoR draws a purple line there (an AudioVisualize av_preset, og_highway_drum_freeform:
+# RGB 147,0,255, additive), which the DE engine lacks; the DE's own scrolling Drum_fill streaks get WoR's purple
+# instead (DE colour (1, 1, 1, 0.3)). None = DE white. Mock: docs/mocks/mock_drumfill_v1.jpg (awaiting the user's pick).
+DRUM_FILL_MATERIALS = ['mat_drum_fill', 'mat_drum_fill2']
+DRUM_FILL_RGBA = None
 DARK_PATTERNS = []   # v0.24: strikeline cups untouched (their chrome ring already matches GH5)
 
 
@@ -637,13 +694,18 @@ def _brace_span(text, i):
 
 def darken_materials(arr, k):
     """Give each DARK material a grey m_psPass0MaterialColor (replacing its colour, or adding one)."""
-    vec = ('StructArray vectorproperty\n{\n\tArrayFloat\n\t[\n' + ''.join(f'\t\t{v:.6f}\n' for v in (k, k, k, 1.0)) + '\t]\n}')
-    names = set(DARK_MATERIALS)
+    return recolour_materials(arr, DARK_MATERIALS, (k, k, k, 1.0), DARK_PATTERNS)
+
+
+def recolour_materials(arr, names, rgba, patterns=()):
+    """Give each named material the m_psPass0MaterialColor rgba (replacing its colour, or adding one)."""
+    vec = ('StructArray vectorproperty\n{\n\tArrayFloat\n\t[\n' + ''.join(f'\t\t{v:.6f}\n' for v in rgba) + '\t]\n}')
+    names = set(names)
     found = []
     out, pos = [], 0
     for m in re.finditer(r'StructQBKey name = (\S+)\s*\n\s*StructArray materialprops', arr):
         name = m.group(1)
-        if name not in names and not any(re.fullmatch(p, name) for p in DARK_PATTERNS):
+        if name not in names and not any(re.fullmatch(p, name) for p in patterns):
             continue
         a, b = _brace_span(arr, m.end())
         props = arr[a:b]
@@ -672,6 +734,8 @@ def dark_metal_sections(work):
         arr = block(text, f'SectionArray {key}')
         arr, found = darken_materials(arr, DARK_K)
         all_found += found
+        if DRUM_FILL_RGBA:
+            arr, _ = recolour_materials(arr, DRUM_FILL_MATERIALS, DRUM_FILL_RGBA)
         if key == '0x345d04a2':
             for name in SP_HIGHWAY_MATERIALS + wor_yourock.MATERIALS + wor_yourock.GLOW_MATS:
                 assert f'StructQBKey name = {name}\n' not in text, f'{name} already in the DE materials'

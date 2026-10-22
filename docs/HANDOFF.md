@@ -432,3 +432,22 @@ eshade-6.8.0`, ASI loader:
 - Test (ask first): band -> face-off -> song list (the crash path), then the 1.40 checklist above. If it still
   crashes, enable full dumps (WER LocalDumps DumpType 2) so code pages and the real stack are captured, and try the
   same path with the mod off.
+
+## 2026-10-22 late 4: battle fade-in + 6th star INSTALLED, purple drum fill awaiting a pick (not tested in game)
+
+- Battle fade (item 0): battle's layout has no desc_interface, so no hud_root (the element every other mode fades in:
+  created at alpha 0, faded to 1 over 0.25 s by move_2d_elements_to_default after its intro loop). Plugin 1.41 swaps
+  setup_hud (wrapper hides HUD_2D_Container<p> in p2_battle with our theme) and move_2d_elements_to_default (in
+  p2_battle: spawns the DE script, waits morph_time (+0.5 s when [af530ac6]), fades HUD_2D_Containerp1/p2 to 1 over
+  0.25 s). tools/wor_battle.py scripts(). The attack cards live under battlemode_container (not faded, appear later).
+- 6th star: build.py SIXTH_STAR_SCRIPT wraps the DE's star rating dbc9b21e (guitar_progression, polled per frame by
+  star meter 0x08b99cb3, caps at 5). Returns 6 / progress 1 when: 5 already, theme flag WoR_HUD_sixth_star, gamemode
+  type quickplay, no-miss flag [454d9e8b] = 1, and every shown player's notes_hit = total_notes = max_notes (one of
+  them is the chart count; unconfirmed which, so the worst case is no 6th star, never an early one). The meter animates
+  5 -> 6 itself (sparks + sound). Mock docs/mocks/mock_sixth_star_v1.jpg. If it never shows: log notes_hit /
+  total_notes / max_notes at song end to see which field is the chart total.
+- Purple line (item 13): WoR's line is an AudioVisualize av_preset (og_highway_drum_freeform, Line primitives RGB
+  147,0,255 additive, audio-driven wiggle) drawn into a viewport texture; the DE has no AudioVisualize. Port: tint the
+  DE's own scrolling Drum_fill material (mat_drum_fill / mat_drum_fill2, DE colour (1,1,1,0.3)) via build.py
+  DRUM_FILL_RGBA (None = off; recolour_materials in dark_metal_sections). Mock docs/mocks/mock_drumfill_v1.jpg: soft
+  (0.58,0,1,0.5) vs strong (0.58,0,1,0.8). WAITING for the user's pick.

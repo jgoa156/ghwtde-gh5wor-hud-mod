@@ -494,3 +494,27 @@ violation at 0x5b88a4 (read [0+4]) in vtable slot 10 of Obj::CCompositeObject / 
 (RTTI): a 3D game object's lookup by its own id returned null. No mod frame on the stack: most likely the DE's venue
 object bug (same family as "Zone not found"), not the HUD. Tools used: scratchpad scripts mdexc.py / mdctx.py / rtti.py
 (session 6b994b8a); worth moving into tools/dump_info.py if crashes continue.
+
+## 2026-10-22 evening: band automation WORKS + band layouts redone (installed; last 3-highway fix not re-captured)
+
+- **Automation:** `python tests/capture_band.py --lineup 2g|3g|3g1v|1g1v|2g1v` (one launch per call; delete
+  tests/results/capture_band.done to allow another). The DE's own [AutoLaunch] is developer-only (guitar_startup skips
+  it while WTDE_IsUser (cd840670) is true; that check reads the devs' babe.face key: not touched). The mod's opt-in
+  hook (build.py TEST_AUTOLAUNCH_SCRIPT, plugin 1.42 swaps ui_create_boot_iis): with [WoR_HUD] TestAutoLaunch=1 the
+  title screen runs the DE's AutoLaunch setup 0x581325cc (players / parts / bots / song from [AutoLaunch]). The script
+  sets and restores the ini, keeps ONLY the main window (class AspyrGH3) in front (the old helper also focused
+  ReShade's D3DProxyWindow: that was the screen blanking), screenshots every 15 s from T+90 s (PIL ImageGrab; the
+  ghwt_bgfx dumps write nothing on this install; debug.txt and wor_hud_fixes.log are locked while the game runs) and
+  closes the game at T+330 s (it sits on the results screen otherwise). No venue loads (black background): good for
+  calibration. Captures: tests/results/band-20261022-1724xx..1736xx (2g, 3g, 3g1v).
+- **hud_2g band:** verified in the capture: rock tube on the left rail (ROCK_MP_DX -50 works), SP tube right, x4,
+  score group top right.
+- **Orange rail glow gone** in every band layout (theme flag cd149bb0 makes highway_streak_glow return): verified.
+- **hud_3g1v (3 instruments with or without vocals):** wor_mp.edit_three_highways: our player_meter / Star_Power /
+  BAND_side_meter on g1..g3 = the 2-player pieces under one uniform scale + shift per highway (highway_map, fitted on
+  RAILS_3G measured from the captures, 1-player angle kept). Verified: the DE's pink streak stacks + instrument icon
+  are gone, x4 badges + SP tubes on every highway, score group top right under the vocal highway
+  (wor_band.OFFSET_BY_CONFIG). Last fix (63ac2e6, installed, NOT re-captured): MP_DX / ROCK_MP_DX dropped for
+  3 highways (they had put the SP tubes ~17 px and the rock tubes ~65 px left of the rails). Next: one 3g1v capture.
+- Still open: band SP fill / per-tube engine with 3 tubes (bots' SP not checked in frames), hud_1g1v and hud_2g1v
+  (not captured yet), the purple drum fill pick, the battle fade / 6th star in-game checks.

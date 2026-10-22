@@ -125,15 +125,15 @@ static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
 static const float kBNeedleDims = 85.3333f;
 static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
 static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.9167f, -51.8508f }, { 49.1272f, -91.2458f }, { 64.5672f, -119.9231f } };
-static const float kBCard = 22.4839f;   // guitar_battle cards are 64x64
+static const float kBCard = 17.0333f;   // guitar_battle cards are 64x64
 // per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
 static const float kBSlot[6][5] = {
-	{ 306.00f, 214.00f, 610.38f, 583.52f, 22.48f },
-	{ 262.00f, 225.00f, 589.14f, 552.26f, 19.11f },
-	{ 253.00f, 251.00f, 571.05f, 525.77f, 16.19f },
-	{ 980.00f, 214.00f, 1112.82f, 583.52f, 22.48f },
-	{ 1026.00f, 227.00f, 1091.58f, 552.26f, 19.11f },
-	{ 1033.00f, 253.00f, 1073.49f, 525.77f, 16.19f },
+	{ 306.00f, 214.00f, 605.99f, 585.92f, 17.03f },
+	{ 262.00f, 225.00f, 588.96f, 562.39f, 14.48f },
+	{ 253.00f, 251.00f, 574.45f, 542.45f, 12.26f },
+	{ 980.00f, 214.00f, 1108.43f, 585.92f, 17.03f },
+	{ 1026.00f, 227.00f, 1091.40f, 562.39f, 14.48f },
+	{ 1033.00f, 253.00f, 1076.89f, 542.45f, 12.26f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 

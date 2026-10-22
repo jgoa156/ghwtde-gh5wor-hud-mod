@@ -54,7 +54,9 @@ STOCK_CARD_SCALES = {'medium_scale': 0.55, 'small_scale': 0.4}    # guitar_battl
 CARD_DIMS = 64.0                        # guitar_battle creates every card 64x64
 # where the rock containers wait before sliding in (stock -420 / 1880): our sets reach the screen middle (P1's slots
 # ~600, P2's tube ~650), so the stock ones left them on screen, each on the other side (user footage 2026-10-21)
-OFFSCREEN = {1: (-700.0, 100.0), 2: (2100.0, 100.0)}
+# the DE slides the rock containers in from here at song start; the user wants no drift (2026-10-22: appear in place
+# like the other modes), so they start where they end
+OFFSCREEN = {1: (280.0, 100.0), 2: (1180.0, 100.0)}
 
 # ---- source textures (extracted game files)
 WOR_GAMERTAG = os.path.join(paths.WOR_EXTRACT, 'band_lobby_png', 'bandlobby_bord_gamertag_color.png')   # Xbox, x360img
@@ -68,11 +70,11 @@ VISOR_RING = (113.5, 96.5, 31.5, 40.0)  # in that art: ring centre (texture px),
 VISOR_ARM = (50, 101, 84, 126)          # in that art: the short arm joining the ring (kept; the stick above it is cut)
 VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 px texture)
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
-VISOR_GAP = 0.94                        # ring centres this many rim radii apart along the rail (a little overlap)
+VISOR_GAP = 0.72                        # ring centres this many rim radii apart along the rail (a little overlap)
 VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
-CARD_FILL = 0.66                        # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
+CARD_FILL = 0.5                         # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
                                         # 2026-10-22, the slot's border must show around the card)
-VISOR_INSET = 4.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
+VISOR_INSET = 9.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
                                         # arms should barely show)
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
             'green': 'WoR_HUD_btube_green'}
@@ -92,7 +94,7 @@ STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the b
 STRIKE_1P, TOP_1P = 638.0, 300.0                     # the 1-player highway (tools/mock_base.py)
 # test 2026-10-21 (user clip "Video Project 25"): on the moved highways the rock tube's centre sat ~24 px off the left
 # rail's outer edge (the 3D highway doesn't move like the pasted mock), leaving a gap; the slots touched their rail
-ROCK_NUDGE = np.array((15.0, 0.0))
+ROCK_NUDGE = np.array((11.0, 0.0))     # 15 -> 11 (user 2026-10-22: a few px left)
 SS = 2.0                                # tube textures: texture px per canvas unit
 SIDE_METER_CALIB = (1.0, 9.0)           # preview_hud.GAME_CALIB of the 1-player side meter (needle) desc
 TUBE_HALF_W = 42.0                      # 1-player canvas: half width of the tube cut (normal to the tube line)

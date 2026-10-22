@@ -54,6 +54,17 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
 10. WoR band score group: a light bulb for the band multiplier that expands out of the score group from x2 up
    (textures already extracted: band_HUD_multiplier_bulb, bulb_x, band_HUD_multiplier_one..eleven).
 11. Band score group always top right; with vocals it gains top padding below the vocal highway (user's WoR frames).
+12. SP tube (all modes, user's WoR crop): WoR's blue fill is wider (fills more of the tube sideways); the bottom neon
+   blurrier with more glow.
+13. Improvisation (freeform) sections: WoR shows a purple animated line on the highway; ours a white line. Lead: WoR
+   av_presets og_highway_drum_freeform(_rb/_ps3) + scripts/guitar/guitar_highway_visualizer (hudqb decompiled).
+DONE + INSTALLED 2026-10-22 ~04:30 (plugin 1.39 names regen, mod): 0 battle containers start in place (OFFSCREEN =
+rock_pos: no slide; a fade is not done yet), 2 career face-off (boss_battle) gets no rock tube (CAREER_METER_SCRIPT),
+3 streak centred (internal_just 0.5; adaptive size still TODO), 4 BOX_UP 6, 6 CARD_FILL 0.5, 7 VISOR_INSET 9 +
+VISOR_GAP 0.72 + ROCK_NUDGE 11, 8 SP_NUDGE -19. Crash analysis: the 03:49 session ended in the DE's 'CRITICAL: Zone
+not found' (random venue bug, not the HUD); the 03:47 mode-switch dump (0xc00001a5 at exe+0x5728f2) has no log
+(overwritten): reproduce once and keep debug.txt. TODO: 1 (crash repro), 3 adaptive size, 5 battle effects vs
+highway, 9-11 band, 12, 13, gluing model, per-player SP tube.
 
 ## 2026-10-22 03:xx: user's test of 1.38 (OPEN, work these first)
 

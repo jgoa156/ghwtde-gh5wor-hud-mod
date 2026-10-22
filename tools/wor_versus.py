@@ -51,7 +51,7 @@ SEG_TEX = 'WoR_HUD_vsseg'                  # the plugin renames the DE's fill na
 SEG_NAMES = (('hud_rock_tube_glow_full', 'WoR_HUD_vsseg'), ('hud_rock_tube_glow_full_b', 'WoR_HUD_vsseg_b'))
 # team colours (WoR face-off: blue left team, red right team; user 2026-10-21: P1 blue, P2 red)
 P_RGBA = {1: (87, 149, 229, 255), 2: (228, 61, 12, 255)}
-SP_NUDGE = np.array((-15.0, 0.0))          # the right rail's tube, towards the highway (see wor_battle.ROCK_NUDGE)
+SP_NUDGE = np.array((-19.0, 0.0))  # -15 -> -19 (user 2026-10-22: face-off pieces a few px left)          # the right rail's tube, towards the highway (see wor_battle.ROCK_NUDGE)
 SCORE_FONT = 'WoR_HUD_num_a1'
 NIXIE_K = 0.30                             # our multiplier badges: the 154x137 art top-left in a 256 px texture
 NIXIE_ART = (154.0, 137.0)                 # (the plugin maps the DE's stock nixie names to them, kNixieMap)
@@ -84,6 +84,7 @@ DIAL_RED_GAIN = (1.07, 0.84, 0.56)
 # visible needle by that angle x NEEDLE_K.
 NEEDLE_K = 1.65
 NEEDLE_SRC_DIMS = 3.125
+BOX_UP = 6.0                               # the boxes a little up: they cover the dial's bottom edge (user 2026-10-22)
 BOX_TUCK = 15.0                            # the boxes' inner ends this far under the dial (user 2026-10-22: no gap)
 STREAK_K = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
                                            # user 2026-10-22: one size that fits 4 digits)
@@ -279,7 +280,7 @@ def tree():
     # 2026-10-22, WoR frames)
     corner_dx = (DIAL_ART[1] - DIAL_ART[0]) / 2 * dk
     corner_y = DIAL_C[1] + (DIAL_ART[3] - 128) * dk
-    box_y = corner_y - (BOX_ART[2] - 32) * BAR_K                         # the art's centre height
+    box_y = corner_y - (BOX_ART[2] - 32) * BAR_K - BOX_UP                # the art's centre height
     for p in (1, 2):
         sgn = -1 if p == 1 else 1
         art_x = DIAL_C[0] + sgn * (corner_dx - BOX_TUCK + (BOX_ART[1] - 256) * BAR_K)
@@ -315,7 +316,7 @@ def tree():
                     children=[
                         E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1),
                           dims=(sq_w * STREAK_FIT / STREAK_K, 40), just=(0, 0), scale=(STREAK_K, STREAK_K), z=8.0,
-                          font=SCORE_FONT, text='0x00000000', shadow=False,
+                          font=SCORE_FONT, text='0x00000000', shadow=False, internal_just=(0.5, 0.0),
                           fit_width='scale each line if larger')])]),
         ]))
     # who leads: the dial's glow on the leader's side (the DE fades these containers; amber = P1, violet = P2)

@@ -413,3 +413,22 @@ eshade-6.8.0`, ASI loader:
   Next: find why the container is gone in face-off (stale for_custom_setlist / num_songs after band?), and make the
   guard safer: attach orphans to root_window by id instead of parent 0, or skip creating them. Then check whether the
   stock DE (mod off) crashes the same way.
+
+## 2026-10-22 late 3: plugin 1.41 + the 60 fps build INSTALLED (not tested in game)
+
+- Crash re-read: `asi+0x2e3b` on the dump's stack is the return address of set_parent_hook's NORMAL path (parent
+  found), so it is a stale stack value (dump_info scans, it doesn't walk), not proof the guard frame was live. The log
+  has exactly ONE missing-parent line before the crash, so it is not a duplicate-id re-create.
+- SetParent (0x5a0240) with parent 0 takes a separate branch: no parent lookup, the element goes onto the manager's
+  top-level list (0x5a35a0 on [element+0xc]) with no window parent. The guard used that branch. 1.41 parents the
+  orphan to `root_window` (0x56a1eae3, looked up first; falls back to 0 only if it is missing) so it takes the normal
+  branch, still hidden. Log line now says "attached to root_window".
+- DE side (why it is orphaned): setup_custom_setlist_helpers creates custom_setlist_continue_helper whenever
+  num_songs != 0, and it is called from ui_setlist_choose_song / ui_setlist_custom_remove(_all) without the
+  for_custom_setlist check the other callers have; the container exists only when for_custom_setlist = 1
+  (ui_create_setlist_spawned) and ui_destroy_setlist destroys it. So a stale band quickplay list (num_songs > 0)
+  in the face-off song list is the likely trigger. The stock DE would null-deref in SetParent on the same path.
+- Installed now: mod + paks from 49f4158 (60 fps plasma, theme pak 2.27 MB) and plugin 1.41 (hash checked).
+- Test (ask first): band -> face-off -> song list (the crash path), then the 1.40 checklist above. If it still
+  crashes, enable full dumps (WER LocalDumps DumpType 2) so code pages and the real stack are captured, and try the
+  same path with the mod off.

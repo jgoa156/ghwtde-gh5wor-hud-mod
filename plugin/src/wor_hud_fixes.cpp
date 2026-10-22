@@ -99,6 +99,7 @@ namespace
 	constexpr size_t kElementId = 0x2c;              // element id checksum (the constructor sets 0xdeadbeef)
 	constexpr uint32_t kHudRoot = 0x39155705;        // hud_root
 	constexpr uintptr_t kSetParent = 0x5a0240;       // void __thiscall (element, parent id): 0 = root; a missing parent crashes
+	constexpr uint32_t kRootWindow = 0x56a1eae3;     // root_window
 	constexpr uintptr_t kElementManager = 0xd62eb8;  // [ ] -> the element manager the id lookups use
 	constexpr uintptr_t kFindElement = 0x477c90;     // void *__thiscall (manager, id): 0 when no element has that id
 
@@ -1134,6 +1135,9 @@ namespace
 	// ---- Fix 14, missing parents (1.24): SetParent reads the parent it looked up without a null check, so a
 	// CreateScreenElement whose parent id doesn't exist crashes the game (star power with 1.23). Such an element goes to
 	// the root, hidden, and the ids are logged.
+	// 1.41: under root_window, not parent 0. Parent 0 takes SetParent's parentless branch (the manager's top-level
+	// list), and the game crashed right after it (the DE's custom_setlist_continue_helper, created by
+	// setup_custom_setlist_helpers after custom_setlist_helper_container was destroyed: band -> face-off song list).
 	using SetParentFn = void(__fastcall *)(void *element, void *edx, uint32_t parent);
 	using FindElementFn = void *(__fastcall *)(void *manager, void *edx, uint32_t id);
 	SetParentFn g_set_parent = nullptr;
@@ -1142,12 +1146,15 @@ namespace
 	void __fastcall set_parent_hook(void *element, void *edx, uint32_t parent)
 	{
 		void *manager = *reinterpret_cast<void **>(kElementManager);
-		if (parent && manager && !reinterpret_cast<FindElementFn>(kFindElement)(manager, nullptr, parent))
+		auto find = reinterpret_cast<FindElementFn>(kFindElement);
+		if (parent && manager && !find(manager, nullptr, parent))
 		{
+			uint32_t root = find(manager, nullptr, kRootWindow) ? kRootWindow : 0;
 			if (g_missing_parents++ < 64)
-				log("missing parent: element %08x asked for parent %08x (attached to the root, hidden)",
-				    *reinterpret_cast<uint32_t *>(field(element, kElementId)), parent);
-			g_set_parent(element, edx, 0);
+				log("missing parent: element %08x asked for parent %08x (attached to %s, hidden)",
+				    *reinterpret_cast<uint32_t *>(field(element, kElementId)), parent,
+				    root ? "root_window" : "the root");
+			g_set_parent(element, edx, root);
 			*reinterpret_cast<float *>(field(element, kElementAlpha)) = 0.0f;
 			*reinterpret_cast<float *>(field(element, kElementAlpha + 0x44)) = 0.0f;
 			return;
@@ -1637,7 +1644,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.40 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.41 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

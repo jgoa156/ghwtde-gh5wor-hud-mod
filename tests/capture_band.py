@@ -4,7 +4,7 @@ once: it leaves tests/results/capture_band.done and refuses to launch again whil
 allow another run).
 
 Uses GHWT:DE's AutoLaunch setup (Players / Part<n> / Bot<n>, run from the title screen by the mod's [WoR_HUD]
-TestAutoLaunch=1 hook) and plain screenshots on a clock from the launch (every 15 s from +90 s until the game quits after the song). GHWTDE.ini is backed up and restored after every run. Frames (PNG) land in tests/results/band-<stamp>/.
+TestAutoLaunch=1 hook) and plain screenshots on a clock from the launch (every 15 s from +90 s until the game quits after the song). GHWTDE.ini, GHWTDE.sav and the Profiles\*.car are backed up and restored after every run (the bot run would save over them). Frames (PNG) land in tests/results/band-<stamp>/.
 
 usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 150] [--frames 5]
 exit code: 0 frames captured, 1 no gameplay frame (do NOT rerun: report), 2 refused (already ran / game running)
@@ -81,8 +81,43 @@ def keep_in_front(pid):
     return user32.GetForegroundWindow() == main
 
 
+SAVE_FILES = ['GHWTDE.sav', os.path.join('Profiles', '*.car')]   # in H.CFG_DIR
+
+
+def backup_save(out):
+    """Copy the player's save + profiles aside. The bot run boots without loading them (AutoLaunch skips the memcard
+    step) and the game saves its fresh progress over them after the song: 2026-10-22 that wiped the user's save
+    (restored from a shadow copy). Returns [(original path, backup path)]."""
+    saved = []
+    keep = os.path.join(out, 'save-backup')
+    os.makedirs(keep, exist_ok=True)
+    for pat in SAVE_FILES:
+        for f in glob.glob(os.path.join(H.CFG_DIR, pat)):
+            dst = os.path.join(keep, os.path.relpath(f, H.CFG_DIR).replace(os.sep, '_'))
+            shutil.copy2(f, dst)
+            saved.append((f, dst))
+    if not any(os.path.basename(f) == 'GHWTDE.sav' for f, _ in saved):
+        raise SystemExit('REFUSED: no GHWTDE.sav found to back up; not launching')
+    return saved
+
+
+def restore_save(saved):
+    """Put the save back byte for byte and drop files the run created (new profiles)."""
+    before = {f for f, _ in saved}
+    for pat in SAVE_FILES:
+        for f in glob.glob(os.path.join(H.CFG_DIR, pat)):
+            if f not in before:
+                os.remove(f)
+    for f, dst in saved:
+        shutil.copy2(dst, f)
+    ok = all(open(f, 'rb').read() == open(dst, 'rb').read() for f, dst in saved)
+    print(f'save restored ({len(saved)} files, verified: {ok})', flush=True)
+    return ok
+
+
 def run(name, parts, a, out):
     original = open(H.INI, encoding='utf-8', errors='surrogateescape').read()
+    saved = backup_save(out)
     proc = None
     got = []
     try:
@@ -141,6 +176,7 @@ def run(name, parts, a, out):
             except subprocess.TimeoutExpired:
                 pass
         open(H.INI, 'w', encoding='utf-8', errors='surrogateescape', newline='').write(original)
+        restore_save(saved)
     for f in ('wor_hud_fixes.log',):
         src = os.path.join(H.GAME, f)
         if os.path.exists(src):

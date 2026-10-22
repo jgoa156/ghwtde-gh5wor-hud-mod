@@ -38,6 +38,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tlhelp32.h>
+#include <shlobj.h>
+#pragma comment(lib, "shell32.lib")
 #include <d3d9.h>
 #pragma comment(lib, "user32.lib")
 #include <cmath>
@@ -714,6 +716,9 @@ namespace
 		// 1.41: WoR's 6th star at 100% notes in quickplay (build.py SIXTH_STAR_SCRIPT wraps the DE's star rating)
 		{ 0xdbc9b21e /* star rating (guitar_progression) */, 0x128fac03 /* wor_hud_star_rating */, 0x3b1ad767 /* _orig */,
 		  "6th star: star rating wrapped (6 stars at 100% notes in quickplay)" },
+		// 1.43: band star sparks = the 1-player ones with this theme (d1be6858's textures aren't in our pak)
+		{ 0xd1be6858 /* multiplayer star sparks */, 0x7643f53b /* wor_hud_star_sparks_mp */, 0x856aa58f /* _orig */,
+		  "band star: multiplayer star sparks wrapped (the 1-player sparks with the WoR theme)" },
 		// 1.42: test harness (build.py TEST_AUTOLAUNCH_SCRIPT): with [WoR_HUD] TestAutoLaunch=1 the title screen runs the
 		// DE's AutoLaunch setup (tests/capture_band.py); stock title screen otherwise
 		{ 0x7ebab753 /* ui_create_boot_iis */, 0x4829489f /* wor_hud_ui_create_boot_iis */, 0xeb505f15 /* _orig */,
@@ -1655,8 +1660,25 @@ namespace
 		GetModuleFileNameA(nullptr, path, MAX_PATH);
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
+		// 1.43: keep the previous session's logs (a crash's logs were lost to the next launch, 2026-10-22):
+		// wor_hud_fixes.log -> .prev.log, and the DE's Logs\debug.txt -> debug.prev.txt when it still holds the
+		// last session (the DE may already have restarted it; the copy is then just this boot's start)
+		char prev[MAX_PATH];
+		sprintf_s(prev, "%.*s.prev.log", static_cast<int>(strlen(path) - 4), path);
+		const bool kept_log = CopyFileA(path, prev, FALSE) != 0;
+		char docs[MAX_PATH] = {};
+		bool kept_debug = false;
+		if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
+		{
+			char debug[MAX_PATH], debug_prev[MAX_PATH];
+			sprintf_s(debug, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.txt", docs);
+			sprintf_s(debug_prev, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.prev.txt", docs);
+			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
+		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.42 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.43 (GH5 / WoR HUD)");
+		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
+		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

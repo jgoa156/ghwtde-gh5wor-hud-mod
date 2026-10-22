@@ -85,6 +85,12 @@ def score_desc():
     src = desc_gen.ROOTS['wor_band_meter_1g_ghwor']
     meter = copy.deepcopy(src)
     meter.children = [c for c in meter.children if not _is_tube(c.local_id)]
+    # the DE's star meter (hudthemes 0x08b99cb3) scales the bar by progress x 1.0 with more than one player shown,
+    # x 0.7 with one: the 1-player bar is authored for 0.7, so in band it overshot the box by 1 / 0.7 (user
+    # 2026-10-22: "the star meter grows past the score group"); the band copy's bar is 0.7 as long
+    for c in meter.children:
+        if c.local_id == 'star_filler':
+            c.dims = (c.dims[0] * 0.7, c.dims[1])
     sc = wor_1g.SCORE_C
     meter.children.append(E(BULB_ID, 'SpriteElement', pos=(sc[0] + BULB_C[0], sc[1] + BULB_C[1]), dims=(BULB_D, BULB_D),
                             just=(0, 0), z=8.0, texture='WoR_HUD_blank'))

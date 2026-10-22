@@ -21,7 +21,13 @@ LINEUPS = {
     '2g1v': ['guitar', 'drum', 'vocals'],
     '3g': ['guitar', 'bass', 'drum'],              # 3 instruments, no vocals: hud_3g1v without its vocal highway
     '3g1v': ['guitar', 'bass', 'drum', 'vocals'],
+    'faceoff': ['guitar', 'guitar'],
+    'profaceoff': ['guitar', 'guitar'],
+    'battle': ['guitar', 'guitar'],
 }
+# line-ups that are not quickplay: [AutoLaunch] GameMode (the DE's AutoLaunch setup 0x581325cc reads it; quickplay
+# by player count otherwise)
+MODES = {'faceoff': 'p2_faceoff', 'profaceoff': 'p2_pro_faceoff', 'battle': 'p2_battle'}
 
 
 SHOT_FROM, SHOT_EVERY, SHOT_UNTIL = 90, 15, 330   # seconds after the launch (the song plays ~T+100..320 s); the game
@@ -125,7 +131,8 @@ def run(name, parts, a, out):
         # the DE's own AutoLaunch only runs for WTDE developers (WTDE_IsUser); [WoR_HUD] TestAutoLaunch=1 makes the
         # mod's title screen run the same AutoLaunch setup (build.py TEST_AUTOLAUNCH_SCRIPT, plugin 1.42)
         sets = [('WoR_HUD', 'TestAutoLaunch', '1'), ('AutoLaunch', 'Song', a.song), ('AutoLaunch', 'Players', str(len(parts))),
-                ('AutoLaunch', 'Venue', 'z_frathouse'), ('AutoLaunch', 'HideHUD', '0'), ('Graphics', 'HUDTheme', 'ghwor')]
+                ('AutoLaunch', 'Venue', 'z_frathouse'), ('AutoLaunch', 'HideHUD', '0'), ('Graphics', 'HUDTheme', 'ghwor'),
+                ('AutoLaunch', 'GameMode', MODES.get(name, 'not_defined'))]
         for i, p in enumerate(parts):
             sfx = '' if i == 0 else str(i + 1)
             sets += [('AutoLaunch', 'Part' + sfx, p), ('AutoLaunch', 'Bot' + sfx, '1')]

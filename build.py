@@ -431,7 +431,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -631,6 +631,22 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i $change$$primary_controller_assigned$ = %i(1)\n'
                           '\t:i $[581325cc]$$venue_string$ = %GLOBAL%$[3684fc56]$\n'
                           '\t:i endfunction\n]\n')
+
+
+# Star-earned sparks with more than one player: the DE's HUD_animate_star_meter_flames_spawn runs d1be6858 instead of
+# Star_Meter_Sparks01, and d1be6858's textures (798997a8, note_explode_*) are not in our theme pak (user 2026-10-22:
+# MISSING TEXTURE boxes around the band star). With our theme it runs the 1-player sparks (same effect as quickplay);
+# other themes keep the DE's. Plugin 1.43 swaps d1be6858.
+STAR_SPARKS_SCRIPT = ('Script WoR_HUD_star_sparks_mp [\n'
+                      '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sixth_star$\n'
+                      '\t\t:i $Star_Meter_Sparks01$ isNull\n'
+                      '\t:i else \n'
+                      '\t\t:i $WoR_HUD_star_sparks_mp_orig$ isNull\n'
+                      '\t:i endif\n'
+                      '\t:i endfunction\n]\n\n'
+                      'Script WoR_HUD_star_sparks_mp_orig [\n'
+                      '\t:i $printf$%s("WoR_HUD: band star sparks placeholder ran, plugin swap missing")\n'
+                      '\t:i endfunction\n]\n')
 
 
 SIXTH_STAR_SCRIPT = ('Script WoR_HUD_star_rating [\n'

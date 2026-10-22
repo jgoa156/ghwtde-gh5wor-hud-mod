@@ -88,6 +88,8 @@ GAMERTAG_TEX = 'WoR_HUD_gamertag_bg'
 # User 2026-10-22: they must touch, corrected for the thickness: the user's clip (1:15) showed a 22.5 px gap there at
 # 30, so 30 - 22.5 / 2 makes the borders meet at the bottom edge.
 SEP = 22.0                              # 19 -> 22 (user 2026-10-22): the borders, lowered (wor_1g.BORDER_DY), must not touch
+SEP3 = 12.5                             # 3 instrument highways: x_offset_p3 + this (Pos x 1.8, ~22 px each at the bottom;
+                                        # capture 2026-10-22: border lines 25.5 apart vs 55.5 on the 2-player highways)
 RAIL_L = ((320.0, 395.0), (170.0, 700.0))           # P1 left / right rail lines (top, bottom)
 RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways
@@ -577,17 +579,23 @@ def scripts():
             '\t:i if (~$WoR_HUD_xoff_saved$ = %i(0))\n'
             '\t\t:i $change$$WoR_HUD_xoff_stock$ = (~$x_offset_p2$)\n'
             '\t\t:i $change$$WoR_HUD_xoff_saved$ = %i(1)\n'
+            '\t\t:i $change$$WoR_HUD_xoff3_stock$ = (~$x_offset_p3$)\n'
             '\t:i endif\n'
             f'\t:i if {is_ours}\n'
             f'\t\t:i $change$$x_offset_p2$ = (~$WoR_HUD_xoff_stock$ + %f({SEP:.1f}))\n'
+            # 3 instrument highways (drum centred, the guitars at -+x_offset_p3 x 1.8): the outer two move out so
+            # the thick WoR borders meet instead of overlapping (user 2026-10-22)
+            f'\t\t:i $change$$x_offset_p3$ = (~$WoR_HUD_xoff3_stock$ + %f({SEP3:.1f}))\n'
             '\t:i else \n'
             '\t\t:i $change$$x_offset_p2$ = (~$WoR_HUD_xoff_stock$)\n'
+            '\t\t:i $change$$x_offset_p3$ = (~$WoR_HUD_xoff3_stock$)\n'
             '\t:i endif\n'
             '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
             '\t:i return$Pos$ = %GLOBAL%$Pos$$Scale$ = %GLOBAL%$Scale$\n'
             '\t:i endfunction\n]\n\n'
             'SectionFloat WoR_HUD_xoff_stock 0.00000\n\n'
             'SectionInteger WoR_HUD_xoff_saved 0\n\n'
+            'SectionFloat WoR_HUD_xoff3_stock 0.00000\n\n'
             'Script WoR_HUD_get_highway_pos_and_scale_orig [\n'
             '\t:i $printf$%s("WoR_HUD: highway pos placeholder ran, plugin swap missing")\n'
             '\t:i return$Pos$ = %vec2(0.0,0.0)$Scale$ = %vec2(1.0,1.0)\n'

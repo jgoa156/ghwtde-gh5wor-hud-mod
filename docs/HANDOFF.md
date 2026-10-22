@@ -67,7 +67,7 @@ meter by any of its lights or a sibling multiplier badge (kOurMult), + log 'stre
 tucked BOX_TUCK 15 under the dial (mock docs/mocks/mock_versus_v8_zoom.jpg). Battle rock needle poorly tracked (user
 crop: red LED lit, needle at the red / yellow boundary): plugin logs 'battle track: deg / health / zone / t | alphas'
 once a second for the next test (compare the zone with the DE-driven LED alphas; then fix kBNeedleD stops or the
-angle -> health map). Plugin 1.38 rebuilt, still NOT installed.
+angle -> health map). Plugin 1.38 + mod INSTALLED 2026-10-22 03:02 (hash checked; the user had tested the old 1.37 build by mistake).
 STILL OPEN: item 3 star power tube per player + gluing, item 5 rock tube gluing (+ needle tracking above). Cause found: the DE moves 2-player
 highways in 3D (get_highway_pos_and_scale Pos, scale 1), so on screen the shift shrinks towards the horizon (~y 213,
 where RAIL_L / RAIL_R meet); our maps move pieces by a constant SEP (hence ROCK_NUDGE). Plan: (a) a shift(y)

@@ -72,9 +72,26 @@ def focus_window(pid):
         return True
 
     user32.EnumWindows(cb, 0)
+    # Windows' foreground lock: a background process (a script started from another tool / session) may not take the
+    # foreground, and the game freezes on the boot screen while it isn't in front (capture run 2026-10-22: countdown
+    # stopped after 8 s). Workaround: a synthetic Alt tap lifts the lock, and attaching to the current foreground
+    # thread's input lets SetForegroundWindow / BringWindowToTop through.
+    kernel32 = ctypes.windll.kernel32
     for hwnd in found:
         user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        if user32.GetForegroundWindow() == hwnd:
+            continue
+        user32.keybd_event(0x12, 0, 0, 0)        # VK_MENU down
+        user32.keybd_event(0x12, 0, 2, 0)        # VK_MENU up
+        fg_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
+        me = kernel32.GetCurrentThreadId()
+        attached = fg_thread and fg_thread != me and user32.AttachThreadInput(me, fg_thread, True)
+        user32.BringWindowToTop(hwnd)
         user32.SetForegroundWindow(hwnd)
+        user32.SetFocus(hwnd)
+        if attached:
+            user32.AttachThreadInput(me, fg_thread, False)
+    return any(user32.GetForegroundWindow() == h for h in found)
 
 
 def game_running():

@@ -1,10 +1,13 @@
-"""Bot-played band captures for the multiplayer layouts (no player needed), one game run per line-up.
+"""Bot-played band capture for the multiplayer layouts (no player needed): ONE game launch, ONE line-up, then it stops.
+AutoLaunch fixes the players at boot, so one launch covers one line-up (default 3g1v, the full band). The script runs
+once: it leaves tests/results/capture_band.done and refuses to launch again while that file exists (delete it to
+allow another run).
 
 Uses GHWT:DE's AutoLaunch (Players / Part<n> / Bot<n>) and the ghwt_bgfx add-on's frame dump (final_shown.bmp), like
 tests/ingame_smoke.py. GHWTDE.ini is backed up and restored after every run. Frames land in tests/results/band-<stamp>/.
 
-usage: python capture_band.py [--only 2g,1g1v,2g1v,3g1v] [--song aboutagirl] [--wait 60] [--frames 3]
-exit code: 0 every line-up captured, 1 some line-up reached no gameplay frame, 2 the harness itself failed
+usage: python capture_band.py [--lineup 3g1v|2g|1g1v|2g1v] [--song aboutagirl] [--wait 60] [--frames 5]
+exit code: 0 frames captured, 1 no gameplay frame (do NOT rerun: report), 2 refused (already ran / game running)
 """
 import argparse, glob, os, shutil, subprocess, sys, time
 
@@ -78,24 +81,25 @@ def run(name, parts, a, out):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--only', default=','.join(LINEUPS))
+    ap.add_argument('--lineup', default='3g1v', choices=sorted(LINEUPS))
     ap.add_argument('--song', default='aboutagirl')
     ap.add_argument('--wait', type=int, default=60)
-    ap.add_argument('--frames', type=int, default=3)
+    ap.add_argument('--frames', type=int, default=5)
     a = ap.parse_args()
+    done = os.path.join(H.OUT, 'capture_band.done')
+    if os.path.exists(done):
+        print(f'REFUSED: the capture already ran ({open(done).read().strip()}). One run only; delete {done} to allow another.')
+        return 2
     if H.game_running():
-        print('HARNESS: the game is already running; close it first.')
+        print('REFUSED: the game is already running; close it first.')
         return 2
     out = os.path.join(H.OUT, 'band-' + time.strftime('%Y%m%d-%H%M%S'))
     os.makedirs(out, exist_ok=True)
     shutil.copy2(H.INI, os.path.join(out, 'GHWTDE.ini.backup'))
-    missing = []
-    for name in a.only.split(','):
-        if not run(name, LINEUPS[name], a, out):
-            missing.append(name)
-        time.sleep(5)
-    print('frames in', out, '| no gameplay frame:', missing or 'none')
-    return 1 if missing else 0
+    open(done, 'w').write(f'{time.strftime("%Y-%m-%d %H:%M:%S")} {a.lineup} -> {out}\n')   # before launching: one run, even if it fails
+    got = run(a.lineup, LINEUPS[a.lineup], a, out)
+    print(f'RESULT: {len(got)} frame(s) in {out}' if got else f'RESULT: no gameplay frame captured ({out})')
+    return 0 if got else 1
 
 
 if __name__ == '__main__':

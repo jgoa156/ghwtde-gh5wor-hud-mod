@@ -459,7 +459,7 @@ remember the elements are not tilted in a different way than in singleplay, dont
 approved the bot captures below but wants them run on a cheaper model. Rule unchanged: the user starts that session.
 
 ### Step 1: capture (bot-played, no player; the user approved this run)
-`python tests/capture_band.py` (all four line-ups, ~3.5 min each; the game takes focus, don't touch the PC). Frames:
+`python tests/capture_band.py` (ONE launch, one line-up: default 3g1v = full band, ~4 min; one-shot marker tests/results/capture_band.done). Frames:
 `tests/results/band-<stamp>/<lineup>_<n>.bmp` (2560x1080) + `<lineup>_wor_hud_fixes.log`. GHWTDE.ini restored per run.
 `--only 2g,3g1v` for a subset. Line-ups -> DE layout: 2g = guitar+drum (hud_2g), 1g1v = guitar+vocals (hud_1g1v),
 2g1v = guitar+drum+vocals (hud_2g1v), 3g1v = guitar+bass+drum+vocals (hud_3g1v).

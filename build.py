@@ -15,7 +15,7 @@ import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_yourock  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_band, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_yourock  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -170,13 +170,15 @@ def main():
         for old, (new_id, _) in TEXTURES.items():
             d = re.sub(rf'texture = {re.escape(old)}\b', f'texture = {new_id}', d)
         d = wor_versus.edit_layout(name.replace('_ghwtwithtime', ''), d)     # versus meter: ours / hidden
+        d = wor_band.edit_layout(name.replace('_ghwtwithtime', ''), d)       # band meter: the quickplay score group
         if name == 'solo_play_rock_meter_ghwtwithtime':
             for local_id, changes in ROCK_METER_EDITS.items():
                 d = desc_edit.set_elem(d, local_id, **changes)
         descs.append(d)
     descs += wor_1g.all_descs()
     descs.append(wor_versus.versus_desc())        # face-off / pro face-off: WoR versus meter (tools/wor_versus.py)
-    descs += wor_mp.descs()                       # 2-highway layouts: per-player SP tube, rock tube, multiplier
+    descs += wor_mp.descs()
+    descs += wor_band.descs()                     # band layouts: the quickplay score group + WoR's band bulb                       # 2-highway layouts: per-player SP tube, rock tube, multiplier
     descs.append(wor_battle.gamertag_desc(next(v for k, v in vh.items() if k.endswith('0x2fdc39e1.qb.xen'))))
 
     # ---- layouts and theme row
@@ -315,7 +317,7 @@ def main():
     # edge and mapped back through the fill sprite's transform (mirrored x scale + rail rotation). Texture-space arcs
     # came out flipped/rotated on screen.
     nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
-    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB)
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
     neon = Image.open(nh).convert('RGBA')
     neon.alpha_composite(Image.open(nc).convert('RGBA'))
     wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon).save(full)
@@ -355,7 +357,7 @@ def main():
     # neon needles (SB_TubeNeedle01's own frame, drawn like the half divider): the fill-top cap as white core + blue
     # halo (two sprites), the bottom one as both in one texture (one sprite, shown charging and ready)
     caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
-    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB)
+    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
     bottom = Image.open(caps[1]).convert('RGBA')
     bottom.alpha_composite(Image.open(caps[0]).convert('RGBA'))
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
@@ -375,10 +377,12 @@ def main():
         im.save(out)
         pngs.append(out)
     sources.update(wor_versus.sources())
-    for (_, sp), (_, vs) in zip(wor_1g.SP_FILL_NAMES, wor_versus.SEG_NAMES):   # multiplayer tubes: the 1p fill art
-        shutil.copy(os.path.join(work, sp + '.png'), os.path.join(work, vs + '.png'))
-        pngs.append(os.path.join(work, vs + '.png'))
-        sources[vs] = dict(sources[sp], copy_of=sp)
+    for name, im in wor_band.textures().items():      # WoR's band multiplier bulb, one per value
+        out = os.path.join(work, name + '.png')
+        im.save(out)
+        pngs.append(out)
+    sources.update(wor_band.sources())
+    # (the multiplayer tubes are copies of the 1-player tube since 2026-10-22: no WoR_HUD_vsseg / vs_sptube any more)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))
     pngs.append(p)
@@ -419,7 +423,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)

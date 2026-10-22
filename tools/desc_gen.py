@@ -50,7 +50,8 @@ class E:
                   f'StructQBKey font = {self.extra["font"]}', 'StructQBKey material = 0x00000000',
                   'StructQBKey single_line = true',
                   f'StructQBKey fit_width = {self.extra.get("fit_width", "expand dims")}',
-                  'StructQBKey fit_height = expand dims', 'StructQBKey scale_mode = proportional',
+                  f'StructQBKey fit_height = {self.extra.get("fit_height", "expand dims")}',
+                  'StructQBKey scale_mode = proportional',
                   'StructQBKey text_case = Original',
                   f'StructArray internal_just\n{{\n\tArrayFloat\n\t[\n\t\t{_f(ij[0])}\n\t\t{_f(ij[1])}\n\t]\n}}',
                   'StructFloatX2 internal_scale\n{\n\tFloats [1.00000, 1.00000]\n}',
@@ -102,11 +103,14 @@ def _path_text(path):
 
 
 ROOTS = {}   # name -> root element of every desc generated (for previews and tests)
+PROPS = {}   # name -> its props list (descs built from another desc, tools/wor_band.py)
+ALIASES = {}
 
 
 def desc(name, root, props=(), aliases=(), rect=(0, 0, 1280, 720)):
     """props: [(prop_name, local_id, target)]; aliases: [(alias_name, local_id)]."""
     ROOTS[name] = root
+    PROPS[name], ALIASES[name] = list(props), list(aliases)
     def entries(items, is_prop):
         out = []
         for item in items:

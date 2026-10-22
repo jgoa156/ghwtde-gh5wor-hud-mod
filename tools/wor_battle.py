@@ -138,8 +138,17 @@ def tube_maps(sep=SEP):
     cr = lambda y: _border(wor_1g.BORDER_LINE_R, y)
     yb2, yt2 = _y2p(yb), _y2p(yt)
     rock = _affine([(cl(yb), yb), (cl(yt), yt), (cr(yb), yb)], [(L(yb2), yb2), (L(yt2), yt2), (R(yb2), yb2)])
-    rock[:, 2] += ROCK_NUDGE
     sp = _affine([(cr(yb), yb), (cr(yt), yt), (cl(yb), yb)], [(R(yb2), yb2), (R(yt2), yt2), (L(yb2), yb2)])
+    # the 1-player angle kept (user 2026-10-22: the sheared tubes looked more tilted than in quickplay; one angle in
+    # every mode): each map = uniform scale (the rail map's size) about the border point at the LED span's middle,
+    # which still lands on the rail
+    ym = (yb + yt) / 2
+    for m, anchor in ((rock, (cl(ym), ym)), (sp, (cr(ym), ym))):
+        k = math.sqrt(abs(np.linalg.det(m[:, :2])))
+        a2 = apply(m, anchor)
+        m[:, :2] = np.eye(2) * k
+        m[:, 2] = (a2[0] - k * anchor[0], a2[1] - k * anchor[1])
+    rock[:, 2] += ROCK_NUDGE
     return {'rock': rock, 'sp': sp}
 
 
@@ -560,19 +569,25 @@ def scripts():
             # 2-player co-op / quickplay; user: carry the battle spacing over): the returned Pos (canvas x,
             # -+x_offset_p2) moved out by SEP per player. (2026-10-21: changing the global x_offset_p2 instead added SEP
             # on every call.)
+            # 2026-10-22: the DE places battle prompts / alerts at the gems' 2D positions + x_offset_p2 itself (user test:
+            # the PUSH prompt off its highway, half behind it), so x_offset_p2 itself is set to its stock value + SEP with
+            # this theme (stock otherwise); the stock value is saved on the first call (the 2026-10-21 attempt added SEP
+            # on every call). The highways, prompts and alerts then move together.
             'Script WoR_HUD_get_highway_pos_and_scale [\n'
-            '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
-            '\t:i if (%GLOBAL%$num_non_vocals_players$ = %i(2))\n'
-            f'\t\t:i if {is_ours}\n'
-            '\t\t\t:i if (%GLOBAL%$non_vocalist_player$ = %i(1))\n'
-            f'\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ - %vec2({SEP:.1f},0.0))\n'
-            '\t\t\t:i else \n'
-            f'\t\t\t\t:i %GLOBAL%$Pos$ = (%GLOBAL%$Pos$ + %vec2({SEP:.1f},0.0))\n'
-            '\t\t\t:i endif\n'
-            '\t\t:i endif\n'
+            '\t:i if (~$WoR_HUD_xoff_saved$ = %i(0))\n'
+            '\t\t:i $change$$WoR_HUD_xoff_stock$ = (~$x_offset_p2$)\n'
+            '\t\t:i $change$$WoR_HUD_xoff_saved$ = %i(1)\n'
             '\t:i endif\n'
+            f'\t:i if {is_ours}\n'
+            f'\t\t:i $change$$x_offset_p2$ = (~$WoR_HUD_xoff_stock$ + %f({SEP:.1f}))\n'
+            '\t:i else \n'
+            '\t\t:i $change$$x_offset_p2$ = (~$WoR_HUD_xoff_stock$)\n'
+            '\t:i endif\n'
+            '\t:i $WoR_HUD_get_highway_pos_and_scale_orig$ isNull\n'
             '\t:i return$Pos$ = %GLOBAL%$Pos$$Scale$ = %GLOBAL%$Scale$\n'
             '\t:i endfunction\n]\n\n'
+            'SectionFloat WoR_HUD_xoff_stock 0.00000\n\n'
+            'SectionInteger WoR_HUD_xoff_saved 0\n\n'
             'Script WoR_HUD_get_highway_pos_and_scale_orig [\n'
             '\t:i $printf$%s("WoR_HUD: highway pos placeholder ran, plugin swap missing")\n'
             '\t:i return$Pos$ = %vec2(0.0,0.0)$Scale$ = %vec2(1.0,1.0)\n'

@@ -2,10 +2,9 @@
 2026-10-21: "in band, rock meter, star power tube and streak multiplier is kept"). Each player container (g1 / g2) of
 our hud_2g copy gets three descs of ours, all authored in screen px for P1 (P2 = translated by wor_battle.p2_dx):
 
-  - Star_Power -> wor_sp_mp_ghwor: the WoR star power tube on the highway's right rail (wor_versus' mapped tube) with
-    three fill segments glow0..2 (HUD_attach_widget_player_star_power drives a child literally named Star_Power with
-    setubes on the player's own starpower_amount, in every mode with more than one player; research
-    docs/research/de_layouts.md 8). WoR's fill under the WoR_HUD_vsseg names (plugin: kept out of the smooth fill).
+  - Star_Power -> wor_sp_mp_ghwor: the 1-player star power tube itself in a container scaled onto the right rail
+    (sp_desc); fed by our HUD_attach_widget_player_star_power (six segments glow0..5) and run by the plugin's tube
+    engine per tube (smooth fill, plasma, glows, burst, feathers).
   - BAND_side_meter -> wor_side_mp_ghwor: the WoR rock tube on the left rail (the battle tube textures; same highways),
     one LED per zone (SIDE_meter_red / yellow / green_ON_alpha) and the sliding needle: the DE drives an invisible
     stand-in on its 2-player path (script 0x3205f550: (0,0) (13,-28) (26,-58) (37,-84) at health 0 / .667 / 1.333 /
@@ -43,17 +42,37 @@ def _root(lid, kids, alpha=1.0):
 
 
 # ---- star power tube
+SP_SEGMENTS = 6
+
+
+def sp_transform():
+    """(container pos, scale) putting the 1-player tube onto P1's multiplayer tube: the rail map is a uniform scale +
+    shift (wor_battle.tube_maps keeps the 1-player angle), so the 1-player tube's own elements, in their own desc
+    coordinates, sit in one scaled container (the 1-player desc is drawn GAME_CALIB off its coordinates)."""
+    import preview_hud
+    m = V.sp_map()
+    k = float(m[0, 0])
+    cal = preview_hud.GAME_CALIB['wor_band_meter_1g_ghwor']
+    return (float(m[0, 2]) + k * cal[0], float(m[1, 2]) + k * cal[1]), k
+
+
 def sp_desc():
-    (tc, (tw, th)) = V.sp_tube_box()
-    kids = [E('sp_tube', 'SpriteElement', pos=tc, dims=(tw / B.SS, th / B.SS), just=(0, 0), z=11.0, texture=V.SPTUBE_TEX)]
-    for i, (a, rot, w, h) in enumerate(V.segments(3)):
-        # initial scale (1, 1): if the widget takes the element's own scale as its default, the fill still spans the tube
-        kids.append(E(f'glow{i}', 'SpriteElement', pos=a, dims=(w, h), just=(0, 1), scale=(1.0, 1.0), rot=rot, z=11.5,
-                      texture=V.SEG_TEX, blend='Add'))
-    props = []
-    for i in range(3):
-        props += [(f'glow{i}_texture', f'glow{i}', 'texture'), (f'glow{i}_scale', f'glow{i}', 'Scale')]
-    return desc(SP_NAME, _root('sp_mp', kids), props)
+    """The 1-player star power tube itself (every sp_* element: body, clip window + six fill segments, feathered top,
+    glows, ready burst, marker), unchanged, in a container scaled onto the player's rail (user 2026-10-22: the same tube
+    as quickplay on every player, tracked and animated by the plugin's tube engine, one state per tube). The DE's
+    widget writes glow0..5 like the 1-player band meter (our HUD_attach_widget_player_star_power: the band's star
+    power in band / co-op, the player's own in face-off and battle)."""
+    import copy
+    import wor_1g, desc_gen
+    wor_1g.all_descs()
+    src = desc_gen.ROOTS['wor_band_meter_1g_ghwor']
+    meter = src                                   # the desc's root is meter_container itself
+    kids = [copy.deepcopy(c) for c in meter.children if c.local_id.startswith('sp_')]
+    pos, k = sp_transform()
+    scaled = E('sp_scaled', 'ContainerElement', pos=pos, dims=(1280, 720), just=(-1, -1), scale=(k, k), children=kids)
+    props = [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
+    props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
+    return desc(SP_NAME, _root('sp_mp', [scaled]), props)
 
 
 # ---- rock tube
@@ -205,6 +224,12 @@ def _hide_child(d, g, child):
     return d[:a] + blk[:pa] + p + blk[pb:] + d[b:]
 
 
+# measured 2026-10-22 on the user's face-off screenshot (spacing 22, plugin 1.39): every piece inside g1 / g2 landed
+# 21-28 px right of the rail model (battle pieces, outside these containers, landed on it), so the offset into the
+# centred player containers is off by this much; corrected once for the SP tube, streak meter and rock tube
+MP_DX = -24.0
+
+
 def edit_two_highways(d):
     """The 2-highway layouts (hud_2g: face-off / pro face-off / co-op; hud_2g1v: two instruments + vocals): the
     player containers follow the highways (wor_battle.SEP apart) and get our star power tube, rock tube and multiplier;
@@ -215,7 +240,7 @@ def edit_two_highways(d):
         d = _hide_child(d, g, 'star_power_1g')
         tl = _container_topleft(d, g)
         shift = 0.0 if p == 1 else B.p2_dx()
-        off = (shift - tl[0], -tl[1])            # desc content in P1 screen px -> this container
+        off = (shift - tl[0] + MP_DX, -tl[1])    # desc content in P1 screen px -> this container
         d = _set_player_meter(d, g, off)
         new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=2.0, desc=SP_NAME).render(0),
                E('BAND_side_meter', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=3.0, alpha=0.0,
@@ -225,6 +250,70 @@ def edit_two_highways(d):
 
 
 SCRIPTS = (
+    # the DE's HUD_attach_widget_player_star_power, replaced (plugin swap): with this theme six segments (the 1-player
+    # tube copy, wor_mp.sp_desc), the band's star power in band / co-op (user 2026-10-22: every player's tube shows the
+    # band's), each player's own in face-off types, battle and boss battles; other themes: the DE's own three segments
+    'Script WoR_HUD_HUD_attach_widget_player_star_power [\n'
+    '\t:i $getplayerinfo$%GLOBAL%$player$$checksum$\n'
+    '\t:i $ResolveScreenElementID$$id$ = %GLOBAL%$parent_id$$param$ = $id$\n'
+    '\t:i if (~$current_num_players$ > %i(1))\n'
+    '\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$parent_id$$child$ = $sp_mp$:s}\n'
+    '\t\t\t:i $sp_band$ = %i(1)\n'
+    '\t\t\t:i if (~$game_mode$ = $p2_faceoff$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
+    '\t\t\t:i if (~$game_mode$ = $p2_pro_faceoff$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
+    '\t\t\t:i if (~$game_mode$ = $p4_pro_faceoff$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
+    '\t\t\t:i if (~$game_mode$ = $p2_battle$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
+    '\t\t\t:i if (~$boss_battle$ = %i(1))\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
+    '\t\t\t:i if (%GLOBAL%$sp_band$ = %i(1))\n'
+    '\t\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $value$ = $band1_starpower$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $setubes$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$id$\n'
+    '\t\t\t\t\t:i $band$ = $true$\n'
+    '\t\t\t\t\t:i $band_num$ = %i(1)\n'
+    '\t\t\t\t\t:i $default_scale$ = %vec2(1.0,1.0)\n'
+    '\t\t\t\t\t:i $value_range$ = :a{%f(0.0)%f(100.0):a}\n'
+    '\t\t\t\t\t:i $textures$ = :a{$glow0_texture$$glow1_texture$$glow2_texture$$glow3_texture$$glow4_texture$$glow5_texture$:a}\n'
+    '\t\t\t\t\t:i $scales$ = :a{$glow0_scale$$glow1_scale$$glow2_scale$$glow3_scale$$glow4_scale$$glow5_scale$:a}\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i else \n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = %GLOBAL%$checksum$\n'
+    '\t\t\t\t\t:i $value$ = $starpower_amount$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $setubes$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$id$\n'
+    '\t\t\t\t\t:i $player$ = %GLOBAL%$player$\n'
+    '\t\t\t\t\t:i $value_range$ = :a{%f(0.0)%f(100.0):a}\n'
+    '\t\t\t\t\t:i $textures$ = :a{$glow0_texture$$glow1_texture$$glow2_texture$$glow3_texture$$glow4_texture$$glow5_texture$:a}\n'
+    '\t\t\t\t\t:i $scales$ = :a{$glow0_scale$$glow1_scale$$glow2_scale$$glow3_scale$$glow4_scale$$glow5_scale$:a}\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i else \n'
+    '\t\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t\t:i $object$ = %GLOBAL%$checksum$\n'
+    '\t\t\t\t\t:i $value$ = $starpower_amount$\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t\t:i $type$ = $setubes$\n'
+    '\t\t\t\t\t:i $desc_id$ = %GLOBAL%$id$\n'
+    '\t\t\t\t\t:i $player$ = %GLOBAL%$player$\n'
+    '\t\t\t\t\t:i $value_range$ = :a{%f(0.0)%f(100.0):a}\n'
+    '\t\t\t\t\t:i $textures$ = :a{$glow0_texture$$glow1_texture$$glow2_texture$:a}\n'
+    '\t\t\t\t\t:i $scales$ = :a{$glow0_scale$$glow1_scale$$glow2_scale$:a}\n'
+    '\t\t\t\t:i :s}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t:i endif\n'
+    '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
     # the per-player rock tube starts hidden; shown where the DE attaches per-player health (not face-off types)
     'Script WoR_HUD_HUD_attach_widget_player_health [\n'
     '\t:i $WoR_HUD_HUD_attach_widget_player_health_orig$ isNull\n'

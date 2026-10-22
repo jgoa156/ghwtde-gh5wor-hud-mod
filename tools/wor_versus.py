@@ -51,7 +51,7 @@ SEG_TEX = 'WoR_HUD_vsseg'                  # the plugin renames the DE's fill na
 SEG_NAMES = (('hud_rock_tube_glow_full', 'WoR_HUD_vsseg'), ('hud_rock_tube_glow_full_b', 'WoR_HUD_vsseg_b'))
 # team colours (WoR face-off: blue left team, red right team; user 2026-10-21: P1 blue, P2 red)
 P_RGBA = {1: (87, 149, 229, 255), 2: (228, 61, 12, 255)}
-SP_NUDGE = np.array((-19.0, 0.0))  # -15 -> -19 (user 2026-10-22: face-off pieces a few px left)          # the right rail's tube, towards the highway (see wor_battle.ROCK_NUDGE)
+SP_NUDGE = np.array((-15.0, 0.0))          # the right rail's tube, towards the highway (see wor_battle.ROCK_NUDGE)
 SCORE_FONT = 'WoR_HUD_num_a1'
 NIXIE_K = 0.30                             # our multiplier badges: the 154x137 art top-left in a 256 px texture
 NIXIE_ART = (154.0, 137.0)                 # (the plugin maps the DE's stock nixie names to them, kNixieMap)
@@ -86,7 +86,9 @@ NEEDLE_K = 1.65
 NEEDLE_SRC_DIMS = 3.125
 BOX_UP = 6.0                               # the boxes a little up: they cover the dial's bottom edge (user 2026-10-22)
 BOX_TUCK = 15.0                            # the boxes' inner ends this far under the dial (user 2026-10-22: no gap)
-STREAK_K = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
+STREAK_K = 0.26                            # = SCORE_K: 2 digits at the score's size; 3-4 shrink (fit, WoR's settings)
+# (0.155 = the fixed 4-digit size of 2026-10-22, before the fit worked)
+STREAK_K_FIXED = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
                                            # user 2026-10-22: one size that fits 4 digits)
 STREAK_FIT = 0.9                           # the streak text shrinks to fit this share of its square (3-4 digits)
 
@@ -219,7 +221,6 @@ def textures(textures_dir=None):
     (bx, by), (bw, bh) = big
     c = (bx + ((x0 + x1) / 2 - bw / 2) / B.SS, by + ((y0 + y1) / 2 - bh / 2) / B.SS)
     _BOX['box'] = (c, (B._pow2(x1 - x0 + 8), B._pow2(y1 - y0 + 8)))
-    out[SPTUBE_TEX] = B._warp_crop(lay, m, _BOX['box'], cut)
     return out
 
 
@@ -242,7 +243,6 @@ def sources():
         s[ours] = {'src': WOR_NUM_A2, 'x_font': 'fontgrid_text_a1', 'text': 'x' + label}
     for m, src in MIRRORED.items():
         s[m] = {'src': TEX[src], 'flip': True}
-    s[SPTUBE_TEX] = {'src': 'WoR_HUD_sp_base (1-player tube, mapped)', 'battle_tube': True}
     for v in s.values():
         v.setdefault('box', None)
         v.setdefault('flip', False)
@@ -317,7 +317,7 @@ def tree():
                         E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1),
                           dims=(sq_w * STREAK_FIT / STREAK_K, 40), just=(0, 0), scale=(STREAK_K, STREAK_K), z=8.0,
                           font=SCORE_FONT, text='0x00000000', shadow=False, internal_just=(0.5, 0.0),
-                          fit_width='scale each line if larger')])]),
+                          fit_width='scale each line if larger', fit_height='scale down if larger')])]),
         ]))
     # who leads: the dial's glow on the leader's side (the DE fades these containers; amber = P1, violet = P2)
     for p, glow in ((1, glow_l), (2, glow_r)):

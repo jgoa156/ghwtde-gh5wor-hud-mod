@@ -461,7 +461,37 @@ namespace
 		double glide_t0 = 0.0, glide_dur = 0.0, last_update = 0.0;
 		bool ready = false, seen = false;
 		double burst_t0 = -1.0;
-	} g_sp;
+	};
+	// 1.40: one state per tube (the multiplayer tubes are copies of the 1-player tube, tools/wor_mp.py sp_desc); the
+	// engine below works on the current one (g_sp), picked by the update hooks
+	constexpr int kTubes = 4;
+	StarPower g_tubes[kTubes];
+	StarPower *g_spp = &g_tubes[0];
+#define g_sp (*g_spp)
+
+	bool any_star_bar()
+	{
+		for (const StarPower &s : g_tubes)
+			if (s.star_bar)
+				return true;
+		return false;
+	}
+
+	// the tube whose clip window this is, or a free / stale slot for a new one
+	StarPower *tube_for(void *clip)
+	{
+		for (StarPower &s : g_tubes)
+			if (s.clip == clip)
+				return &s;
+		for (StarPower &s : g_tubes)
+			if (!s.clip)
+				return &s;
+		StarPower *oldest = &g_tubes[0];
+		for (StarPower &s : g_tubes)
+			if (s.last_update < oldest->last_update)
+				oldest = &s;
+		return oldest;
+	}
 	LARGE_INTEGER g_qpf = {};
 
 	double now()
@@ -685,6 +715,13 @@ namespace
 		  "messages: hud_create_message wrapped (none above the highway with the WoR theme)" },
 		{ 0xa076e10c /* HUD_attach_widget_band_faceoff_meter */, 0xcd9c2a12 /* wrapper */, 0xb668444b /* _orig */,
 		  "versus: HUD_attach_widget_band_faceoff_meter wrapped (WoR versus meter shown when attached)" },
+		// 1.40: band score group (tools/wor_band.py): WoR's band multiplier bulb on our score group
+		{ 0x8d93464f /* HUD_attach_widget_band_meter */, 0xcce38751 /* wor_hud_hud_attach_widget_band_meter */, 0x508cb926 /* _orig */,
+		  "band: HUD_attach_widget_band_meter wrapped (WoR band multiplier bulb)" },
+		// 1.40: per-player star power with this theme: six segments of the 1-player tube copy, the band's star power in
+		// band / co-op (tools/wor_mp.py); other themes keep the DE's three segments inside the same script
+		{ 0x648b078c /* HUD_attach_widget_player_star_power */, 0x53a4f299 /* wor_hud_hud_attach_widget_player_star_power */, 0,
+		  "star power: HUD_attach_widget_player_star_power replaced (1-player tube on every player)" },
 		{ 0xd267c276 /* HUD_attach_widget_player_health */, 0x463bdb7e /* wrapper */, 0xd030a5a0 /* _orig */,
 		  "multiplayer: HUD_attach_widget_player_health wrapped (per-player rock tube shown when attached)" },
 		// 1.25: WoR loading screen (its load wheel spins) and WoR helper pills (screens can't force their colours)
@@ -918,6 +955,47 @@ namespace
 			f32(card, kElementZ) = z;
 	}
 
+	// 1.40: the band bulb's expand-out (WoR: the bulb grows out of the score group from x2 up)
+	struct Grow { void *e = nullptr; double t0 = 0.0; float sx = 1.0f, sy = 1.0f; };
+	Grow g_grow[4];
+
+	void bulb_grow(void *e)
+	{
+		Grow *slot = &g_grow[0];
+		for (Grow &g : g_grow)
+			if (g.e == e || !g.e)
+			{
+				slot = &g;
+				break;
+			}
+		if (slot->e != e)
+		{
+			slot->sx = f32(e, kElementScale);
+			slot->sy = f32(e, kElementScale + 4);
+		}
+		slot->e = e;
+		slot->t0 = now();
+	}
+
+	void bulb_frame(void *e)
+	{
+		for (Grow &g : g_grow)
+		{
+			if (g.e != e || g.t0 <= 0.0)
+				continue;
+			const double u = (now() - g.t0) / 0.3;
+			float k = 1.0f;
+			if (u < 1.0)
+			{
+				const float x = static_cast<float>(u);            // ease-out with a little overshoot
+				k = 0.2f + 0.8f * (1.0f + 2.2f * (x - 1.0f) * (x - 1.0f) * (x - 1.0f) + 1.2f * (x - 1.0f) * (x - 1.0f));
+			}
+			else
+				g.t0 = 0.0;
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, g.sx * k, g.sy * k, 0, 0);
+		}
+	}
+
 	// 1.38, versus needle (tools/wor_versus.py): the DE turns the needle only -51.5..51.5 deg, short of the WoR dial's
 	// ends. Its angle goes to a hidden twin (a sibling with dims kVsNeedleSrcDims); the visible needle takes it x K.
 	bool g_vs_needle_logged = false;
@@ -951,14 +1029,26 @@ namespace
 			needle_remap(element);
 			if (texture_of(element) == kVsNeedleTex)
 				vs_needle(element);
+			for (const Grow &g : g_grow)
+				if (g.e == element && g.t0 > 0.0)
+				{
+					bulb_frame(element);
+					break;
+				}
 			const float w = f32(element, kElementDims);
 			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
 				battle_needle(element);
 			else if (f32(element, kElementZ) >= 19.0f && f32(element, kElementZ) < 19.1f)
 				battle_card(element);
 		}
-		if (element && element == g_sp.clip)
-			sp_frame();
+		if (element)
+			for (StarPower &s : g_tubes)
+				if (element == s.clip)
+				{
+					g_spp = &s;
+					sp_frame();
+					break;
+				}
 		if (!g_script_swaps_done)
 			script_swaps_try();
 		g_element_update(element, edx);
@@ -998,6 +1088,14 @@ namespace
 						texture = kLights[0][sl[1]];
 					break;
 				}
+			// 1.40: the band bulb appears (blank -> a bulb texture): grow it out of the score group
+			if (texture_of(element) == kBlankTex)
+				for (uint32_t b : kBandBulb)
+					if (b == texture)
+					{
+						bulb_grow(element);
+						break;
+					}
 			// 1.36: the versus bars show the multiplier as text ("x1"): the same DE names, our text textures there
 			for (const auto &n : kVsNixieMap)
 			{
@@ -1071,6 +1169,7 @@ namespace
 		const float lo = *reinterpret_cast<float *>(field(widget, 0xc)), hi = *reinterpret_cast<float *>(field(widget, 0x10));
 		if (*reinterpret_cast<uint32_t *>(field(event, 4)) == kRefreshEvent || hi <= lo)
 			return;   // texture refresh only: the last level stays
+		g_spp = tube_for(clip);
 		if (clip != g_sp.clip || fill != g_sp.fill)
 			discover(clip, fill);
 		float level = (**reinterpret_cast<float **>(value) - lo) / (hi - lo);
@@ -1156,7 +1255,7 @@ namespace
 	{
 		const auto orig = reinterpret_cast<int(__cdecl *)(wchar_t *, size_t, const wchar_t *, int)>(kSnwprintf);
 		// 1.39: also in the 2-player modes (no 1-player star bar there): while our versus needle or battle meter is up
-		const bool ours = g_sp.star_bar || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0;
+		const bool ours = any_star_bar() || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0;
 		if (!ours || value < 0 || count < 2)
 			return orig(buf, count, fmt, value);
 		wchar_t digits[12];
@@ -1189,7 +1288,7 @@ namespace
 
 	void __cdecl particle_fix(uint8_t *cfg)
 	{
-		if (!g_sp.star_bar || !cfg)
+		if (!any_star_bar() || !cfg)
 			return;
 		float *ss = reinterpret_cast<float *>(cfg + 0x10), *es = reinterpret_cast<float *>(cfg + 0x20);
 		const uint32_t mat = *reinterpret_cast<uint32_t *>(cfg + 0x44);
@@ -1538,7 +1637,7 @@ namespace
 		if (char *slash = strrchr(path, '\\'))
 			strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "wor_hud_fixes.log");
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.39 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.40 (GH5 / WoR HUD)");
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"

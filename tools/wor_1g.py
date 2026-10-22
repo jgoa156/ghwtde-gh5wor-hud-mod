@@ -324,7 +324,7 @@ SP_FULL_NAMES = ('WoR_HUD_spfull', 'WoR_HUD_spfull_b')
 SP_CHARGED_BOLTS = ((3, -3.0), (9, 3.0))   # (crackle frame, texture px off the centre line) for the charged fill
 SP_CHARGED_BOLT_K = 0.8
 SP_CLIP_MARGIN = 6.0                 # canvas px around the fill inside the clip window
-SP_RIM = 3.0                    # tube rim on each side, texture px (the fill sits inside the glass)
+SP_RIM = 1.0                    # tube rim on each side, texture px (the fill sits inside the glass)
 SP_SLANT_DEG = 8.3              # screen angle of a partial segment's top edge (level-ish, like the divider)
 SP_MARKER_Y = 528.0             # GH5's half divider (canvas y); x = tube centre
 SP_MARKER_ROT = 37.0            # SB_TubeNeedle01 turned into GH5's level-ish arch
@@ -336,12 +336,14 @@ SP_MARKER_K = 1.25              # GH5's divider spans the whole tube
 # loop, plus the white-hot cap at the fill top (WoR needle_white 1.0 + needle_color 0.5, SB_Tubeglow01);
 # crossing 50%: a ball-lightning burst at the fill top (Ball_lightning01, 16 frames at 20 fps, WoR material rate).
 SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
-SP_PLASMA_FPS = 60
-SP_PLASMA_FRAMES = 120                        # 2 s loop
+SP_PLASMA_FPS = 30                             # 60 -> 30 (2026-10-22: theme pak budget; 120 frames were ~2 MB)
+SP_PLASMA_FRAMES = 60                         # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = True                        # the fill keeps the glass's full width down to its last row (no curve)
+SP_NEON_HALO = (2.6, 2.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+                                             # was the defaults 1.4 / 1.8)
 SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]

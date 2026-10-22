@@ -48,13 +48,13 @@ static const float kLevel50 = 528.0000f;
 static const float kLevel100 = 471.1043f;
 
 // GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)
-static const float kPlasmaFps = 60.0f;
+static const float kPlasmaFps = 30.0f;
 static const float kSnap = 0.040f;
 static const float kFeatherH = 12.00f;
 static const int kFeathers = 8;
 static const float kBallFps = 20.0f;
 static const float kBurstHold = 0.400f, kBurstEnd = 0.800f;
-static const uint32_t kPlasma[120] = {
+static const uint32_t kPlasma[60] = {
 	0x0c1f132b, 0x7b1823bd, 0xe2117207, 0x95164291, 0x0b72d732, 0x7c75e7a4, 0xe57cb61e, 0x927b8688,
 	0x02c49b19, 0x75c3ab8f, 0x1504226a, 0x620312fc, 0xfb0a4346, 0x8c0d73d0, 0x1269e673, 0x656ed6e5,
 	0xfc67875f, 0x8b60b7c9, 0x1bdfaa58, 0x6cd89ace, 0x3e2971a9, 0x492e413f, 0xd0271085, 0xa7202013,
@@ -62,14 +62,7 @@ static const uint32_t kPlasma[120] = {
 	0xc93c21c4, 0xbe3b1152, 0x205f84f1, 0x5758b467, 0xce51e5dd, 0xb956d54b, 0x29e9c8da, 0x5eeef84c,
 	0x6873d62f, 0x1f74e6b9, 0x867db703, 0xf17a8795, 0x6f1e1236, 0x181922a0, 0x8110731a, 0xf617438c,
 	0x66a85e1d, 0x11af6e8b, 0x7168e76e, 0x066fd7f8, 0x9f668642, 0xe861b6d4, 0x76052377, 0x010213e1,
-	0x980b425b, 0xef0c72cd, 0x7fb36f5c, 0x08b45fca, 0x5a45b4ad, 0x2d42843b, 0xb44bd581, 0xc34ce517,
-	0x5d2870b4, 0x2a2f4022, 0xb3261198, 0xc421210e, 0x549e3c9f, 0x23990c09, 0x435e85ec, 0x3459b57a,
-	0xad50e4c0, 0xda57d456, 0x443341f5, 0x33347163, 0xaa3d20d9, 0xdd3a104f, 0x4d850dde, 0x3a823d48,
-	0xc4c69923, 0xb3c1a9b5, 0x2ac8f80f, 0x5dcfc899, 0xc3ab5d3a, 0xb4ac6dac, 0x2da53c16, 0x5aa20c80,
-	0xca1d1111, 0xbd1a2187, 0xdddda862, 0xaada98f4, 0x33d3c94e, 0x44d4f9d8, 0xdab06c7b, 0xadb75ced,
-	0x34be0d57, 0x43b93dc1, 0xd3062050, 0xa40110c6, 0x0ddd791c, 0x7ada498a, 0xe3d31830, 0x94d428a6,
-	0x0ab0bd05, 0x7db78d93, 0xe4bedc29, 0x93b9ecbf, 0x0306f12e, 0x7401c1b8, 0x14c6485d, 0x63c178cb,
-	0xfac82971, 0x8dcf19e7, 0x13ab8c44, 0x64acbcd2, 0xfda5ed68, 0x8aa2ddfe, 0x1a1dc06f, 0x6d1af0f9,
+	0x980b425b, 0xef0c72cd, 0x7fb36f5c, 0x08b45fca,
 };
 static const uint32_t kBall[16] = {
 	0x5361d7af, 0x2466e739, 0xbd6fb683, 0xca688615, 0x540c13b6, 0x230b2320, 0xba02729a, 0xcd05420c,
@@ -124,16 +117,16 @@ static const float kLevelPt[65][2] = {
 static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
 static const float kBNeedleDims = 85.3333f;
 static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
-static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.9167f, -51.8508f }, { 49.1272f, -91.2458f }, { 64.5672f, -119.9231f } };
+static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 31.4410f, -56.4092f }, { 55.3292f, -99.2677f }, { 72.7184f, -130.4661f } };
 static const float kBCard = 17.0333f;   // guitar_battle cards are 64x64
 // per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
 static const float kBSlot[6][5] = {
-	{ 306.00f, 214.00f, 605.99f, 585.92f, 17.03f },
-	{ 262.00f, 225.00f, 588.96f, 562.39f, 14.48f },
-	{ 253.00f, 251.00f, 574.45f, 542.45f, 12.26f },
-	{ 980.00f, 214.00f, 1108.43f, 585.92f, 17.03f },
-	{ 1026.00f, 227.00f, 1091.40f, 562.39f, 14.48f },
-	{ 1033.00f, 253.00f, 1076.89f, 542.45f, 12.26f },
+	{ 306.00f, 214.00f, 607.45f, 590.05f, 17.03f },
+	{ 262.00f, 225.00f, 590.22f, 566.67f, 14.48f },
+	{ 253.00f, 251.00f, 575.54f, 546.86f, 12.26f },
+	{ 980.00f, 214.00f, 1109.89f, 590.05f, 17.03f },
+	{ 1026.00f, 227.00f, 1092.66f, 566.67f, 14.48f },
+	{ 1033.00f, 253.00f, 1077.98f, 546.86f, 12.26f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 
@@ -141,7 +134,7 @@ static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 static const float kMpNeedleAX = 1.031300f, kMpNeedleAY = 1.031300f;
 static const uint32_t kMpNeedleTex = 0xa5460419;   // WoR_HUD_mpneedle
 static const float kMpNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 13.0000f, -28.0000f }, { 26.0000f, -58.0000f }, { 37.0000f, -84.0000f } };
-static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 20.3021f, -37.7079f }, { 35.7271f, -66.3574f }, { 46.9557f, -87.2126f } };
+static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 22.8651f, -41.0229f }, { 40.2375f, -72.1912f }, { 52.8835f, -94.8798f } };
 static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };
 // versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours
 static const uint32_t kNixieMap[8][2] = { { 0xb373f287, 0x99c7e9f3 }, { 0x985ea144, 0x00ceb849 }, { 0x81459005, 0x77c988df }, { 0xce0406c2, 0xe9ad1d7c }, { 0x0157f0fe, 0x72b100bd }, { 0x570d5778, 0x9bd2a588 }, { 0x653b35fa, 0x75dcc4a4 }, { 0xfbb81874, 0x9264e9a3 } };
@@ -153,4 +146,7 @@ static const uint32_t kVsNeedleTex = 0xfab273ed;
 static const float kVsNeedleSrcDims = 3.1250f, kVsNeedleK = 1.6500f;
 // the DE's stock streak light names (bulb_textures of HUD_attach_widget_player_multiplier) -> state 0..2
 static const uint32_t kStockLights[12][2] = { { 0xb2f82657, 0 }, { 0xc5ff16c1, 1 }, { 0x5cf6477b, 2 }, { 0x316255c3, 0 }, { 0x97155e77, 1 }, { 0xa6fd44ea, 2 }, { 0x7662e684, 0 }, { 0xbac8e61a, 1 }, { 0x3447e1f9, 2 }, { 0x677f40d9, 0 }, { 0xac23937c, 1 }, { 0x2ab7e1d2, 2 } };
+// band score group (tools/wor_band.py): WoR's bulb textures (the expand-out starts when one replaces blank)
+static const uint32_t kBandBulb[5] = { 0xc0944658, 0xb79376ce, 0x29f7e36d, 0xc7f98241, 0x2041af46 };
+static const uint32_t kBlankTex = 0xf8b85bcb;
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

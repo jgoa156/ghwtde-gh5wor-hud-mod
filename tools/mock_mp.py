@@ -81,10 +81,8 @@ def per_player(sp, health=None, mult=None):
     """[(root, vals)] of one player's pieces (P1 screen px)."""
     out = []
     root = copy.deepcopy(desc_gen.ROOTS[M.SP_NAME])
-    vals = {}
-    n = sp * 3
-    for i in range(3):
-        vals[f'glow{i}'] = {'scale': (1.0, max(0.0, min(1.0, n - i)))}
+    st = preview_hud.state(1.0, sp, 1)          # the 1-player tube's own fill state (the multiplayer tube is a copy)
+    vals = {k: v for k, v in st.items() if k.startswith('sp_')}
     out.append((root, vals))
     if health is not None:
         root = copy.deepcopy(desc_gen.ROOTS[M.SIDE_NAME])
@@ -124,8 +122,12 @@ def faceoff(frame):
 
 
 def band(frame):
+    import wor_band
     before, img = clean_and_move(frame, BAND_REMOVE)
-    items = []
+    wor_band.score_desc()
+    sv = {'Score': {'text': '1,874,172'}, 'star_meter_num': {'text': '3'}, 'streak_number': {'text': '840'},
+          wor_band.BULB_ID: {'texture': wor_band.BULB_TEX[3]}}
+    items = [(wor_band.OFFSET[False], copy.deepcopy(desc_gen.ROOTS[wor_band.NAME]), sv)]
     for p, sp, health, mult in ((1, 0.55, 1.1, 2), (2, 0.2, 0.5, 1)):
         base = (0.0 if p == 1 else B.p2_dx(), 0.0)
         items += [(base, r, v) for r, v in per_player(sp, health, mult)]

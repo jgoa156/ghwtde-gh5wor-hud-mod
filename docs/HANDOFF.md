@@ -34,6 +34,32 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## 2026-10-22 late: plugin 1.40 + mod INSTALLED (not tested in game)
+- Gluing: tube_maps keep the 1-player angle (uniform scale about the LED span's middle, no shear: the sheared tubes
+  looked more tilted); wor_mp.MP_DX -24 corrects the offset into the centred g1/g2 containers (measured on the
+  user's face-off shot); SP_NUDGE back to -15. The rail model (RAIL_L/R - SEP) matched the 2-player borders at SEP 22.
+- Per-player SP tube = the 1-player tube itself: wor_mp.sp_desc copies every sp_* element of wor_band_meter_1g into
+  a container (sp_transform: scale k, pos) -> same local coords, so the plugin's tube engine constants apply; plugin
+  1.40 keeps one StarPower per tube (g_tubes[4], g_sp = *g_spp, tube_for(clip)). Our
+  WoR_HUD_HUD_attach_widget_player_star_power REPLACES the DE script (swap, no orig): on our tube (child sp_mp exists)
+  six segments, the band's band1_starpower in band / co-op, the player's own in face-off types / battle / boss;
+  otherwise the DE's three segments. Old WoR_HUD_vs_sptube / vsseg no longer shipped.
+- Band (items 9-11): tools/wor_band.py: the quickplay score group (no tubes) as desc wor_band_score_ghwor in every band
+  layout (band_meter instance, OFFSET no vocals (-9,-394) / vocals (-37,-324)), every WT+ band prop on hidden sinks
+  (instrument icons = the huge guitar, gone); WoR bulb (bulb + nixie digit + 'x') per value WoR_HUD_bandbulb_2/3/4/6/8,
+  set by a semultipliernixie on band1_multiplier from our HUD_attach_widget_band_meter wrapper (blank at x1); plugin
+  grows it in (0.3 s) when it leaves blank. desc_gen now records PROPS / ALIASES.
+- Battle: x_offset_p2 itself = stock + SEP with our theme (saved stock on first call; the highway wrapper no longer
+  moves Pos), so the DE's prompts / alerts (PUSH etc., placed at gem pos + x_offset_p2) follow the highways (item 5).
+- Streak number: WoR's fit settings (fit_width scale each line if larger + fit_height scale down if larger),
+  STREAK_K = SCORE_K (adaptive; if it fails again, STREAK_K_FIXED 0.155).
+- SP tube look (item 12): SP_RIM 3 -> 1 (wider fill), SP_NEON_HALO (2.6, 2.6). Plasma 60 frames at 30 fps (pak budget,
+  now 3.27 MB).
+- Mocks: docs/mocks/mock_faceoff_v9.jpg, mock_band_v9.jpg, mock_battle_v14.jpg.
+- STILL TODO: item 0 fade-in (battle pieces now appear in place, no fade), item 13 improvisation purple line (WoR
+  av_presets og_highway_drum_freeform + guitar_highway_visualizer: research DE support), the 6th star (user wants
+  it; WoR shows 6 on the star at 100%), crash repro (career -> pro face-off, keep debug.txt).
+
 ## 2026-10-22: user's test of 1.39 (OPEN, work these first; screenshots in the session)
 
 0. Battle highway pieces must NOT drift into view at song start: fade in like every other mode.

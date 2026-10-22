@@ -4,7 +4,7 @@ usage: python tools/gen_plugin_names.py"""
 import os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import paths, wor_1g, wor_battle, wor_mp, wor_versus  # noqa: E402
+import paths, wor_1g, wor_band, wor_battle, wor_mp, wor_versus  # noqa: E402
 
 
 def qbkey(s):
@@ -121,6 +121,9 @@ def main():
             '// the DE\'s stock streak light names (bulb_textures of HUD_attach_widget_player_multiplier) -> state 0..2',
             'static const uint32_t kStockLights[12][2] = { ' + ', '.join(
                 f'{{ 0x{qbkey(f"HUD_score_light_{s}{c}"):08x}, {s} }}' for c in ('', '_green', '_purple', '_blue') for s in range(3)) + ' };',
+            '// band score group (tools/wor_band.py): WoR\'s bulb textures (the expand-out starts when one replaces blank)',
+            'static const uint32_t kBandBulb[5] = { ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_band.BULB_TEX.values()) + ' };',
+            f'static const uint32_t kBlankTex = 0x{qbkey("WoR_HUD_blank"):08x};',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

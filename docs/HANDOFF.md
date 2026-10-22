@@ -34,6 +34,27 @@ user on 2026-10-20: **Ultrawide Fix 1.1** (ASI plugin, Hor+ 3D FOV, no ReShade n
    WoR's Star03 sliver for the burst; the DE's SP highway glow leak; game-catalogue jump menu idea (SELECT key) and
    song list sorting that ignores a leading "The".
 
+## 2026-10-22: user's test of 1.39 (OPEN, work these first; screenshots in the session)
+
+0. Battle highway pieces must NOT drift into view at song start: fade in like every other mode.
+1. CRASH: career face-off, then pro face-off (switching modes) crashes the game.
+2. Career face-off: no rock tube glued to the highway, only the versus meter.
+3. Versus streak number: size adapts to its digit count AND is centred in its slot (2 digits showed small, "28").
+4. Score boxes a few px UP (dial stays): they cover a small part of the dial's bottom.
+5. Battle effects sometimes uncalibrated with the highway: the "PUSH" (string cut) popup showed below the highway,
+   probably not aligned with the green gem strike either.
+6. Power-up icons still too big: the slot border must be visible like WT's default (round icons inside rings).
+7. Battle rock tube poorly aligned (quickplay is perfect): angle with two highways? (3 highways later); or move it a few
+   px left. Slots: arms still showing a lot: move closer; stack so only part of each circle is behind the one in
+   front, crescent order.
+8. Face-off / pro face-off / career face-off: pieces still not glued: move both left by some px.
+9. Band: pieces poorly aligned; rock tube more tilted than it should be (keep ONE angle always); remove the huge
+   guitar icon (the WT band meter's instrument icons); replace the band score meter with the quickplay one; ALL
+   players' SP tubes show the band star power (same value on every tube).
+10. WoR band score group: a light bulb for the band multiplier that expands out of the score group from x2 up
+   (textures already extracted: band_HUD_multiplier_bulb, bulb_x, band_HUD_multiplier_one..eleven).
+11. Band score group always top right; with vocals it gains top padding below the vocal highway (user's WoR frames).
+
 ## 2026-10-22 03:xx: user's test of 1.38 (OPEN, work these first)
 
 Face-off: highway spacing OK now (pieces still not glued). Versus dial: the leader's colour must be shinier. Empty

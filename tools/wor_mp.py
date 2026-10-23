@@ -86,7 +86,11 @@ def sp_desc():
     fill.dims, fill.scale, fill.z = (64, 256), (g['kFillSX'], g['kFillSY']), MP_FILL_Z
     fill.extra = dict(fill.extra, texture=wor_1g.SP_FULL_NAMES[0])
     clip.children = [fill]
-    kids.append(E('sp_src', 'windowelement', pos=clip.pos, dims=(0, 0), just=(-1, -1), z=MP_SRC_Z, children=segs))
+    # off screen (user test 2026-10-23: a zero-size window does NOT clip; the segments drew over every multiplayer
+    # tube as striped teal blocks; the DE's graveyard windows work because they sit off screen). The segments are
+    # placed from the window's corner, so they go with it; the plugin only reads their scales.
+    kids.append(E('sp_src', 'windowelement', pos=(-4000.0, -4000.0), dims=(0, 0), just=(-1, -1), z=MP_SRC_Z,
+                  children=segs))
     props = [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
     props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
     return desc(SP_NAME, _root('sp_mp', kids), props)
@@ -137,11 +141,15 @@ def side_desc(n):
             c.dims = (nd / ax, nd / ay)
     kids.append(needle)
     kids.append(_dummy('side_meter_red_glow'))
+    kids.append(_dummy('side_meter_red_rgba_sink'))
     props = [('side_meter_needle_pos', 'needle_src', 'Pos'), ('side_meter_needle_scale', 'needle_src', 'Scale'),
              ('SIDE_meter_red_ON_alpha', 'red_light', 'alpha'),
              ('SIDE_meter_yellow_ON_alpha', 'yellow_light', 'alpha'),
              ('SIDE_meter_green_ON_alpha', 'green_light', 'alpha'),
-             ('SIDE_meter_red_ON_rgba', 'red_light', 'rgba'),
+             # the DE pulses this colour (failing vignette, 0x4f63289b); in quickplay it goes to the side meter's own
+             # overlay, never to the LED: on the LED it faded the red light out (user test 2026-10-23: band rock
+             # meter in the red zone with no LED lit)
+             ('SIDE_meter_red_ON_rgba', 'side_meter_red_rgba_sink', 'rgba'),
              ('side_meter_red_glow_rgba', 'side_meter_red_glow', 'rgba')]
     return desc(SIDE_NAMES[n], _root('side_mp', kids), props)
 

@@ -101,6 +101,16 @@ Everything after this section is older history; read it only for a detail.
   (user: leave it until the WoR vocals layout): needs our own vocal multiplier desc + shipped WT nixie copies + a
   plugin mapping on that desc's nixie.
 
+### 5c. User test of the art-size build (2026-10-23, last of the week)
+- Singleplayer star power: fixed (user). Every multiplayer tube (guitar + vocals, band, face-off): striped teal
+  blocks = the DE's six raw segments. The level-source window sp_src had dims 0 at the clip's spot, and a zero-size
+  window does NOT clip (the graveyard windows only work because they sit off screen). sp_src now sits at
+  (-4000, -4000); the segments go with it, the plugin still reads their scales.
+- Band rock meter: in the red zone no LED lit. SIDE_meter_red_ON_rgba (pulsed by the failing-vignette script
+  0x4f63289b) was mapped onto the red LED and faded it out; it now goes to a hidden sink (in quickplay that colour
+  never reaches the LED either). Checked against quickplay: same rm_* elements / shadows / gaps / ball / z, one LED
+  per health zone from the DE's SIDE_meter_*_ON_alpha, the needle kept (user accepted it in multiplayer).
+
 ### 6. Open / next
 1. In-game check of 1.48: singleplayer tube (normal size, sharp lightning), every multiplayer tube animating like
    singleplayer, career face-off without tube and scores, versus streak size, battle cards (size, layering), band.
@@ -109,7 +119,7 @@ Everything after this section is older history; read it only for a detail.
 4. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.48 + mod with art-size tube textures (theme pak 2.15 MB, UI pak 18.35 MB), 2026-10-23, hashes verified. Not tested in game yet.
+Installed: plugin 1.48 + mod with art-size tube textures, the off-screen star power level source and the red LED fix (theme pak 2.15 MB, UI pak 18.35 MB), 2026-10-23, hashes verified. Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 
@@ -792,4 +802,5 @@ object bug (same family as "Zone not found"), not the HUD. Tools used: scratchpa
   3 highways (they had put the SP tubes ~17 px and the rock tubes ~65 px left of the rails). Next: one 3g1v capture.
 - Still open: band SP fill / per-tube engine with 3 tubes (bots' SP not checked in frames), hud_1g1v and hud_2g1v
   (not captured yet), the purple drum fill pick, the battle fade / 6th star in-game checks.
+
 

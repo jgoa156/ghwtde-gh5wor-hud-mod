@@ -71,13 +71,16 @@ VISOR_ARM = (50, 101, 84, 126)          # in that art: the short arm joining the
 VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 px texture)
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.72                        # ring centres this many rim radii apart along the rail (a little overlap)
-VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
+# 2026-10-23 (user: the slots must sit BEHIND the highway, like the 1-player multiplier badge): under the highway
+# surface (z 0.1); each card goes just above its own slot (CARD_Z), the bottom slot's pair over the middle one's
+VISOR_Z = {'big': 0.07, 'mid': 0.06, 'small': 0.05}
+CARD_Z = {'big': 0.075, 'mid': 0.065, 'small': 0.055}
 CARD_FILL = 0.375                       # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
                                         # 2026-10-22, the slot's border must show around the card; 0.5 -> 0.375 user
                                         # 2026-10-23: at least 25% less radius, so the middle card no longer reaches
                                         # over the bottom slot)
-HUD_Z = 4                               # the layout's z (stock 0): above the highway and its rails (z 3), so the slots'
-                                        # arms show over the rail (user 2026-10-23: the slots rendered behind it)
+HUD_Z = 0                               # the layout's z (stock 0); 4 (round 1) put the slots over the rail, but the
+                                        # user wants them behind the highway (2026-10-23, test of 1.48)
 VISOR_INSET = 9.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
                                         # arms should barely show)
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
@@ -576,9 +579,60 @@ def scripts():
         return (''.join(f'\t\t:i $change$$structurename$ = $battle_hud_2d_elements$${k}$ = %vec2({v[0]:.1f},{v[1]:.1f})\n'
                         for k, v in offs.items())
                 + ''.join(f'\t\t:i $change$${k}$ = %f({v:.4f})\n' for k, v in scales.items()))
-    _, scales = card_sizes()
+    big, scales = card_sizes()
     is_ours = f'$[4c1beb8d]$$value$ = ${FLAG}$'
-    return ('Script WoR_HUD_create_battle_alert_frames [\n'
+    # 2026-10-23: the attack cards by script. guitar_battle creates each card 64x64 (z battle_hud_2d_elements.z + 19)
+    # and morphs it to rock_pos + card_*_off (the newest one: the big slot, scale 1; older ones: medium_scale /
+    # small_scale) in update_battlecards_add / _remove; the plugin's card matching (1.32-1.48) never saw a card in the
+    # DE (logs of 2026-10-23), so the cards stayed 64 px. Our wrappers run the DE's script, then put every card
+    # (current_battlecard_pN, index n-1 = the newest) into its slot: our size (the big card's; the scale gives the
+    # others), position, scale and draw priority (CARD_Z: just above its own slot, the bottom pair over the middle).
+    keys = ('big', 'mid', 'small')
+    centres = {key: c for key, c, _, _ in slots_on_tube()}
+    vec = lambda pts: ':a{' + ''.join(f'%vec2({x:.2f},{y:.2f})' for x, y in pts) + ':a}'
+    flt = lambda vs: ':a{' + ''.join(f'%f({v:.4f})' for v in vs) + ':a}'
+    sizes = [1.0, scales['medium_scale'], scales['small_scale']]
+    place = (
+        'Script WoR_HUD_battlecards_place [\n'
+        '\t:i if (~%GLOBAL%$player_status$->$player$ = %i(1))\n'
+        '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p1$)\n'
+        f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([centres[k] for k in keys])}\n'
+        '\t:i else \n'
+        '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p2$)\n'
+        f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([_p2(centres[k]) for k in keys])}\n'
+        '\t:i endif\n'
+        f'\t:i %GLOBAL%$WoR_scales$ = {flt(sizes)}\n'
+        f'\t:i %GLOBAL%$WoR_z$ = {flt([CARD_Z[k] for k in keys])}\n'
+        '\t:i %GLOBAL%$WoR_n$ = (~%GLOBAL%$player_status$->$current_num_powerups$)\n'
+        '\t:i %GLOBAL%$WoR_i$ = %i(0)\n'
+        '\t:i while \n'
+        '\t\t:i if (%GLOBAL%$WoR_i$ < %GLOBAL%$WoR_n$)\n'
+        '\t\t\t:i %GLOBAL%$WoR_slot$ = ((%GLOBAL%$WoR_n$ - %i(1)) - %GLOBAL%$WoR_i$)\n'
+        '\t\t\t:i if (%GLOBAL%$WoR_slot$ < %i(3))\n'
+        '\t\t\t\t:i %GLOBAL%$WoR_id$ = (%GLOBAL%$WoR_cards$:a{%GLOBAL%$WoR_i$:a})\n'
+        '\t\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_id$\n'
+        f'\t\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_id$$dims$ = %vec2({big:.2f},{big:.2f})'
+        '$z_priority$ = (%GLOBAL%$WoR_z$:a{%GLOBAL%$WoR_slot$:a})\n'
+        '\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$'
+        '$Pos$ = (%GLOBAL%$WoR_slots$:a{%GLOBAL%$WoR_slot$:a})$Scale$ = (%GLOBAL%$WoR_scales$:a{%GLOBAL%$WoR_slot$:a})'
+        '$alpha$ = %i(1)$time$ = %f(0.3):s}\n'
+        '\t\t\t\t:i endif\n'
+        '\t\t\t:i endif\n'
+        '\t\t:i endif\n'
+        '\t\t:i %GLOBAL%$WoR_i$ = (%GLOBAL%$WoR_i$ + %i(1))\n'
+        '\t:i loop_to %i(3)\n'
+        '\t:i endfunction\n]\n\n')
+    for name in ('update_battlecards_add', 'update_battlecards_remove'):
+        place += (f'Script WoR_HUD_{name} [\n'
+                  f'\t:i $WoR_HUD_{name}_orig$ isNull\n'
+                  f'\t:i if {is_ours}\n'
+                  '\t\t:i $WoR_HUD_battlecards_place$ isNull\n'
+                  '\t:i endif\n'
+                  '\t:i endfunction\n]\n\n'
+                  f'Script WoR_HUD_{name}_orig [\n'
+                  f'\t:i $printf$%s("WoR_HUD: {name} placeholder ran, plugin swap missing")\n'
+                  '\t:i endfunction\n]\n\n')
+    return place + ('Script WoR_HUD_create_battle_alert_frames [\n'
             f'\t:i if {is_ours}\n'
             + changes(card_offsets(), scales) +
             '\t\t:i $printf$%s("WoR_HUD: battle attack cards moved into the WoR slots")\n'

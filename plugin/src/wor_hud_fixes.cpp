@@ -758,6 +758,12 @@ namespace
 		// 1.32: battle attack cards into the WoR slots (tools/wor_battle.py; wrapper moves guitar_battle's card offsets)
 		{ 0xeeec662a /* create_battle_alert_frames */, 0xe44057a9 /* wor_hud_create_battle_alert_frames */, 0x88ff56b0 /* _orig */,
 		  "battle: create_battle_alert_frames wrapped (attack cards in the WoR slots)" },
+		// 1.49: the attack cards placed, sized and layered by script after guitar_battle's own morphs (tools/wor_battle.py
+		// WoR_HUD_battlecards_place; the plugin's card matching never saw a card in the DE: 2026-10-23 logs)
+		{ 0x741a2d86 /* update_battlecards_add */, 0x63cf0495 /* wor_hud_update_battlecards_add */, 0xab3df14a /* _orig */,
+		  "battle: update_battlecards_add wrapped (cards in the WoR slots)" },
+		{ 0xfaec1566 /* update_battlecards_remove */, 0x5673b1e8 /* wor_hud_update_battlecards_remove */, 0xeea6ae5e /* _orig */,
+		  "battle: update_battlecards_remove wrapped (cards in the WoR slots)" },
 		// 1.33: battle highways further apart with the WoR theme (wrapper moves the Pos the DE script returns)
 		{ 0x214c3209 /* get_highway_pos_and_scale */, 0x8dd39687 /* wor_hud_get_highway_pos_and_scale */, 0x739598f1 /* _orig */,
 		  "battle: get_highway_pos_and_scale wrapped (highways apart in battle)" },
@@ -1139,14 +1145,8 @@ namespace
 			const float w = f32(element, kElementDims);
 			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
 				battle_needle(element);
-			else
-			{
-				// 1.45: cards by their parent (battlemode_container), whatever their z (the user's battle footage of
-				// 2026-10-23 showed an unsized card)
-				void *parent = *reinterpret_cast<void **>(field(element, kElementParent));
-				if (parent && id_of(parent) == kBattlemodeContainer && texture_of(element) != 0)
-					battle_card(element);
-			}
+			// 1.49: the attack cards are placed by script (tools/wor_battle.py WoR_HUD_battlecards_place, run after
+			// guitar_battle's update_battlecards_add / _remove); battle_card() is kept for reference, no longer called
 		}
 		if (element)
 			for (StarPower &s : g_tubes)
@@ -1849,7 +1849,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.48 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.49 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

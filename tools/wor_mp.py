@@ -38,6 +38,9 @@ NEEDLE_PATHS = {1: ((0.0, 0.0), (11.0, -24.0), (28.0, -57.0), (41.0, -80.0)),
 # where the game draws the 1-player descs (preview_hud.GAME_CALIB, measured on the v0.17 capture): root-level descs
 # (the band meter: both tubes) at their coordinates + ROOT_CAL, g1's descs (multiplier, side meter) at g1 + G_CAL
 ROOT_CAL, G_CAL = (1.0, 3.0), (1.0, 9.0)
+# the 1-player layout's draw-priority chains (hud_1g_ghwor): the tubes sit in band_meter (hud_container 0 + 1), the
+# multiplier in g1 / player_meter (0 + 2 + 2)
+Z_TUBES_1P, Z_MULT_1P = 1.0, 4.0
 LAYOUTS = {'hud_1g1v': (1, ('g1',)), 'hud_2g': (2, ('g1', 'g2')), 'hud_2g1v': (2, ('g1', 'g2')),
            'hud_3g1v': (3, ('g1', 'g2', 'g3'))}
 
@@ -93,7 +96,9 @@ def sp_desc():
                   children=segs))
     props = [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
     props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
-    return desc(SP_NAME, _root('sp_mp', kids), props)
+    root = _root('sp_mp', kids)
+    root.z = dg.ROOTS['wor_band_meter_1g_ghwor'].z            # the band meter root's (lifted) z, as in quickplay
+    return desc(SP_NAME, root, props)
 
 
 # ---- rock tube
@@ -151,7 +156,9 @@ def side_desc(n):
              # meter in the red zone with no LED lit)
              ('SIDE_meter_red_ON_rgba', 'side_meter_red_rgba_sink', 'rgba'),
              ('side_meter_red_glow_rgba', 'side_meter_red_glow', 'rgba')]
-    return desc(SIDE_NAMES[n], _root('side_mp', kids), props)
+    root = _root('side_mp', kids)
+    root.z = dg.ROOTS['wor_band_meter_1g_ghwor'].z            # the band meter root's (lifted) z, as in quickplay
+    return desc(SIDE_NAMES[n], root, props)
 
 
 # ---- multiplier + note-streak lights
@@ -199,9 +206,15 @@ def _parse_tree(d):
             if not m:
                 return out
             props, p1 = tokens_block(seg, i + m.start())
+            zp = field(props, 'z_priority')
+            try:
+                zp = float(zp) if zp is not None else 0.0
+            except ValueError:
+                zp = 0.0
             node = dict(id=field(props, 'local_id'), pos=nums(props, 'Pos', (0.0, 0.0)),
                         dims=nums(props, 'dims', (100.0, 100.0)), just=nums(props, 'just', (-1.0, -1.0)),
-                        anchor=nums(props, 'pos_anchor', (-1.0, -1.0)), scale=nums(props, 'Scale', (1.0, 1.0)), kids=[])
+                        anchor=nums(props, 'pos_anchor', (-1.0, -1.0)), scale=nums(props, 'Scale', (1.0, 1.0)),
+                        z=zp, kids=[])
             c = re.match(r'\s*StructArray children', seg[p1:])
             if c:
                 kids, p2 = tokens_block(seg, p1 + c.end())
@@ -214,21 +227,23 @@ def _parse_tree(d):
 
 
 def container_origins(d):
-    """{local id: (top-left x, y, scale)} of every element, by the GUI's placement (pos from the parent's pos_anchor
-    point, just = the element's own anchor, Scale applies to children; tools/mock_modes.render)."""
+    """{local id: (top-left x, y, scale, z sum)} of every element, by the GUI's placement (pos from the parent's
+    pos_anchor point, just = the element's own anchor, Scale applies to children; tools/mock_modes.render); z sum =
+    the element's z_priority plus its ancestors'."""
     out = {}
 
-    def walk(e, rect, psc):
+    def walk(e, rect, psc, pz):
         x0, y0, w, h = rect
         px = x0 + (e['anchor'][0] + 1) / 2 * w + e['pos'][0] * psc[0]
         py = y0 + (e['anchor'][1] + 1) / 2 * h + e['pos'][1] * psc[1]
         sc = (psc[0] * e['scale'][0], psc[1] * e['scale'][1])
         ew, eh = e['dims'][0] * sc[0], e['dims'][1] * sc[1]
         ex, ey = px - (e['just'][0] + 1) / 2 * ew, py - (e['just'][1] + 1) / 2 * eh
-        out.setdefault(e['id'], (ex, ey, sc[0]))
+        z = pz + e['z']
+        out.setdefault(e['id'], (ex, ey, sc[0], z))
         for c in e['kids']:
-            walk(c, (ex, ey, ew, eh), sc)
-    walk(_parse_tree(d), (0.0, 0.0, 1280.0, 720.0), (1.0, 1.0))
+            walk(c, (ex, ey, ew, eh), sc, z)
+    walk(_parse_tree(d), (0.0, 0.0, 1280.0, 720.0), (1.0, 1.0), 0.0)
     return out
 
 
@@ -292,14 +307,18 @@ def placements(config, d=None):
     org = container_origins(d)
     out = []
     for g, shift in zip(groups, HG.shifts(n)):
-        ox, oy, sc = org[g]
+        ox, oy, sc, gz = org[g]
         assert abs(sc - 1.0) < 1e-6, (config, g, sc)
         o = (ox + G_CAL[0], oy + G_CAL[1])
         left, right = HG.similarity(n, shift, 'left'), HG.similarity(n, shift, 'right')
         g1 = (wor_1g.G1[0] + G_CAL[0], wor_1g.G1[1] + G_CAL[1])
-        out += [(g, 'player_meter', MULT_NAME, instance(right, o, g1), 2.0, 1.0),
-                (g, 'Star_Power', SP_NAME, instance(right, o, ROOT_CAL), 2.0, 0.0),   # shown when attached
-                (g, 'BAND_side_meter', SIDE_NAMES[n], instance(left, o, ROOT_CAL), 3.0, 0.0)]
+        # the instance's z makes its chain of draw priorities sum to the 1-player one (Z_TUBES_1P / Z_MULT_1P), so
+        # every element layers against the highway exactly as in quickplay (user 2026-10-23: the band tubes, at
+        # quickplay's exact spot, looked like floating over the highway)
+        zt, zm = Z_TUBES_1P - gz, Z_MULT_1P - gz
+        out += [(g, 'player_meter', MULT_NAME, instance(right, o, g1), zm, 1.0),
+                (g, 'Star_Power', SP_NAME, instance(right, o, ROOT_CAL), zt, 0.0),   # shown when attached
+                (g, 'BAND_side_meter', SIDE_NAMES[n], instance(left, o, ROOT_CAL), zt, 0.0)]
     return out
 
 

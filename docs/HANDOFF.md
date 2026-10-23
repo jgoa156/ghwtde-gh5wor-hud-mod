@@ -111,6 +111,22 @@ Everything after this section is older history; read it only for a detail.
   never reaches the LED either). Checked against quickplay: same rm_* elements / shadows / gaps / ball / z, one LED
   per health zone from the DE's SIDE_meter_*_ON_alpha, the needle kept (user accepted it in multiplayer).
 
+### 5d. User test after 5c (2026-10-23): plugin 1.49
+- Band tubes "floating over the highway" vs quickplay. On guitar + vocals the positions overlay quickplay's pixel for
+  pixel (frame blend), so it is layering: our band instances sat under other draw-priority chains (g1 z 1 + instance
+  z 2/3 + desc root z 0) than quickplay's (hud_container 0 + band_meter 1 + desc root 10). If the GUI sums parent
+  priorities (the only explanation left), the tube-end balls / shadows land over the border instead of under it.
+  Now every instance's z = the 1-player chain total minus its container's (wor_mp.Z_TUBES_1P 1, Z_MULT_1P 4;
+  container_origins also sums z) and the copied desc roots keep the band meter root's z (10). Harmless if the GUI
+  uses absolute priorities.
+- Battle slots must be BEHIND the highway (the earlier note meant the opposite of what round 1 did): layout z back
+  to 0, slot rings z 0.05-0.07 (under the highway surface 0.1), each card just above its own slot (CARD_Z).
+- Battle cards: the plugin's matching never saw one in the DE. Now by script: our wrappers of update_battlecards_add /
+  _remove (plugin 1.49 swaps) run the DE's script, then WoR_HUD_battlecards_place puts every card of
+  current_battlecard_pN (index n-1 = newest = big slot) into its slot: our size, position, scale, z.
+- Battle needle: the 1.48 log and the user's crops agree (the needle sits in the lit LED's zone; the stand-in turns
+  -21.6..+40 deg): it tracks health. "Not tracked" = alignment, now by the same highway map as band (round 1).
+
 ### 6. Open / next
 1. In-game check of 1.48: singleplayer tube (normal size, sharp lightning), every multiplayer tube animating like
    singleplayer, career face-off without tube and scores, versus streak size, battle cards (size, layering), band.
@@ -119,7 +135,7 @@ Everything after this section is older history; read it only for a detail.
 4. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.48 + mod with art-size tube textures, the off-screen star power level source and the red LED fix (theme pak 2.15 MB, UI pak 18.35 MB), 2026-10-23, hashes verified. Not tested in game yet.
+Installed: plugin 1.49 + mod (art-size tube textures, off-screen star power level source, red LED fix, 1-player draw-priority chains, battle slots behind the highway, cards by script), 2026-10-23, hashes verified. Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 
@@ -802,5 +818,6 @@ object bug (same family as "Zone not found"), not the HUD. Tools used: scratchpa
   3 highways (they had put the SP tubes ~17 px and the rock tubes ~65 px left of the rails). Next: one 3g1v capture.
 - Still open: band SP fill / per-tube engine with 3 tubes (bots' SP not checked in frames), hud_1g1v and hud_2g1v
   (not captured yet), the purple drum fill pick, the battle fade / 6th star in-game checks.
+
 
 

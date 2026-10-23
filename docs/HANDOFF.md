@@ -4,7 +4,50 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-22 night): multiplayer HUD in progress, plugin 1.43 + mod installed (HEAD 547f7bb)
+## START HERE (2026-10-23): every multi-highway layout "by the book" (plugin 1.45 + mod INSTALLED, not tested)
+
+User evidence 2026-10-23 (`OneDrive\Videos\GH\GHEvidence\`: video + 9 annotated stills, priority list): items 0-5.
+Directive: **stick by the book with how SINGLEPLAYER deals with highway elements**; angles in 2+ player modes are fine
+(keep them), carry over singleplayer's effects/details and put the pieces exactly on each highway's outer border.
+
+What was found (don't re-derive):
+- The DE builds every highway from one struct per number of instrument highways (DE `scripts/guitar/guitar_tweaks.qb`
+  highway_guitar1/2/3: top width 160/170/152, width growth 2.2/1.33/1.2, height 350/270/270, playline 655) shifted
+  by Pos.x (x_offset_p2 230, x_offset_p3 225 x 1.8; our theme adds SEP 22 / SEP3 12.5). Drawn over the 16:9 bot
+  captures these edges are EXACT on every highway (1g1v, 2g1v, face-off, 3g1v): `tools/hw_geom.py`.
+- The WoR border's outer edge sits a + b*f px outside that edge (f = fraction of the height from the top), the same in
+  every layout: 4.2+19.5f (1), 4.7+18.9f (2), 5.0+18.5f (3) (median capture frames, robust fit, rms < 0.7 px).
+- The guitar + vocals highway IS the 1-player highway (video frames overlay exactly).
+- Singleplayer's "behind the highway" = absolute draw priorities (wor_1g.RAIL_Z: tubes 3.01-3.09 just above the
+  border sprites z 3, badge / tube balls 0.04-0.05 under the highway surface 0.1). The old multiplayer descs had the
+  multiplier at z 6-6.5 and the rock tube at 13-18.5 (on top of the highway) and the rock tube was the battle art.
+- DE rock needle path (script 0x3205f550) per number of instrument highways: 1 (0,0)(11,-24)(28,-57)(41,-80);
+  2 (0,0)(13,-28)(26,-58)(37,-84); 3+ (-4,2)(8,-32)(21,-67)(33,-100).
+
+What changed (built, installed only if the line below says so):
+- `tools/wor_mp.py` rewritten: per player the 1-player descs themselves (SP tube: every sp_* element; rock tube: every
+  rm_* element + LEDs + the 1-player side meter needle, one desc per needle path wor_side_mp1/_mp/_mp3; multiplier:
+  wor_mult_1g copy + face-off alias stand-in), each instance placed by `hw_geom.similarity` (the 1-player outer border
+  laid onto this highway's: scale 0.75 on 2 highways, rotation -+3.1 deg) through the real container origins
+  (`container_origins`, GUI semantics) + the 1-player calibration (ROOT_CAL (1,3), G_CAL (1,9)). No more MP_DX /
+  ROCK_MP_DX / highway_map / inverse maps. On guitar + vocals the map is the identity (the pieces = quickplay's).
+- Career versus (boss battles): no score boxes (versus desc score_container_N_alpha set 0 by the attach wrapper), no
+  SP tube (star power attach wrapper hides it); streak meter kept.
+- Battle: rock tube by the same highway map (ROCK_NUDGE gone; slots keep their map, user: positions right); cards 25%
+  smaller (CARD_FILL 0.375: the middle card no longer reaches over the bottom slot); layout z 4 (slots over the rail);
+  plugin finds cards by their parent and logs "battle card ... not placed" when it can't match one. Last battle log
+  (1.43) showed the needle stand-in never turning (rot 0.0..0.0) and no card placed: check the 1.45 log after a run.
+- Streak meter (random wrong default / instrument icon): plugin 1.45 recognises our multiplier by its elements (badge
+  = the only z 0.05, 256x256 element; lights = its siblings), not by the texture shown.
+- SP tube textures resampled 4x (sp_base, spfull(_b), neon caps) and the 60 fps plasma 2x (UI pak 24 MB, theme 3.0 MB).
+- Plugin 1.44's per-player tube take-over (face-off SP spill) is included.
+- Mock: `python tools/mock_rails.py docs/mocks/mock_rails_v1.jpg` (pieces on clean highways; the captures' old pieces
+  overlap the highway surface, so some leftovers show).
+
+Next: install, ask for ONE capture run per layout (1g1v first: must match quickplay exactly), compare with
+`tools/mock_rails.py`; if a whole layout is off by a constant, the container origin model (G_CAL) is the suspect.
+
+## Previous (2026-10-22 night): multiplayer HUD in progress, plugin 1.43 + mod installed (HEAD 547f7bb)
 
 Everything below this section is older history; read it only when a detail is needed.
 

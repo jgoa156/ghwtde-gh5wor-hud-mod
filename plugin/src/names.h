@@ -124,24 +124,27 @@ static const float kLevelPt[65][2] = {
 static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
 static const float kBNeedleDims = 85.3333f;
 static const uint32_t kBNeedleId[2] = { 0x011d1690, 0x9814472a };   // HUD2D_rock_needle + p1 / p2
-static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 31.4410f, -56.4092f }, { 55.3292f, -99.2677f }, { 72.7184f, -130.4661f } };
-static const float kBCard = 17.0333f;   // guitar_battle cards are 64x64
+static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.4643f, -56.3283f }, { 48.3311f, -99.1252f }, { 63.5208f, -130.2788f } };
+static const float kBCard = 12.7749f;   // guitar_battle cards are 64x64
 // per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
 static const float kBSlot[6][5] = {
-	{ 306.00f, 214.00f, 607.45f, 590.05f, 17.03f },
-	{ 262.00f, 225.00f, 590.22f, 566.67f, 14.48f },
-	{ 253.00f, 251.00f, 575.54f, 546.86f, 12.26f },
-	{ 980.00f, 214.00f, 1109.89f, 590.05f, 17.03f },
-	{ 1026.00f, 227.00f, 1092.66f, 566.67f, 14.48f },
-	{ 1033.00f, 253.00f, 1077.98f, 546.86f, 12.26f },
+	{ 306.00f, 214.00f, 606.39f, 592.00f, 12.77f },
+	{ 262.00f, 225.00f, 590.21f, 567.87f, 10.86f },
+	{ 253.00f, 251.00f, 576.42f, 547.42f, 9.20f },
+	{ 980.00f, 214.00f, 1108.83f, 592.00f, 12.77f },
+	{ 1026.00f, 227.00f, 1092.65f, 567.87f, 10.86f },
+	{ 1033.00f, 253.00f, 1078.86f, 547.42f, 9.20f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 
-// 2-highway layouts (tools/wor_mp.py): per-player rock needle and multiplier
-static const float kMpNeedleAX = 1.031300f, kMpNeedleAY = 1.031300f;
-static const uint32_t kMpNeedleTex = 0xa5460419;   // WoR_HUD_mpneedle
+// multi-highway layouts (tools/wor_mp.py): per-player rock needle (2 and 3+ instrument highways) and multiplier
+static const float kMpNeedleAX = 1.880504f, kMpNeedleAY = 1.486107f;
 static const float kMpNeedleDE[4][2] = { { 0.0000f, 0.0000f }, { 13.0000f, -28.0000f }, { 26.0000f, -58.0000f }, { 37.0000f, -84.0000f } };
-static const float kMpNeedleWoR[4][2] = { { 0.0000f, 0.0000f }, { 22.8651f, -41.0229f }, { 40.2375f, -72.1912f }, { 52.8835f, -94.8798f } };
+static const float kMpNeedleWoR[4][2] = { { -3.8995f, 8.8529f }, { 12.3333f, -28.0000f }, { 24.6667f, -56.0000f }, { 33.6446f, -76.3824f } };
+static const float kMp3NeedleAX = 1.880504f, kMp3NeedleAY = 1.223853f;
+static const float kMp3NeedleDE[4][2] = { { -4.0000f, 2.0000f }, { 8.0000f, -32.0000f }, { 21.0000f, -67.0000f }, { 33.0000f, -100.0000f } };
+static const float kMp3NeedleWoR[4][2] = { { -7.8995f, 12.7500f }, { 8.3333f, -32.0000f }, { 20.6667f, -66.0000f }, { 29.6446f, -90.7500f } };
+static const uint32_t kMpNeedleTex = 0x813b360d;   // the 1-player needle
 static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };
 // versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours
 static const uint32_t kNixieMap[8][2] = { { 0xb373f287, 0x99c7e9f3 }, { 0x985ea144, 0x00ceb849 }, { 0x81459005, 0x77c988df }, { 0xce0406c2, 0xe9ad1d7c }, { 0x0157f0fe, 0x72b100bd }, { 0x570d5778, 0x9bd2a588 }, { 0x653b35fa, 0x75dcc4a4 }, { 0xfbb81874, 0x9264e9a3 } };

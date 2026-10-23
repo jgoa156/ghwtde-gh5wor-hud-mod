@@ -72,8 +72,12 @@ VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.72                        # ring centres this many rim radii apart along the rail (a little overlap)
 VISOR_Z = {'big': 18.3, 'mid': 18.2, 'small': 18.1}   # under the cards (z 19): the glass is opaque
-CARD_FILL = 0.5                         # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
-                                        # 2026-10-22, the slot's border must show around the card)
+CARD_FILL = 0.375                       # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
+                                        # 2026-10-22, the slot's border must show around the card; 0.5 -> 0.375 user
+                                        # 2026-10-23: at least 25% less radius, so the middle card no longer reaches
+                                        # over the bottom slot)
+HUD_Z = 4                               # the layout's z (stock 0): above the highway and its rails (z 3), so the slots'
+                                        # arms show over the rail (user 2026-10-23: the slots rendered behind it)
 VISOR_INSET = 9.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
                                         # arms should barely show)
 TUBE_TEX = {'body': 'WoR_HUD_btube', 'red': 'WoR_HUD_btube_red', 'yellow': 'WoR_HUD_btube_yellow',
@@ -162,7 +166,13 @@ def tube_maps(sep=SEP):
         c, s = math.cos(th), math.sin(th)
         m[:, :2] = k * np.array([[c, -s], [s, c]])
         m[:, 2] = (a2[0] - (m[0, 0] * anchor[0] + m[0, 1] * anchor[1]), a2[1] - (m[1, 0] * anchor[0] + m[1, 1] * anchor[1]))
-    rock[:, 2] += ROCK_NUDGE
+    # 2026-10-23 (user: the battle rock tube sat lower than quickplay's): the rock tube by the book, like every other
+    # mode (tools/hw_geom.py): the 1-player outer border laid onto this highway's (battle highways = the DE's 2-highway
+    # struct at -(x_offset_p2 + sep)); the slots keep the map above (user: their positions are right)
+    import hw_geom as HG
+    k, rot_deg, t = HG.similarity(2, -(HG.X_OFFSET_P2 + sep), 'left')
+    c, s = math.cos(math.radians(rot_deg)), math.sin(math.radians(rot_deg))
+    rock = np.array([[k * c, -k * s, t[0]], [k * s, k * c, t[1]]])
     return {'rock': rock, 'sp': sp}
 
 
@@ -506,7 +516,7 @@ def layout_struct():
         for n, key in ((2, 'mid'), (3, 'small')):
             pos = centre[key] if p == 1 else _p2(centre[key])
             t += _vec(f'card_default_{n}_p{p}', _local(pos, p), hdr)
-    t += f'{hdr}StructFloat Scale = {SCALE}\n{hdr}StructInt z = 0\n'
+    t += f'{hdr}StructFloat Scale = {SCALE}\n{hdr}StructInt z = {HUD_Z}\n'
     for name, v in (('buttons_p2_offset', (510.0, 0.0)), ('string_offset', (200.0, 0.0)),
                     ('green_button_pos', (185.0, 620.0)), ('lefty_green_button_pos', (585.0, 620.0)),
                     ('attack_ready_text_pos_p1', (347.0, 240.0)), ('attack_ready_text_pos_p2', (941.0, 240.0)),

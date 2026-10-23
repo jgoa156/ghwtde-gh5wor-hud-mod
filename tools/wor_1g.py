@@ -339,6 +339,13 @@ SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) o
 SP_PLASMA_FPS = 60                             # back to 60 (2026-10-22): the frames moved to the UI pak, no budget cap
 SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
+# Texture resolution (user 2026-10-23: the star power tube must look sharper, its textures no longer bound by the theme
+# pak budget): the tube's textures are shipped resampled (Lanczos, premultiplied) to SP_TEX_SS x their 64x256 art,
+# the plasma frames (UI pak, 120 of them) to SP_PLASMA_SS x; the sprites keep their dims, so only the sampling changes
+# (DXT5 4x4 blocks at 64 px wide were the visible blockiness at 4K)
+SP_TEX_SS, SP_PLASMA_SS = 4, 2
+SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
+               'WoR_HUD_spneon_c')
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = True                        # the fill keeps the glass's full width down to its last row (no curve)

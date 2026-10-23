@@ -340,7 +340,11 @@ def versus_desc():
              ('score_1_text', 'score_1', 'text'), ('score_2_text', 'score_2', 'text'),
              ('hud_bb_multiplier_nixie_1_texture', 'HUD_bb_multiplier_nixie_1', 'texture'),
              ('hud_bb_multiplier_nixie_2_texture', 'HUD_bb_multiplier_nixie_2', 'texture'),
-             ('p1_streak_number_text', 'streak_number_1', 'text'), ('p2_streak_number_text', 'streak_number_2', 'text')]
+             ('p1_streak_number_text', 'streak_number_1', 'text'), ('p2_streak_number_text', 'streak_number_2', 'text'),
+             # career versus (boss battles) shows no score (user 2026-10-23, WoR reference): the attach wrapper hides
+             # both score boxes there
+             ('score_container_1_alpha', 'score_container_1', 'alpha'),
+             ('score_container_2_alpha', 'score_container_2', 'alpha')]
     for p in (1, 2):
         for k in range(1, 7):
             props += [(f'fill_{p}_{k}_texture', f'fill_{p}_{k}', 'texture'), (f'fill_{p}_{k}_scale', f'fill_{p}_{k}', 'Scale')]
@@ -396,14 +400,8 @@ def edit_layout(config, d):
         d = d[:a] + new + d[b:]
     else:
         d = _set_alpha(d, lid, 0.0)
-    if config == 'hud_2g':                        # two instrument highways: our per-player pieces
-        d = wor_mp.edit_two_highways(d)
-    elif config == 'hud_2g1v':                    # the same + vocals (containers without hud_2g's centred parent)
-        d = wor_mp.edit_two_highways(d, parent_fix=wor_mp.HUD_2G_PARENT_CENTRE)
-    elif config == 'hud_1g1v':                    # one instrument highway (the 1-player one) + vocals
-        d = wor_mp.edit_one_highway(d)
-    elif config == 'hud_3g1v':                    # three instrument highways (+ vocals): the same pieces, scaled
-        d = wor_mp.edit_three_highways(d)
+    if config in wor_mp.LAYOUTS:                  # every multi-highway layout: the 1-player pieces on each highway
+        d = wor_mp.edit_highways(config, d)
     return d
 
 
@@ -414,6 +412,9 @@ SCRIPTS = (
     '\t:i if $GotParam$$parent_id$\n'
     '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$parent_id$\n'
     '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$parent_id$$alpha$ = %i(1)\n'
+    '\t\t\t:i if (~$boss_battle$ = %i(1))\n'
+    '\t\t\t\t:i %GLOBAL%$parent_id$.$se_setprops$$score_container_1_alpha$ = %f(0.0)$score_container_2_alpha$ = %f(0.0)\n'
+    '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'

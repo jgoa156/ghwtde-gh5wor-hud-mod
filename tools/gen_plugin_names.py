@@ -99,14 +99,16 @@ def main():
     out += [f'\t{{ {s[0]:.2f}f, {s[1]:.2f}f, {c[0]:.2f}f, {c[1]:.2f}f, {k:.2f}f }},' for s, c, k in wor_battle.plugin_cards()]
     out += ['};',
             f'static const uint32_t kBattlemodeContainer = 0x{qbkey("battlemode_container"):08x};', '']
-    # 2-highway layouts (tools/wor_mp.py): the per-player rock needle (anchor scale, DE 2-player path, our stops), the
-    # multiplier textures (the x1 badge replaces the DE's highway instrument icon) and those icon names
-    ax, ay = wor_mp.ANCHOR_SCALE
-    out += ['// 2-highway layouts (tools/wor_mp.py): per-player rock needle and multiplier',
-            f'static const float kMpNeedleAX = {ax:.6f}f, kMpNeedleAY = {ay:.6f}f;',
-            f'static const uint32_t kMpNeedleTex = 0x{qbkey(wor_mp.NEEDLE_TEX):08x};   // {wor_mp.NEEDLE_TEX}',
-            'static const float kMpNeedleDE[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.DE_KNOTS_2P) + ' };',
-            'static const float kMpNeedleWoR[4][2] = { ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.needle_knots()[1]) + ' };',
+    # multi-highway layouts (tools/wor_mp.py): the per-player rock needle on the 1-player tube for the DE's 2- and 3+-
+    # highway paths (anchor scale, DE path, our stops; 1 highway = the 1-player side meter's), the multiplier textures
+    # (the x1 badge replaces the DE's highway instrument icon) and those icon names
+    out += ['// multi-highway layouts (tools/wor_mp.py): per-player rock needle (2 and 3+ instrument highways) and multiplier']
+    for tag, n in (('Mp', 2), ('Mp3', 3)):
+        _, (ax, ay), stops = wor_mp.needle_anchor(n)
+        out += [f'static const float k{tag}NeedleAX = {ax:.6f}f, k{tag}NeedleAY = {ay:.6f}f;',
+                f'static const float k{tag}NeedleDE[4][2] = {{ ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.NEEDLE_PATHS[n]) + ' };',
+                f'static const float k{tag}NeedleWoR[4][2] = {{ ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in stops) + ' };']
+    out += [f'static const uint32_t kMpNeedleTex = 0x{qbkey("WoR_HUD_needle_glow"):08x};   // the 1-player needle',
             'static const uint32_t kOurMult[8] = { ' + ', '.join(f'0x{qbkey(n):08x}' for n, _ in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
             '// versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours',
             'static const uint32_t kNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(src):08x}, 0x{qbkey(ours):08x} }}'

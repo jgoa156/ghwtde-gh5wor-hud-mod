@@ -233,10 +233,41 @@ namespace
 	// sibling shows one of our multiplier badges. The multiplayer meters were missed by the first test alone (user
 	// test 2026-10-22: the DE's stock light textures on them, as if ours didn't load), so their lights kept the
 	// DE's names.
+	float &f32(void *e, size_t off);
+
+	// 1.45: our multiplier desc (wor_mult_1g / wor_mult_mp: the 1-player one on every highway) by its elements, not by
+	// the textures they show: its badge is the only element at z 0.05 with 256x256 dims (under the highway surface),
+	// its lights are the badge's siblings. Recognising them by texture failed whenever the DE wrote its own light /
+	// instrument icon name first (user 2026-10-23: a random highway's streak meter kept the stock texture until it
+	// reloaded, sometimes with the instrument icon)
+	bool is_our_badge(void *e)
+	{
+		return fabsf(f32(e, kElementZ) - 0.05f) < 1e-4f && f32(e, kElementDims) == 256.0f &&
+		       f32(e, kElementDims + 4) == 256.0f;
+	}
+
+	bool in_our_mult(void *e)
+	{
+		if (!e)
+			return false;
+		if (is_our_badge(e))
+			return true;
+		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		if (!parent)
+			return false;
+		for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c;
+		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+			if (is_our_badge(c))
+				return true;
+		return false;
+	}
+
 	bool our_meter(void **elements)
 	{
 		if (elements[0] == nullptr)
 			return false;
+		if (in_our_mult(elements[0]))
+			return true;
 		for (int k = 0; k < 5; ++k)
 			if (elements[k] && is_ours(texture_of(elements[k])))
 				return true;
@@ -846,14 +877,17 @@ namespace
 		return true;
 	}
 
-	// 1.35: the 2-highway layouts' per-player rock tubes (tools/wor_mp.py) use the DE's 2-player needle path
-	bool g_mp_needle_logged = false;
+	// 1.35: the multi-highway layouts' per-player rock tubes (tools/wor_mp.py) use the DE's 2-player needle path; 1.45:
+	// they are the 1-player tube, with one anchor per DE path (1 instrument highway: the 1-player one; 2; 3 or more)
+	bool g_mp_needle_logged = false, g_mp3_needle_logged = false;
 
 	void needle_remap(void *anchor)
 	{
-		if (!remap_on(anchor, kNeedleAX, kNeedleAY, kNeedleTex, kNeedleDE, kNeedleWoR, g_needle_logged, "rock needle"))
-			remap_on(anchor, kMpNeedleAX, kMpNeedleAY, kMpNeedleTex, kMpNeedleDE, kMpNeedleWoR, g_mp_needle_logged,
-			         "multiplayer rock needle");
+		if (!remap_on(anchor, kNeedleAX, kNeedleAY, kNeedleTex, kNeedleDE, kNeedleWoR, g_needle_logged, "rock needle") &&
+		    !remap_on(anchor, kMpNeedleAX, kMpNeedleAY, kMpNeedleTex, kMpNeedleDE, kMpNeedleWoR, g_mp_needle_logged,
+		              "2-highway rock needle"))
+			remap_on(anchor, kMp3NeedleAX, kMp3NeedleAY, kMpNeedleTex, kMp3NeedleDE, kMp3NeedleWoR, g_mp3_needle_logged,
+			         "3-highway rock needle");
 	}
 
 	// ---- 1.33, battle rock tube (tools/wor_battle.py): the DE turns each player's HUD2D_rock_needle by health
@@ -959,7 +993,19 @@ namespace
 				slot = i;
 		}
 		if (slot < 0)
+		{
+			static int s_unmatched = 0;
+			static void *s_last = nullptr;
+			if (card != s_last && s_unmatched < 12)
+			{
+				s_last = card;
+				++s_unmatched;
+				log("battle card %08x not placed: tex %08x at (%.1f, %.1f) -> (%.1f, %.1f), scale -> %.2f, dims %.1f, z %.2f",
+				    id_of(card), texture_of(card), f32(card, kElementPos), f32(card, kElementPos + 4), tx, ty,
+				    f32(card, kElementScaleTarget), f32(card, kElementDims), f32(card, kElementZ));
+			}
 			return;
+		}
 		const float s = f32(card, kElementScaleTarget);
 		if (s < 0.05f)
 			return;
@@ -1056,8 +1102,14 @@ namespace
 			const float w = f32(element, kElementDims);
 			if (fabsf(w - kBNeedleDims) < 0.01f && fabsf(f32(element, kElementDims + 4) - kBNeedleDims) < 0.01f)
 				battle_needle(element);
-			else if (f32(element, kElementZ) >= 19.0f && f32(element, kElementZ) < 19.1f)
-				battle_card(element);
+			else
+			{
+				// 1.45: cards by their parent (battlemode_container), whatever their z (the user's battle footage of
+				// 2026-10-23 showed an unsized card)
+				void *parent = *reinterpret_cast<void **>(field(element, kElementParent));
+				if (parent && id_of(parent) == kBattlemodeContainer && texture_of(element) != 0)
+					battle_card(element);
+			}
 		}
 		if (element)
 			for (StarPower &s : g_tubes)
@@ -1102,7 +1154,7 @@ namespace
 			for (const auto &sl : kStockLights)
 				if (sl[0] == texture)
 				{
-					if (is_ours(texture_of(element)))
+					if (is_ours(texture_of(element)) || in_our_mult(element))
 						texture = kLights[0][sl[1]];
 					break;
 				}
@@ -1132,7 +1184,7 @@ namespace
 			{
 				if (icon != texture)
 					continue;
-				const uint32_t current = texture_of(element);
+				const uint32_t current = is_our_badge(element) ? kOurMult[0] : texture_of(element);
 				for (uint32_t m : kOurMult)
 				{
 					if (m == current)
@@ -1703,7 +1755,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.44 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.45 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

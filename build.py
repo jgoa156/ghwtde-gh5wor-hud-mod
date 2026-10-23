@@ -89,6 +89,18 @@ def blank_png(w, h):
             + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
 
 
+def supersample(path, k):
+    """Resample a PNG to k x its size in place (Lanczos on premultiplied colour: no dark fringes at the alpha edge)."""
+    import numpy as np
+    im = Image.open(path).convert('RGBA')
+    a = np.asarray(im).astype(np.float32) / 255.0
+    pm = Image.fromarray((np.dstack([a[..., :3] * a[..., 3:4], a[..., 3:4]]) * 255.0).round().astype(np.uint8))
+    big = np.asarray(pm.resize((im.width * k, im.height * k), Image.LANCZOS)).astype(np.float32) / 255.0
+    al = big[..., 3:4]
+    rgb = np.where(al > 1e-4, big[..., :3] / np.maximum(al, 1e-4), 0.0)
+    Image.fromarray((np.dstack([rgb, al]).clip(0, 1) * 255.0).round().astype(np.uint8)).save(path)
+
+
 def run(cmd, cwd):
     r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if r.returncode != 0:
@@ -400,6 +412,13 @@ def main():
     os.makedirs(preview)
     for p in pngs + ui_pngs:
         shutil.copy(p, preview)
+    # the star power tube's textures at a higher resolution than their art (wor_1g.SP_TEX_SS / SP_PLASMA_SS); the
+    # previews keep the art size (mock tools, battle tube baking)
+    for p in pngs + ui_pngs:
+        n = os.path.splitext(os.path.basename(p))[0]
+        k = wor_1g.SP_TEX_SS if n in wor_1g.SP_SS_NAMES else wor_1g.SP_PLASMA_SS if n in wor_1g.SP_PLASMA_NAMES else 1
+        if k > 1:
+            supersample(p, k)
     if pngs:
         # all DXT5: raw PNG inside the theme pak made the DE fall back to the stock HUD pak (no textures at all)
         run(['node', os.path.join(TOOLS, 'png2img.js'), pak_src, *pngs], TOOLS)

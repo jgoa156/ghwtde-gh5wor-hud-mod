@@ -1134,6 +1134,23 @@ namespace
 		}
 	}
 
+	// 1.48: the versus score boxes' note streak, sized by its digit count (the desc's fit settings do nothing in game;
+	// user 2026-10-23: 2 digits far too small at the fixed 4-digit size)
+	void vs_streak_size(void *element)
+	{
+		for (int p = 0; p < 2; ++p)
+			if (fabsf(f32(element, kElementZ) - kVsStreakZ[p]) < 1e-5f)
+			{
+				int s = g_streak[p], digits = 1;
+				while (s >= 10)
+					s /= 10, ++digits;
+				float k = kVsStreakK4 * 4.0f / digits;
+				k = k > kVsStreakKMax ? kVsStreakKMax : k;
+				if (fabsf(f32(element, kElementScale) - k) > 1e-4f)
+					reinterpret_cast<SetScaleFn>(kSetScale)(element, nullptr, k, k, 0, 0);
+			}
+	}
+
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
 		if (element)
@@ -1141,19 +1158,7 @@ namespace
 			needle_remap(element);
 			if (fabsf(f32(element, kElementZ) - kMpSrcZ) < 1e-4f)
 				mp_tube_source(element);
-			// 1.48: the versus score boxes' note streak, sized by its digit count (the desc's fit settings do nothing
-			// in game; user 2026-10-23: 2 digits far too small at the fixed 4-digit size)
-			for (int p = 0; p < 2; ++p)
-				if (fabsf(f32(element, kElementZ) - kVsStreakZ[p]) < 1e-5f)
-				{
-					int s = g_streak[p], digits = 1;
-					while (s >= 10)
-						s /= 10, ++digits;
-					float k = kVsStreakK4 * 4.0f / digits;
-					k = k > kVsStreakKMax ? kVsStreakKMax : k;
-					if (fabsf(f32(element, kElementScale) - k) > 1e-4f)
-						reinterpret_cast<SetScaleFn>(kSetScale)(element, nullptr, k, k, 0, 0);
-				}
+			vs_streak_size(element);
 			if (texture_of(element) == kVsNeedleTex)
 				vs_needle(element);
 			for (const Grow &g : g_grow)
@@ -1179,6 +1184,11 @@ namespace
 		if (!g_script_swaps_done)
 			script_swaps_try();
 		g_element_update(element, edx);
+		// 1.52 (user 2026-10-23: the versus streak appeared at its size, then flashed back to the 4-digit minimum): a new
+		// number re-lays the text block out at its desc scale inside the update, after the check above, so that frame
+		// drew at the minimum. Sized again once the update is done.
+		if (element)
+			vs_streak_size(element);
 	}
 
 	// ---- 1.35, no instrument icon on the highway (tools/wor_mp.py): HUD_attach_widget_player_multiplier puts
@@ -1869,7 +1879,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.51 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.52 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

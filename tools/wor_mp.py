@@ -113,8 +113,11 @@ def sp_desc():
 
 # ---- rock tube
 ROCK_PARTS = ('lights_bg', 'red_light', 'yellow_light', 'green_light')
-MP_NEEDLE_DX = -2.0         # desc units (~1.5 screen px on the 2- and 3-highway layouts): user 2026-10-23, the white needle
-                            # a little left on every multiplayer highway
+MP_NEEDLE_DX = 0.0          # desc units. Was -2 (user 2026-10-23, round 2: the white needle a little left on every
+                            # multiplayer highway), asked while every multiplayer tube sat 6 units too high (G_CAL (1, 9),
+                            # fixed in 1.50). With the tubes on the border it only made band differ from quickplay:
+                            # user test of 1.51, the needle's top stop sat lower than in quickplay (on the slanted cap,
+                            # a needle moved left sits lower). Now exactly the 1-player needle.
 
 
 def needle_anchor(n):

@@ -244,8 +244,8 @@ def visors(sep=SEP):
         nx, ny = -nx, -ny
     # 2026-10-23 (user: the slots' top aligned with the rock meter's top): the set slides along its rail until the
     # top slot's rim top is level with the rock tube's top end (the rm_base art's first row, RM_TOP_ROW)
-    rock_top = apply(tube_maps(sep)['rock'], add_cal(wor_1g.LEFT.tex((wor_1g.TEX_CENTER[0] + wor_1g.TEX_CENTER[1] * RM_TOP_ROW,
-                                                                   RM_TOP_ROW))))
+    rock_top = rock_point(add_cal(wor_1g.LEFT.tex((wor_1g.TEX_CENTER[0] + wor_1g.TEX_CENTER[1] * RM_TOP_ROW,
+                                                    RM_TOP_ROW))), 1)
     slot_top = min(g[1] - VISOR_RING[3] * k * VISOR_SCALES[key] for key, _, _, g, _ in out)
     tau = (rock_top[1] - slot_top) / v[1]
     slide = lambda p: (p[0] + v[0] * tau, p[1] + v[1] * tau)
@@ -259,6 +259,35 @@ RM_TOP_ROW = 4.0                        # the rock tube art's (rm_base) first op
 def add_cal(p):
     """A 1-player band meter point as drawn in game (preview_hud.GAME_CALIB, the band meter's (1, 3))."""
     return (p[0] + 1.0, p[1] + 3.0)
+
+
+# ---- the rock tube, by the book (user 2026-10-23: battle must use quickplay's rock meter position, layering, shadows
+# and effects): each player gets the band layouts' own rock tube desc (wor_mp.SIDE_NAMES[2], the 2-highway DE needle
+# path), placed by the same map as in band (tools/wor_mp.placements: the 1-player outer border laid onto this
+# highway's, then moved in by the border overlap lost to scaling). The DE's HUD_attach_widget_player_health drives its
+# LEDs; WoR_HUD_battle_needles moves its needle stand-in on the DE's own 2-highway path (script 0x3205f550 doesn't run
+# in battle), which the plugin maps onto the WoR LED stops exactly as in band. Parent: battlemode_container (screen
+# origin, created at song start, destroyed by the DE afterwards), which draws its descs at (1, 3) like the DE's other
+# containers (wor_mp.G_CAL).
+BROCK_ID = {1: 'WoR_HUD_brock_p1', 2: 'WoR_HUD_brock_p2'}
+
+
+def rock_instance(player):
+    """(Pos, scale, rot) of player's rock tube desc in battlemode_container."""
+    import hw_geom as HG
+    import wor_mp as M
+    k, rot, t = HG.similarity(2, HG.shifts(2)[player - 1], 'left')
+    (px, py), k, rot = M.instance((k, rot, t), M.G_CAL, M.ROOT_CAL)
+    return (px + (1.0 - k) * M.OVERLAP_1P['left'], py), k, rot
+
+
+def rock_point(p, player):
+    """Screen point of 1-player band meter point p (as drawn, add_cal) on player's battle rock tube."""
+    import hw_geom as HG
+    import wor_mp as M
+    sim = HG.similarity(2, HG.shifts(2)[player - 1], 'left')
+    x, y = HG.apply(sim, p)
+    return x + (1.0 - sim[0]) * M.OVERLAP_1P['left'], y
 
 
 def slots_on_tube(sep=SEP):
@@ -550,18 +579,24 @@ def layout_struct():
     # health: the rock tube body and one LED per zone. The DE (0x465ab0) switches HUD2D_rock_lights_red / _yellow /
     # _green on below 2/3, 2/3..4/3 and above 4/3 health, like the 1-player LEDs; BG_green / BG_yellow are GH3's dial
     # crossfade layers over an always-on BG_red (test 2026-10-21: as LEDs they lit all three at once), so blank here.
+    # 2026-10-23: the rock tube is the band desc now (rock_instance, WoR_HUD_battle_rock); the DE-driven ids stay (it
+    # switches their alphas and turns the needle stand-in), blank. Our battle needle stays too, invisible: the plugin
+    # still finds it (dims kBNeedleDims, texture WoR_HUD_bneedle) and reads the DE's angle there, which keeps
+    # g_battle_seen (score separators while the battle HUD is up) alive
     (tc, (tw, th)) = tube_box()
     tube = (tw / SS, th / SS)
-    t += _elem('HUD2D_rock_body', TUBE_TEX['body'], tc, tube, 13)
-    for c, z, a in (('red', 14, 0), ('yellow', 15, 1), ('green', 16, 0)):    # the song starts at health 1 (yellow)
-        t += _elem(f'HUD2D_rock_lights_{c}', TUBE_TEX[c], tc, tube, z, alpha=a)
+    t += _elem('HUD2D_rock_body', BLANK, tc, (4.0, 4.0), 13, alpha=0)
+    for c, z in (('red', 14), ('yellow', 15), ('green', 16)):
+        t += _elem(f'HUD2D_rock_lights_{c}', BLANK, tc, (4.0, 4.0), z, alpha=0)
     for eid in ('HUD2D_rock_BG_green', 'HUD2D_rock_BG_red', 'HUD2D_rock_BG_yellow', 'HUD2D_rock_lights_all'):
         t += _elem(eid, BLANK, tc, (4.0, 4.0), 17, alpha=0)
     # needle: the DE turns the stand-in (blank, at the health-0 stop); the plugin slides ours up the tube from it
     st = needle_stops()
     nd = _pow2(NEEDLE_BOX * SS) / SS
     t += _elem('HUD2D_rock_needle', BLANK, st[0], (4.0, 4.0), 18.4)
-    t += _elem('WoR_HUD_battle_needle', NEEDLE_TEX, ((st[1][0] + st[2][0]) / 2, (st[1][1] + st[2][1]) / 2), (nd, nd), 18.5)
+    # (transparent by its colour, not alpha 0: an alpha-0 element may not get its per-frame update)
+    t += _elem('WoR_HUD_battle_needle', NEEDLE_TEX, ((st[1][0] + st[2][0]) / 2, (st[1][1] + st[2][1]) / 2), (nd, nd), 18.5,
+               rgba=(255, 255, 255, 0))
     # attack slots: the three visors under the cards (z 19); the DE's default icon of an empty slot stays blank (the
     # visor's own dark glass shows)
     for key, ec, dims, c, r_in in visors():
@@ -668,6 +703,7 @@ def scripts():
                   f'Script WoR_HUD_{name}_orig [\n'
                   f'\t:i $printf$%s("WoR_HUD: {name} placeholder ran, plugin swap missing")\n'
                   '\t:i endfunction\n]\n\n')
+    place += rock_scripts()
     return place + ('Script WoR_HUD_create_battle_alert_frames [\n'
             f'\t:i if {is_ours}\n'
             + changes(card_offsets(), scales) +
@@ -743,6 +779,7 @@ def scripts():
             '\t\t\t\t:i $wait$%f(0.5)$seconds$\n'
             '\t\t\t:i endif\n'
             '\t\t\t:i $wait$%GLOBAL%$morph_time$$seconds$\n'
+            '\t\t\t:i $WoR_HUD_battle_rock$ isNull\n'
             '\t\t\t:i if $ScreenElementExists$$id$ = $HUD_2D_Containerp1$\n'
             '\t\t\t\t:i $HUD_2D_Containerp1$.$se_setprops$:s{$alpha$ = %i(1)$time$ = %f(0.25):s}\n'
             '\t\t\t:i endif\n'
@@ -757,6 +794,60 @@ def scripts():
             'Script WoR_HUD_move_2d_elements_to_default_orig [\n'
             '\t:i $printf$%s("WoR_HUD: 2d hud move placeholder ran, plugin swap missing")\n'
             '\t:i endfunction\n]\n')
+
+
+def rock_scripts():
+    """WoR_HUD_battle_rock (run as the battle pieces fade in): each player's band rock tube desc, attached to its health
+    and faded in with the rest; WoR_HUD_battle_needles: its needle stand-in on the DE's 2-highway path every frame."""
+    import wor_mp as M
+    t = 'Script WoR_HUD_battle_rock [\n\t:i if $ScreenElementExists$$id$ = $battlemode_container$\n'
+    for p in (1, 2):
+        (x, y), k, rot = rock_instance(p)
+        i = BROCK_ID[p]
+        t += (f'\t\t:i if NOT $ScreenElementExists$$id$ = ${i}$\n'
+              f'\t\t\t:i $CreateScreenElement$:s{{$type$ = $descinterface$$parent$ = $battlemode_container$$id$ = ${i}$'
+              f'$desc$ = %s("{M.SIDE_NAMES[2]}")$Pos$ = %vec2({x:.4f},{y:.4f})$just$ = :a{{$left$$top$:a}}'
+              '$dims$ = %vec2(1280.0,720.0)$autosizedims$ = $false$'
+              f'$Scale$ = %vec2({k:.5f},{k:.5f})$rot_angle$ = %f({rot:.4f})$z_priority$ = %f(0.0)$alpha$ = %i(0):s}}\n'
+              f'\t\t\t:i $HUD_attach_widget_player_health$$parent_id$ = ${i}$$player$ = %i({p})\n'
+              f'\t\t\t:i $SetScreenElementProps$$id$ = ${i}$$alpha$ = %i(0)\n'
+              f'\t\t\t:i ${i}$.$se_setprops$:s{{$alpha$ = %i(1)$time$ = %f(0.25):s}}\n'
+              '\t\t:i endif\n')
+    t += ('\t\t:i $spawnscriptnow$$WoR_HUD_battle_needles$\n'
+          '\t:i endif\n\t:i endfunction\n]\n\n')
+    t += ('Script WoR_HUD_battle_needles [\n'
+          '\t:i $SetSpawnInstanceLimits$$max$ = %i(1)$management$ = $kill_oldest$\n'
+          '\t:i while \n'
+          f'\t\t:i if NOT $ScreenElementExists$$id$ = ${BROCK_ID[1]}$\n'
+          '\t\t\t:i return\n'
+          '\t\t:i endif\n'
+          + ''.join(f'\t\t:i $WoR_HUD_battle_needle_set$$player$ = %i({p})$id$ = ${BROCK_ID[p]}$\n' for p in (1, 2)) +
+          '\t\t:i $wait$%i(1)$gameframe$\n'
+          '\t:i loop_to \n'
+          '\t:i endfunction\n]\n\n')
+    path = M.NEEDLE_PATHS[2]
+    v = lambda q: f'%vec2({q[0]:.1f},{q[1]:.1f})'
+    # the DE's 0x3205f550 for one player (health 0 / .6666 / 1.3333 / 2 on the path's knots)
+    t += ('Script WoR_HUD_battle_needle_set [\n'
+          '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+          '\t\t:i $getplayerinfo$%GLOBAL%$player$$current_health$\n'
+          '\t\t:i if (%GLOBAL%$current_health$ >= %f(1.3332998))\n'
+          f'\t\t\t:i $pos_a$ = {v(path[2])}\n\t\t\t:i $pos_b$ = {v(path[3])}\n'
+          '\t\t\t:i $WoR_t$ = ((%GLOBAL%$current_health$ - %f(1.3332998)) / %f(0.6669999))\n'
+          '\t\t:i elseif (%GLOBAL%$current_health$ >= %f(0.6665999))\n'
+          f'\t\t\t:i $pos_a$ = {v(path[1])}\n\t\t\t:i $pos_b$ = {v(path[2])}\n'
+          '\t\t\t:i $WoR_t$ = ((%GLOBAL%$current_health$ - %f(0.6665999)) / %f(0.6669999))\n'
+          '\t\t:i else \n'
+          f'\t\t\t:i $pos_a$ = {v(path[0])}\n\t\t\t:i $pos_b$ = {v(path[1])}\n'
+          '\t\t\t:i $WoR_t$ = (%GLOBAL%$current_health$ / %f(0.6669999))\n'
+          '\t\t:i endif\n'
+          '\t\t:i if (%GLOBAL%$WoR_t$ < %f(0.0))\n\t\t\t:i $WoR_t$ = %f(0.0)\n\t\t:i endif\n'
+          '\t\t:i if (%GLOBAL%$WoR_t$ > %f(1.0))\n\t\t\t:i $WoR_t$ = %f(1.0)\n\t\t:i endif\n'
+          '\t\t:i $final_pos$ = (%GLOBAL%$pos_a$ + ((%GLOBAL%$pos_b$ - %GLOBAL%$pos_a$) * %GLOBAL%$WoR_t$))\n'
+          '\t\t:i %GLOBAL%$id$.$se_setprops$$side_meter_needle_pos$ = %GLOBAL%$final_pos$\n'
+          '\t:i endif\n'
+          '\t:i endfunction\n]\n\n')
+    return t
 
 
 def theme_extra():

@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.51 + mod (see "Installed" below), multiplayer HUD by the book
+## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.52 + mod (release 0.50) (see "Installed" below), multiplayer HUD by the book
 
 Everything after this section is older history; read it only for a detail.
 
@@ -166,14 +166,29 @@ Everything after this section is older history; read it only for a detail.
   descinterface instance's z + the element's own z, with plain containers and desc roots not counting. Unproven: if
   the arm still shows, this model is wrong.
 
+### 5g. User test of 1.51 (2026-10-23, "final change"): plugin 1.52, release 0.50
+- Battle rock tube by the book: each player gets the band layouts' own rock tube desc (wor_mp.SIDE_NAMES[2]) in
+  battlemode_container, placed by the band map (wor_battle.rock_instance / rock_point, same overlap correction);
+  WoR_HUD_battle_rock creates / attaches / fades them in, WoR_HUD_battle_needles drives each needle stand-in on the
+  DE's 2-highway path (script 0x3205f550 doesn't run in battle). The hud_2d tube body / LEDs are blank now (ids kept
+  for the DE's alpha switches); our old battle needle stays, transparent by colour, so the plugin still sees battle.
+  The slot stack re-aligns to the new rock tube's top.
+- Versus streak flashing back to the 4-digit size: a new number re-lays the text out at its desc scale inside the
+  element update, after our sizing. 1.52 sizes it again after the update (vs_streak_size).
+- Band needle's top stop lower than quickplay: MP_NEEDLE_DX -2 -> 0 (the -2 was asked while the tubes sat 6 units
+  high; on the slanted cap a needle moved left sits lower).
+- Then the user asked for release 0.50 (with Ultrawide Fix 1.1) published on GitHub. None of 1.52 was seen in game
+  before the release.
+
 ### 6. Open / next
-1. In-game check of 1.51: battle needle sliding with health (both players), new attack cards going straight into the
-   big slot (and the shift down after a release), streak meter arm tucked behind the highway on 2 / 3 highways.
+1. In-game check of 1.52 / 0.50: battle rock tubes look and layer like band quickplay (LEDs, needle tracking health
+   on both players, slots aligned), versus streak no longer flashes, band needle top stop matches quickplay; plus the
+   1.51 items (new attack cards straight into the big slot, streak meter arm behind the border on 2 / 3 highways).
 2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
 3. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.51 + mod (battle needle via SetPos, battle_hud_2d_elements swapped for our layout with this theme, multiplier source g1 + (1, 3) as in 1.50, multiplier instance z 2.0), 2026-10-23, hashes verified (9 files). Not tested in game yet.
+Installed: plugin 1.52 + mod = release 0.50 (battle rock tube = band desc, versus streak re-sized after the update, MP_NEEDLE_DX 0), 2026-10-23, hashes verified (9 files). Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

@@ -637,8 +637,29 @@ def scripts():
         '\t\t:i %GLOBAL%$WoR_i$ = (%GLOBAL%$WoR_i$ + %i(1))\n'
         '\t:i loop_to %i(3)\n'
         '\t:i endfunction\n]\n\n')
+    # 2026-10-23 (user test of 1.50: a new card flew up, then sideways into the big slot): guitar_battle reads every card
+    # target from the global battle_hud_2d_elements (rock_pos + card_*_off, also attack_ready_text_pos and z), never
+    # from the theme's layout, and the per-field $change$ of its vec2 offsets never took (test 2026-10-21). So each
+    # new card first morphed towards the stock big-slot spot (up), then our battlecards_place morphed it to ours
+    # (sideways). With this theme the whole global becomes a copy of our layout struct (it carries every field the DE
+    # reads, with our card offsets), so the DE's own morphs already aim at our slots; the stock struct is saved once and
+    # put back with any other theme (other themes' HUD falls back to that global as its layout).
+    place += ('Script WoR_HUD_battle_globals [\n'
+              '\t:i if (~$WoR_HUD_battle_saved$ = %i(0))\n'
+              '\t\t:i $change$$WoR_HUD_battle_stock$ = (~$battle_hud_2d_elements$)\n'
+              '\t\t:i $change$$WoR_HUD_battle_saved$ = %i(1)\n'
+              '\t:i endif\n'
+              f'\t:i if {is_ours}\n'
+              f'\t\t:i $change$$battle_hud_2d_elements$ = (~${NAME}$)\n'
+              '\t:i else \n'
+              '\t\t:i $change$$battle_hud_2d_elements$ = (~$WoR_HUD_battle_stock$)\n'
+              '\t:i endif\n'
+              '\t:i endfunction\n]\n\n'
+              'SectionInteger WoR_HUD_battle_saved 0\n\n'
+              'SectionStruct WoR_HUD_battle_stock\n{\n\tStructHeader\n\t{\n\t\tStructInt WoR_HUD_placeholder = 0\n\t}\n}\n\n')
     for name in ('update_battlecards_add', 'update_battlecards_remove'):
         place += (f'Script WoR_HUD_{name} [\n'
+                  '\t:i $WoR_HUD_battle_globals$ isNull\n'
                   f'\t:i $WoR_HUD_{name}_orig$ isNull\n'
                   f'\t:i if {is_ours}\n'
                   '\t\t:i $WoR_HUD_battlecards_place$ isNull\n'
@@ -654,6 +675,7 @@ def scripts():
             '\t:i else \n'
             + changes(STOCK_CARD_OFFS, STOCK_CARD_SCALES) +
             '\t:i endif\n'
+            '\t:i $WoR_HUD_battle_globals$ isNull\n'
             '\t:i $WoR_HUD_create_battle_alert_frames_orig$ isNull\n'
             + wor_modes.battle_alerts_off() +          # no attack names / alert cards above the highway
             '\t:i endfunction\n]\n\n'

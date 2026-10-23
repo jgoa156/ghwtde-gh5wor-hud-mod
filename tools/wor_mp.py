@@ -43,6 +43,12 @@ NEEDLE_PATHS = {1: ((0.0, 0.0), (11.0, -24.0), (28.0, -57.0), (41.0, -80.0)),
 # higher than quickplay's in the user's 2000 px frames), i.e. off the border on the slanted rail.
 ROOT_CAL, G_CAL = (1.0, 3.0), (1.0, 3.0)
 SIDE_INTRINSIC = (0.0, 6.0)   # the 1-player side meter desc's own +6 (its needle, moved into a band-meter-like desc)
+# where singleplayer really draws the multiplier desc (preview_hud.GAME_CALIB, g1 + (1, 9)): the source point of the
+# multiplier instances. Every desc root is the same plain container, so the +6 is the 1-player g1's, which the DE's
+# player containers don't have; 1.50 took the multiplier from g1 + (1, 3), 0.75 x 6 units too high on 2 highways
+# (user test 2026-10-23: the badge's arm lifted off the star power tube's top, over the border's bevel, where
+# singleplayer tucks it behind the tube and the highway)
+MULT_CAL = (1.0, 9.0)
 # how far the 1-player tubes' inner edges reach over the outer border (canvas units at the LED span, measured on the
 # rm_base / sp_base art through wor_1g.LEFT / RIGHT): the similarity scales that overlap with the highway (0.75 on
 # 2 highways); the pieces move inwards by the lost part so they stay attached to the border like in quickplay
@@ -319,7 +325,7 @@ def placements(config, d=None):
         assert abs(sc - 1.0) < 1e-6, (config, g, sc)
         o = (ox + G_CAL[0], oy + G_CAL[1])
         left, right = HG.similarity(n, shift, 'left'), HG.similarity(n, shift, 'right')
-        g1 = (wor_1g.G1[0] + G_CAL[0], wor_1g.G1[1] + G_CAL[1])
+        g1 = (wor_1g.G1[0] + MULT_CAL[0], wor_1g.G1[1] + MULT_CAL[1])
         # the instance's z makes its chain of draw priorities sum to the 1-player one (Z_TUBES_1P / Z_MULT_1P), so
         # every element layers against the highway exactly as in quickplay (user 2026-10-23: the band tubes, at
         # quickplay's exact spot, looked like floating over the highway)

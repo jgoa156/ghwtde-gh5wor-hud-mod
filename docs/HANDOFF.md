@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.48 + mod (see "Installed" below), multiplayer HUD by the book
+## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.51 + mod (see "Installed" below), multiplayer HUD by the book
 
 Everything after this section is older history; read it only for a detail.
 
@@ -140,15 +140,35 @@ Everything after this section is older history; read it only for a detail.
   the 1.41 fade-in, move_2d_elements_to_default's tween puts it back on its target every frame. Plugin 1.50 writes
   the needle's tween target too, and logs "battle needle P1 / P2: deg -> health" once per player.
 
+### 5f. User test of 1.50 (2026-10-23, "last stretch"): plugin 1.51
+- Accepted: battle slots ("perfect"); band / versus tube layering and shadows.
+- Battle needle still not tracking, although the 1.50 log tracked health correctly (deg -21.6..+13.8, zone and t
+  moving). Cause: the plugin wrote the needle's pos raw. Nothing else dirties that element in battle (the stand-in only
+  turns), so it kept drawing where it was when the container's fade-in ended (the health-1 spot). Plugin 1.51 moves it
+  with SetPos(.., 1) (like every other piece the plugin moves) when it changes, and still writes the tween target.
+- New attack card: flew up, then sideways into the big slot. guitar_battle reads every card target from the GLOBAL
+  battle_hud_2d_elements (fields: rock_pos_p1/2, card_1..3_off_p1/2, attack_ready_text_pos_p1/2, z), never from the
+  theme's layout. The per-field $change$ of its vec2 offsets never took, so battlemode_ready morphed each new card
+  to the stock spot first, then our battlecards_place morphed it to ours. Now WoR_HUD_battle_globals (called by the
+  create_battle_alert_frames / update_battlecards_add / _remove wrappers) saves the stock struct once
+  (WoR_HUD_battle_stock) and, with this theme, sets the whole global to a copy of our layout struct WoR_HUD_battle
+  (it has every field above, with our offsets), or puts the stock one back otherwise. If the path is still two-legged,
+  the global copy didn't take either (check the swap; next idea: wrap battlemode_ready).
+- Multiplayer streak meter over the border instead of behind it like solo. It's placement, not z: the badge (z 0.05)
+  is the same in both descs, and every desc root is the same plain container. The +6 of GAME_CALIB (1, 9) belongs to
+  singleplayer's own g1 container, which the DE's player containers don't have. 1.50 took the multiplier's source
+  point from g1 + (1, 3), so on 2 highways the badge sat 0.75 x 6 = 4.5 units too high: its arm lifted off the star
+  power tube's top onto the border's bevel (the user's crop: arm on the bevel, a gap above the tube). The source is
+  now g1 + wor_mp.MULT_CAL (1, 9). Mock (tools/mock_rails.py): the arm meets the tube top again.
+
 ### 6. Open / next
-1. In-game check of 1.48: singleplayer tube (normal size, sharp lightning), every multiplayer tube animating like
-   singleplayer, career face-off without tube and scores, versus streak size, battle cards (size, layering), band.
-2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
-3. Battle needle tracking (stand-in rotation) if the new log still shows rot 0.0..0.0.
-4. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
+1. In-game check of 1.51: battle needle sliding with health (both players), new attack cards going straight into the
+   big slot (and the shift down after a release), streak meter arm tucked behind the highway on 2 / 3 highways.
+2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL / MULT_CAL) is the suspect.
+3. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.50 + mod (container calibration (1, 3), border-overlap compensation, battle slots top-aligned / behind the highway, cards by script at 0.82, needle tween target), 2026-10-23, hashes verified. Not tested in game yet.
+Installed: plugin 1.51 + mod (battle needle via SetPos, battle_hud_2d_elements swapped for our layout with this theme, multiplier source g1 + (1, 9)), 2026-10-23, hashes verified (9 files). Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

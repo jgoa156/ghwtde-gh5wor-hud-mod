@@ -1488,3 +1488,13 @@ docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user'
 
 
 - Versus v2 (user 2026-10-21, WoR 2v2 frame): team bars = side multiplier as text (baked WoR_HUD_vsmult_*, plugin 1.36`n  kVsNixieMap) + side score, P2 mirrored; per-player bars (WoR competitive_meter) = note streak (no +) + score, bound by`n  the face-off wrapper (AttachHudWidget, 2 players only); SCORE_K 0.26; the per-highway streak meter survives face-off`n  (alias_player_multiplier -> hidden stand-in). Mock docs/mocks/mock_versus_v2.jpg; built, not installed, awaiting approval.
+
+## 2026-10-23, plugin 1.51 (user test of 1.50, "last stretch")
+- Battle slots accepted; band / versus tube layering accepted.
+- Battle needle: plugin moves it with SetPos(.., 1) instead of a raw pos write (the element was never redrawn: the
+  1.50 log tracked health while the needle stayed on its health-1 spot).
+- Attack cards: WoR_HUD_battle_globals sets the global battle_hud_2d_elements (which guitar_battle reads for every card
+  target) to a copy of our WoR_HUD_battle with this theme, stock (saved once) otherwise; new cards no longer detour via
+  the stock big-slot spot.
+- Multiplayer streak meter: source point g1 + (1, 9) (wor_mp.MULT_CAL, singleplayer's real draw spot); 1.50's (1, 3)
+  left the badge 4.5 units high on 2 highways, its arm over the border's bevel instead of tucked behind the tube top.

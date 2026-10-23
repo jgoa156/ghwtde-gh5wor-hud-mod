@@ -958,10 +958,18 @@ namespace
 		// 1.50: the tween target too (user 2026-10-23: the needle stayed at its health-1 spot whatever the LEDs showed;
 		// since 1.41 move_2d_elements_to_default tweens the battle pieces to their defaults, and an element under a tween
 		// is put back on its target every frame, overwriting the position written here)
+		// 1.51: through SetPos (immediate), like every other piece the plugin moves: a raw write isn't redrawn (user test of
+		// 1.50: the needle still stayed put while the log tracked health). Nothing else dirties our needle in battle (the
+		// stand-in only turns), so the element kept drawing where it was when the container's fade-in ended
 		const float nx = f32(src, kElementPos) + kBNeedleD[i][0] + (kBNeedleD[i + 1][0] - kBNeedleD[i][0]) * t;
 		const float ny = f32(src, kElementPos + 4) + kBNeedleD[i][1] + (kBNeedleD[i + 1][1] - kBNeedleD[i][1]) * t;
-		f32(needle, kElementPos) = f32(needle, kElementPosTarget) = nx;
-		f32(needle, kElementPos + 4) = f32(needle, kElementPosTarget + 4) = ny;
+		if (fabsf(f32(needle, kElementPos) - nx) > 0.01f || fabsf(f32(needle, kElementPos + 4) - ny) > 0.01f ||
+		    fabsf(f32(needle, kElementPosTarget) - nx) > 0.01f || fabsf(f32(needle, kElementPosTarget + 4) - ny) > 0.01f)
+		{
+			reinterpret_cast<SetPosFn>(kSetPos)(needle, nullptr, nx, ny, 1);
+			f32(needle, kElementPosTarget) = nx;        // 1.50: and the tween target (move_2d_elements_to_default)
+			f32(needle, kElementPosTarget + 4) = ny;
+		}
 		if (!g_bneedle_logged)
 		{
 			g_bneedle_logged = true;
@@ -1861,7 +1869,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.50 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.51 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

@@ -1179,17 +1179,43 @@ namespace
 		g_set_parent(element, edx, parent);
 	}
 
+	// 1.44: our tube by its structure: the fill's clip window has feather windows beside it whose fill shows one of our
+	// tube textures (the per-player tubes, wor_mp.sp_desc, kept the DE's texture names: the engine never took them over
+	// and the DE's six segments showed, cut by the window's edge)
+	bool our_tube_clip(void *clip)
+	{
+		void *parent = *reinterpret_cast<void **>(field(clip, kElementParent));
+		if (!parent)
+			return false;
+		for (void *e = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); e;
+		     e = *reinterpret_cast<void **>(field(e, kElementNextSibling)))
+		{
+			void *child = *reinterpret_cast<void **>(field(e, kElementFirstChild));
+			if (e != clip && child && is_tube_texture(texture_of(child)))
+				return true;
+		}
+		return false;
+	}
+	int g_tube_rejects = 0;
+
 	void __fastcall tube_update_hook(void *widget, void *edx, void *value, void *event)
 	{
 		g_tube_update(widget, edx, value, event);
 		void **first = *reinterpret_cast<void ***>(field(widget, 0x1c));
 		void **last = *reinterpret_cast<void ***>(field(widget, 0x20));
-		if (!first || last - first < 6 || !first[0] || !is_tube_texture(texture_of(first[0])))
+		if (!first || last - first < 6 || !first[0])
 			return;
 		void *fill = first[0];
 		void *clip = *reinterpret_cast<void **>(field(fill, kElementParent));
 		if (!clip)
 			return;
+		if (!is_tube_texture(texture_of(fill)))
+		{
+			if (!our_tube_clip(clip))
+				return;
+			if (g_tube_rejects++ < 4)
+				log("star power fill: tube %p segment texture %08x taken over (not one of our names)", clip, texture_of(fill));
+		}
 		const float lo = *reinterpret_cast<float *>(field(widget, 0xc)), hi = *reinterpret_cast<float *>(field(widget, 0x10));
 		if (*reinterpret_cast<uint32_t *>(field(event, 4)) == kRefreshEvent || hi <= lo)
 			return;   // texture refresh only: the last level stays
@@ -1198,7 +1224,8 @@ namespace
 			discover(clip, fill);
 		float level = (**reinterpret_cast<float **>(value) - lo) / (hi - lo);
 		level = level < 0.0f ? 0.0f : level > 1.0f ? 1.0f : level;
-		const bool charged = texture_of(fill) == kSpFill[1][1];    // the game picked the _b texture (>= 50% or active)
+		// the game picked the _b texture (>= 50% or active), under our name or its own
+		const bool charged = texture_of(fill) == kSpFill[1][1] || texture_of(fill) == kSpFill[1][0];
 		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
 		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
 			g_sp.burst_t0 = now();
@@ -1676,7 +1703,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.43 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.44 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

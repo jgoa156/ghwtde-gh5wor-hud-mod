@@ -69,11 +69,18 @@ Installed, NOT verified yet:
 8. Face-off streak number: fixed size 0.155 (the fit settings did nothing in game; "235" was cut off). Adaptive size
    (user wants it) would need the plugin.
 
-Open, not started:
-- **SP fill spills outside the tube in multiplayer** (16:9 face-off capture): the teal fill shows as a block with a
-  vertical left edge (x 549 on P1, 1051 on P2) outside the tube body. Likely the clip window (WindowElement) under the
-  scaled container: plugin place_fill / sp_frame set the clip's pos/dims in local units (kClipX/kClipW...). Check how
-  a WindowElement clips under a parent Scale/rot.
+**SP fill spill in multiplayer: cause found, plugin 1.44 built (NOT installed: the game was running).**
+- Face-off capture `band-20261022-222943`: the same artifact on every frame, both highways: a teal strip with a
+  vertical left edge, left of and over the tube, horizontal banding, charging teal although the tube is full, no plasma.
+- `wor_hud_fixes.prev.log` of a face-off session ("versus needle: twin found") never logs "star power fill: smooth fill
+  active": the tube engine never took the per-player tubes over, so the DE's own six segments (slanted strips) drew,
+  cut by the clip window's left edge. Not the WindowElement under the scaled container.
+- Why: tube_update_hook only accepted a widget whose first segment shows one of our tube texture names; the per-player
+  setubes (player = N) leaves something else there. 1.44: our tube is also recognised by its structure (a feather
+  window beside the clip whose fill shows our texture), the DE's raw `_b` name counts as charged, and the first 4
+  take-overs log "star power fill: tube ... segment texture XXXXXXXX taken over". If that line never appears in a
+  face-off run, the hook isn't called for per-player widgets at all: look there next.
+- Install: copy `plugin/build/wor_hud_fixes.asi` to the game folder (with the game closed), then a face-off run.
 - **Microphone meter** (v1 player_meter, top right of the vocal highway): our WoR multiplier textures on the WT+
   vocal meter = an anomaly. User: show stock WT for the mic "if possible while we don't have the textures" -> needs
   the WT vocal multiplier textures (not loaded with our theme; extract + ship them, or map back in set_texture_hook).

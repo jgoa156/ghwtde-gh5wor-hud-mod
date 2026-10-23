@@ -298,8 +298,11 @@ def needle_stops():
     WoR LED stops (side meter desc + its game calibration), mapped like the tube."""
     import wor_1g
     m = tube_maps()['rock']
-    return [apply(m, (p[0] + SIDE_METER_CALIB[0], p[1] + SIDE_METER_CALIB[1]))
-            for p in (wor_1g.LEFT.at(h) for h in wor_1g.NEEDLE_STOPS)]
+    return [(x + NEEDLE_DX, y) for x, y in (apply(m, (p[0] + SIDE_METER_CALIB[0], p[1] + SIDE_METER_CALIB[1]))
+                                            for p in (wor_1g.LEFT.at(h) for h in wor_1g.NEEDLE_STOPS))]
+
+
+NEEDLE_DX = -1.5            # screen px: user 2026-10-23, the white needle a little left on every multiplayer highway
 
 
 NEEDLE_BOX = 34.0                       # screen size of the needle texture box (the 1-player needle is 40 canvas)

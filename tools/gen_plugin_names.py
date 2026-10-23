@@ -108,7 +108,8 @@ def main():
         out += [f'static const float k{tag}NeedleAX = {ax:.6f}f, k{tag}NeedleAY = {ay:.6f}f;',
                 f'static const float k{tag}NeedleDE[4][2] = {{ ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in wor_mp.NEEDLE_PATHS[n]) + ' };',
                 f'static const float k{tag}NeedleWoR[4][2] = {{ ' + ', '.join(f'{{ {x:.4f}f, {y:.4f}f }}' for x, y in stops) + ' };']
-    out += [f'static const uint32_t kMpNeedleTex = 0x{qbkey("WoR_HUD_needle_glow"):08x};   // the 1-player needle',
+    out += [f'static const float kMpFillZ = {wor_mp.MP_FILL_Z:.4f}f, kMpSrcZ = {wor_mp.MP_SRC_Z:.4f}f;   // multiplayer tube fill / level source',
+            f'static const uint32_t kMpNeedleTex = 0x{qbkey("WoR_HUD_needle_glow"):08x};   // the 1-player needle',
             'static const uint32_t kOurMult[8] = { ' + ', '.join(f'0x{qbkey(n):08x}' for n, _ in wor_1g.MULT_NORMAL + wor_1g.MULT_SP) + ' };',
             '// versus meter multiplier (HUD_attach_widget_band_faceoff_meter hard-codes the DE nixie names): ours',
             'static const uint32_t kNixieMap[8][2] = { ' + ', '.join(f'{{ 0x{qbkey(src):08x}, 0x{qbkey(ours):08x} }}'

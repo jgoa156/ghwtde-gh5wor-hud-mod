@@ -412,7 +412,7 @@ SCRIPTS = (
     '\t:i if $GotParam$$parent_id$\n'
     '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$parent_id$\n'
     '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$parent_id$$alpha$ = %i(1)\n'
-    '\t\t\t:i if (~$boss_battle$ = %i(1))\n'
+    '\t\t\t:i if ((~$boss_battle$ = %i(1)) OR (~$game_mode$ = $p1_career$))\n'
     '\t\t\t\t:i %GLOBAL%$parent_id$.$se_setprops$$score_container_1_alpha$ = %f(0.0)$score_container_2_alpha$ = %f(0.0)\n'
     '\t\t\t:i endif\n'
     '\t\t:i endif\n'

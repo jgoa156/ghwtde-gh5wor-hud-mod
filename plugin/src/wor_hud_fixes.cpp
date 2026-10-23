@@ -511,6 +511,9 @@ namespace
 		return false;
 	}
 
+	void tube_set(void *clip, void *fill, float level, bool charged);
+	void mp_tube_source(void *src);
+
 	// the tube whose clip window this is, or a free / stale slot for a new one
 	StarPower *tube_for(void *clip)
 	{
@@ -1091,6 +1094,8 @@ namespace
 		if (element)
 		{
 			needle_remap(element);
+			if (fabsf(f32(element, kElementZ) - kMpSrcZ) < 1e-4f)
+				mp_tube_source(element);
 			if (texture_of(element) == kVsNeedleTex)
 				vs_needle(element);
 			for (const Grow &g : g_grow)
@@ -1268,16 +1273,29 @@ namespace
 			if (g_tube_rejects++ < 4)
 				log("star power fill: tube %p segment texture %08x taken over (not one of our names)", clip, texture_of(fill));
 		}
+		if (fabsf(f32(clip, kElementZ) - kMpSrcZ) < 1e-4f)
+			return;   // 1.46: a multiplayer tube's level source (read every frame by mp_tube_source)
 		const float lo = *reinterpret_cast<float *>(field(widget, 0xc)), hi = *reinterpret_cast<float *>(field(widget, 0x10));
 		if (*reinterpret_cast<uint32_t *>(field(event, 4)) == kRefreshEvent || hi <= lo)
 			return;   // texture refresh only: the last level stays
-		g_spp = tube_for(clip);
-		if (clip != g_sp.clip || fill != g_sp.fill)
-			discover(clip, fill);
 		float level = (**reinterpret_cast<float **>(value) - lo) / (hi - lo);
 		level = level < 0.0f ? 0.0f : level > 1.0f ? 1.0f : level;
 		// the game picked the _b texture (>= 50% or active), under our name or its own
 		const bool charged = texture_of(fill) == kSpFill[1][1] || texture_of(fill) == kSpFill[1][0];
+		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
+		for (void **p = first + 1; p < first + 6; ++p)
+			if (*p)
+				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
+		tube_set(clip, fill, level, charged);
+	}
+
+	// the 1-player engine on one tube: a new level / state from the DE (the widget hook, or a multiplayer tube's
+	// level source)
+	void tube_set(void *clip, void *fill, float level, bool charged)
+	{
+		g_spp = tube_for(clip);
+		if (clip != g_sp.clip || fill != g_sp.fill)
+			discover(clip, fill);
 		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
 		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
 			g_sp.burst_t0 = now();
@@ -1304,9 +1322,6 @@ namespace
 		const auto set_scale = reinterpret_cast<SetScaleFn>(kSetScale);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		reinterpret_cast<SetTextureFn>(kSetTexture)(fill, nullptr, charged ? kSpFullB : kSpFull);   // plasma next frame
-		for (void **p = first + 1; p < first + 6; ++p)
-			if (*p)
-				set_scale(*p, nullptr, 0.0f, 0.0f, 0, 0);
 		// SetPos only moves the element now with a non-zero flag (0 = tween target)
 		set_scale(fill, nullptr, kFillSX, kFillSY, 0, 0);
 		set_dims(fill, nullptr, 64.0f, 256.0f, 0);
@@ -1315,6 +1330,53 @@ namespace
 		{
 			g_tube_logged = true;
 			log("star power fill: smooth fill active (level %.2f, %s)", level, charged ? "charged" : "charging");
+		}
+	}
+
+	// 1.46: a multiplayer tube (tools/wor_mp.py sp_desc): the DE's segments in a zero-size window (z kMpSrcZ) carry
+	// the level, (default.x, default.y x fill) per segment; the tube's own fill (z kMpFillZ) sits in the clip window
+	// beside it. Read every frame; the engine runs when the level or the charged state changes.
+	int g_mp_tube_logs = 0;
+
+	void mp_tube_source(void *src)
+	{
+		void *parent = *reinterpret_cast<void **>(field(src, kElementParent));
+		if (!parent)
+			return;
+		void *clip = nullptr, *fill = nullptr;
+		for (void *e = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); e && !clip;
+		     e = *reinterpret_cast<void **>(field(e, kElementNextSibling)))
+		{
+			void *c = *reinterpret_cast<void **>(field(e, kElementFirstChild));
+			if (e != src && c && fabsf(f32(c, kElementZ) - kMpFillZ) < 1e-4f)
+				clip = e, fill = c;
+		}
+		if (!clip)
+			return;
+		float sum = 0.0f;
+		int n = 0;
+		bool charged = false;
+		for (void *s = *reinterpret_cast<void **>(field(src, kElementFirstChild)); s;
+		     s = *reinterpret_cast<void **>(field(s, kElementNextSibling)))
+		{
+			const float sx = f32(s, kElementScale), sy = f32(s, kElementScale + 4);
+			float f = sx > 1e-4f ? sy / sx : 0.0f;
+			sum += f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
+			++n;
+			const uint32_t t = texture_of(s);
+			charged = charged || t == kSpFill[1][0] || t == kSpFill[1][1];
+		}
+		if (n == 0)
+			return;
+		const float level = sum / n;
+		StarPower *s = tube_for(clip);
+		if (s->clip == clip && s->seen && fabsf(level - s->target) < 1e-4f && charged == s->ready)
+			return;
+		tube_set(clip, fill, level, charged);
+		if (g_mp_tube_logs < 6)
+		{
+			++g_mp_tube_logs;
+			log("star power: multiplayer tube %p level %.2f (%d segments), %s", clip, level, n, charged ? "charged" : "charging");
 		}
 	}
 
@@ -1755,7 +1817,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.45 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.46 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

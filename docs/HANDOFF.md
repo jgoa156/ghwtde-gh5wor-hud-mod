@@ -4,7 +4,23 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23): every multi-highway layout "by the book" (plugin 1.45 + mod INSTALLED, not tested)
+## START HERE (2026-10-23, round 2): plugin 1.46 + mod INSTALLED, not tested
+
+User test of 1.45 (face-off screenshot + needle crop): positions accepted so far (band still to verify). Fixed:
+- Crash face-off -> pro face-off: real fault (first-chance dump, EXCEPTION_RECORD scanned on the stack) exe+0x1feea8,
+  a QB struct key lookup (binary search, 12-byte entries) on a freed table, called from script code. Ours freed live
+  desc structs: wor_menus._swap copied our popup / pause descs over the DE globals on EVERY popup / pause creation.
+  Now guarded by WoR_HUD_popup_ours / WoR_HUD_pause_ours (copy only on a theme change). Not proven to be THE cause:
+  if it crashes again, scan the new dump the same way (tools/dump_mem.py + struct scan for 0xc0000005).
+- Multiplayer star power: no session ever logged the tube hook on a per-player tube (the DE's raw segments showed).
+  wor_mp.sp_desc: our own fill (sp_fill, z MP_FILL_Z 3.0515) in sp_clip, the DE's segments in a zero-size window
+  (sp_src, z MP_SRC_Z 3.0525); plugin 1.46 mp_tube_source reads the level (scale y / x per segment) every frame and
+  runs the 1-player engine (tube_set, shared with the hook). Log: "star power: multiplayer tube ... level ...".
+- Career versus: SP tube starts hidden in every multi-highway layout, shown by our attach; hidden (and the score
+  boxes) when boss_battle = 1 OR game_mode = p1_career.
+- Rock needle 1.5 px left on every multiplayer highway (wor_mp.MP_NEEDLE_DX, wor_battle.NEEDLE_DX).
+
+## 2026-10-23 round 1: every multi-highway layout "by the book" (plugin 1.45)
 
 User evidence 2026-10-23 (`OneDrive\Videos\GH\GHEvidence\`: video + 9 annotated stills, priority list): items 0-5.
 Directive: **stick by the book with how SINGLEPLAYER deals with highway elements**; angles in 2+ player modes are fine

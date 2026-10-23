@@ -234,14 +234,23 @@ SAVE_LOAD = (''.join(f'\t:i $change$$WoR_HUD_de_dlg_{k}$ = (~$[{v[0]}]$)\n' for 
 
 
 def _swap(on):
-    """Point the DE desc globals at ours (on) or back at the saved DE ones."""
+    """Point the DE desc globals at ours (on) or back at the saved DE ones, only when they don't already point there
+    (2026-10-23: copying a desc struct over the global on EVERY popup / pause frees the old struct's tables; a popup
+    opened over another popup or the pause menu (quit, change mode) kept reading the freed tables: crash in the QB
+    struct lookup, exe+0x1feea8, after face-off -> pro face-off). The flags change only with the theme."""
+    def guarded(flag, want, body):
+        cond = f'(~${flag}$ = %i({want}))'
+        return (f'\t\t:i if NOT {cond}\n' + body.replace('\t\t:i ', '\t\t\t:i ') +
+                f'\t\t\t:i $change$${flag}$ = %i({want})\n\t\t:i endif\n')
     if on == 'popup':
-        return ''.join(f'\t\t:i $change$$[{v[0]}]$ = (~$uidesc_WoR_HUD_dlg_{k}$)\n' for k, v in DLG.items())
+        return guarded('WoR_HUD_popup_ours', 1,
+                       ''.join(f'\t\t:i $change$$[{v[0]}]$ = (~$uidesc_WoR_HUD_dlg_{k}$)\n' for k, v in DLG.items()))
     if on == 'popup_de':
-        return ''.join(f'\t\t:i $change$$[{v[0]}]$ = (~$WoR_HUD_de_dlg_{k}$)\n' for k, v in DLG.items())
+        return guarded('WoR_HUD_popup_ours', 0,
+                       ''.join(f'\t\t:i $change$$[{v[0]}]$ = (~$WoR_HUD_de_dlg_{k}$)\n' for k, v in DLG.items()))
     if on == 'pause':
-        return f'\t\t:i $change$$[{PAUSE_DE}]$ = (~$uidesc_WoR_HUD_pause$)\n'
-    return f'\t\t:i $change$$[{PAUSE_DE}]$ = (~$WoR_HUD_de_pause$)\n'
+        return guarded('WoR_HUD_pause_ours', 1, f'\t\t:i $change$$[{PAUSE_DE}]$ = (~$uidesc_WoR_HUD_pause$)\n')
+    return guarded('WoR_HUD_pause_ours', 0, f'\t\t:i $change$$[{PAUSE_DE}]$ = (~$WoR_HUD_de_pause$)\n')
 
 
 ARROWS_SCRIPT = ('\t:i if {IS}\n\t\t:i if $GotParam$$menu_id$\n\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$menu_id$\n\t\t\t:i if $ScreenElementExists$$id$ = $PopupElement$\n\t\t\t\t:i $GetScreenElementChildren$$id$ = %GLOBAL%$menu_id$\n\t\t\t\t:i if (%GLOBAL%$array_size$ > %i(0))\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_first$ = (%GLOBAL%$children$:a{{%i(0):a}})\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_last$ = (%GLOBAL%$children$:a{{(%GLOBAL%$array_size$ - %i(1)):a}})\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = $PopupElement$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_base$ = %GLOBAL%$screenelementpos$\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = %GLOBAL%$WoR_HUD_first$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_up$ = (%GLOBAL%$screenelementpos$ - %GLOBAL%$WoR_HUD_base$ + %vec2(0.0,{UP}))\n\t\t\t\t\t:i $GetScreenElementPosition$$id$ = %GLOBAL%$WoR_HUD_last$$absolute$\n\t\t\t\t\t:i %GLOBAL%$WoR_HUD_dn$ = (%GLOBAL%$screenelementpos$ - %GLOBAL%$WoR_HUD_base$ + %vec2(0.0,{DN}))\n\t\t\t\t\t:i $CreateScreenElement$:s{{$type$ = $SpriteElement$$parent$ = $PopupElement$$texture$ = ${TUP}$$Pos$ = %GLOBAL%$WoR_HUD_up$$dims$ = %vec2({SZ},{SZ})$just$ = :a{{$center$$center$:a}}$z_priority$ = %i(530):s}}\n\t\t\t\t\t:i $CreateScreenElement$:s{{$type$ = $SpriteElement$$parent$ = $PopupElement$$texture$ = ${TDN}$$Pos$ = %GLOBAL%$WoR_HUD_dn$$dims$ = %vec2({SZ},{SZ})$just$ = :a{{$center$$center$:a}}$z_priority$ = %i(530):s}}\n\t\t\t\t:i endif\n\t\t\t:i endif\n\t\t\t:i endif\n\t\t:i endif\n\t:i endif\n'.format(IS=IS_POPUP, UP=f'{ARROW_UP_DY:.1f}', DN=f'{ARROW_DN_DY:.1f}', SZ=f'{ARROW_SIZE:.1f}',
@@ -477,4 +486,6 @@ def sections(de_texts):
     out = [popup_desc(k, de_texts[v[1]]) for k, v in DLG.items()] + [pause_desc()]
     out += [f'SectionStruct WoR_HUD_de_dlg_{k}\n{{\n\tStructHeader\n\t{{\n\t\tStructInt unset = 1\n\t}}\n}}' for k in DLG]
     out += ['SectionStruct WoR_HUD_de_pause\n{\n\tStructHeader\n\t{\n\t\tStructInt unset = 1\n\t}\n}']
+    # which descs the DE globals hold now (0: the DE's, saved at load; 1: ours): _swap copies only on a change
+    out += ['SectionInteger WoR_HUD_popup_ours 0', 'SectionInteger WoR_HUD_pause_ours 0']
     return out

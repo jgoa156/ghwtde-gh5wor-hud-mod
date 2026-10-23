@@ -60,6 +60,7 @@ def _one_player():
 
 # ---- star power tube
 SP_SEGMENTS = 6
+MP_FILL_Z, MP_SRC_Z = 3.0515, 3.0525      # unique draw priorities: how the plugin finds our fill and the level source
 
 
 def sp_desc():
@@ -68,8 +69,24 @@ def sp_desc():
     quickplay on every player, one tube engine state per tube). The DE's widget writes glow0..5 like the 1-player band
     meter (our HUD_attach_widget_player_star_power: the band's star power in band / co-op, the player's own in face-off
     and battle)."""
+    import wor_1g
     dg = _one_player()
     kids = [copy.deepcopy(c) for c in dg.ROOTS['wor_band_meter_1g_ghwor'].children if c.local_id.startswith('sp_')]
+    # 2026-10-23: the per-player widget never reached the plugin's tube hook (no "smooth fill active" in any
+    # multiplayer session: the DE's own six segments showed, cut by the clip window). Here the clip window holds our
+    # own fill (sp_fill: the sprite the 1-player engine makes of segment 0) and the DE's segments sit in a zero-size
+    # window (sp_src, clipped away) that only carries the level: the plugin reads it from their scales every frame
+    # (MP_SRC_Z / MP_FILL_Z mark the two windows' contents) and runs the 1-player engine on sp_clip.
+    clip = next(c for c in kids if c.local_id == 'sp_clip')
+    segs = clip.children
+    fill = copy.deepcopy(segs[0])
+    g = wor_1g.plugin_geometry()
+    fill.local_id = 'sp_fill'
+    fill.pos = (g['kFillX'] - g['kClipX'], g['kFillY'] - g['kClipY'])
+    fill.dims, fill.scale, fill.z = (64, 256), (g['kFillSX'], g['kFillSY']), MP_FILL_Z
+    fill.extra = dict(fill.extra, texture=wor_1g.SP_FULL_NAMES[0])
+    clip.children = [fill]
+    kids.append(E('sp_src', 'windowelement', pos=clip.pos, dims=(0, 0), just=(-1, -1), z=MP_SRC_Z, children=segs))
     props = [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
     props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
     return desc(SP_NAME, _root('sp_mp', kids), props)
@@ -77,6 +94,8 @@ def sp_desc():
 
 # ---- rock tube
 ROCK_PARTS = ('lights_bg', 'red_light', 'yellow_light', 'green_light')
+MP_NEEDLE_DX = -2.0         # desc units (~1.5 screen px on the 2- and 3-highway layouts): user 2026-10-23, the white needle
+                            # a little left on every multiplayer highway
 
 
 def needle_anchor(n):
@@ -110,7 +129,7 @@ def side_desc(n):
     needle = copy.deepcopy(next(c for c in side.children if c.local_id == 'needle_anchor'))
     pos, (ax, ay), _ = needle_anchor(n)
     dz = (G_CAL[0] - ROOT_CAL[0], G_CAL[1] - ROOT_CAL[1])
-    needle.pos = (pos[0] + dz[0], pos[1] + dz[1])
+    needle.pos = (pos[0] + dz[0] + MP_NEEDLE_DX, pos[1] + dz[1])
     needle.scale = (ax, ay)
     nd = 40.0                                        # needle size on screen (wor_1g.side_meter)
     for c in needle.children:
@@ -271,7 +290,7 @@ def placements(config, d=None):
         left, right = HG.similarity(n, shift, 'left'), HG.similarity(n, shift, 'right')
         g1 = (wor_1g.G1[0] + G_CAL[0], wor_1g.G1[1] + G_CAL[1])
         out += [(g, 'player_meter', MULT_NAME, instance(right, o, g1), 2.0, 1.0),
-                (g, 'Star_Power', SP_NAME, instance(right, o, ROOT_CAL), 2.0, 1.0),
+                (g, 'Star_Power', SP_NAME, instance(right, o, ROOT_CAL), 2.0, 0.0),   # shown when attached
                 (g, 'BAND_side_meter', SIDE_NAMES[n], instance(left, o, ROOT_CAL), 3.0, 0.0)]
     return out
 
@@ -303,10 +322,12 @@ SCRIPTS = (
     '\t:i if (~$current_num_players$ > %i(1))\n'
     '\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$parent_id$$child$ = $sp_mp$:s}\n'
     # career versus (boss battles): no star power tube (user 2026-10-23, WoR reference: only the streak meter)
-    '\t\t\t:i if (~$boss_battle$ = %i(1))\n'
+    '\t\t\t:i if ((~$boss_battle$ = %i(1)) OR (~$game_mode$ = $p1_career$))\n'
     '\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$alpha$ = %i(0)\n'
     '\t\t\t\t:i return\n'
     '\t\t\t:i endif\n'
+    # the tube starts hidden (career versus doesn't attach star power at all: user 2026-10-23, it still showed)
+    '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$alpha$ = %i(1)\n'
     '\t\t\t:i $sp_band$ = %i(1)\n'
     '\t\t\t:i if (~$game_mode$ = $p2_faceoff$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'
     '\t\t\t:i if (~$game_mode$ = $p2_pro_faceoff$)\n\t\t\t\t:i %GLOBAL%$sp_band$ = %i(0)\n\t\t\t:i endif\n'

@@ -281,9 +281,13 @@ namespace
 	}
 
 	int g_light_logs = 0;
+	int g_streak[4] = {};      // 1.48: each player's note streak, as the DE last gave it to a streak meter
 
 	void __fastcall set_lights_hook(void *widget, void *edx, int streak)
 	{
+		const int who = *reinterpret_cast<int *>(field(widget, 0xc)) - 1;
+		if (who >= 0 && who < 4)
+			g_streak[who] = streak;
 		void **elements = reinterpret_cast<void **>(field(widget, 0x1c));
 		if (!our_meter(elements))
 		{
@@ -1019,15 +1023,20 @@ namespace
 			}
 			return;
 		}
-		const float s = f32(card, kElementScaleTarget);
+		// 1.48: guitar_battle morphs only the first card's position (no scale), so its scale target can be 0: the
+		// size then comes from its current scale (user 2026-10-23: the bottom card stayed 64 px, far over its slot)
+		float s = f32(card, kElementScaleTarget);
 		if (s < 0.05f)
-			return;
+			s = f32(card, kElementScale);
+		if (s < 0.05f)
+			s = 1.0f;
 		const float d = kBSlot[slot][4] / s;
 		if (fabsf(f32(card, kElementDims) - d) > 0.05f)
 			reinterpret_cast<SetDimsFn>(kSetDims)(card, nullptr, d, d, 0);
-		// 1.38: the first card (big slot) in front, then the next (user 2026-10-22: they stacked the other way);
-		// z stays within 19.0..19.1, which is how cards are recognised
-		const float z = 19.0f + (3 - slot % 3) * 0.02f;
+		// the bottom card in front, then the middle one, then the top one (user 2026-10-23: the middle item always
+		// below the bottom one); relative to the z the game gave the card (battle_hud_2d_elements.z + 19), so the
+		// cards stay above the slots however the battle layer is raised
+		const float z = floorf(f32(card, kElementZ)) + (3 - slot % 3) * 0.02f;
 		if (f32(card, kElementZ) != z)
 			f32(card, kElementZ) = z;
 	}
@@ -1106,6 +1115,19 @@ namespace
 			needle_remap(element);
 			if (fabsf(f32(element, kElementZ) - kMpSrcZ) < 1e-4f)
 				mp_tube_source(element);
+			// 1.48: the versus score boxes' note streak, sized by its digit count (the desc's fit settings do nothing
+			// in game; user 2026-10-23: 2 digits far too small at the fixed 4-digit size)
+			for (int p = 0; p < 2; ++p)
+				if (fabsf(f32(element, kElementZ) - kVsStreakZ[p]) < 1e-5f)
+				{
+					int s = g_streak[p], digits = 1;
+					while (s >= 10)
+						s /= 10, ++digits;
+					float k = kVsStreakK4 * 4.0f / digits;
+					k = k > kVsStreakKMax ? kVsStreakKMax : k;
+					if (fabsf(f32(element, kElementScale) - k) > 1e-4f)
+						reinterpret_cast<SetScaleFn>(kSetScale)(element, nullptr, k, k, 0, 0);
+				}
 			if (texture_of(element) == kVsNeedleTex)
 				vs_needle(element);
 			for (const Grow &g : g_grow)
@@ -1827,7 +1849,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.47 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.48 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

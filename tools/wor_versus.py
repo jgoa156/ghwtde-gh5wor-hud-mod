@@ -92,6 +92,9 @@ STREAK_K = 0.155                           # the fixed size where 4 digits fit (
 STREAK_K_FIXED = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
                                            # user 2026-10-22: one size that fits 4 digits)
 STREAK_FIT = 0.9                           # the streak text shrinks to fit this share of its square (3-4 digits)
+# 2026-10-23 (user: 2-digit streaks far too small): the plugin sizes the streak by its digit count, min(SCORE_K,
+# STREAK_K x 4 / digits): the score's size for 1-2 digits, smaller for 3-4. It finds each side's text by this z.
+STREAK_Z = {1: 8.0011, 2: 8.0012}
 
 
 def _p2(pt, p):
@@ -316,7 +319,7 @@ def tree():
                   E(f'streak_{p}', 'ContainerElement', pos=(0, 0), dims=(sq_w, STREAK_SQ_H), just=(-1, -1), z=8.0,
                     children=[
                         E(f'streak_number_{p}', 'TextBlockElement', pos=(sq_w / 2, STREAK_SQ_H / 2 + 1),
-                          dims=(sq_w * STREAK_FIT / STREAK_K, 40), just=(0, 0), scale=(STREAK_K, STREAK_K), z=8.0,
+                          dims=(sq_w * STREAK_FIT / STREAK_K, 40), just=(0, 0), scale=(STREAK_K, STREAK_K), z=STREAK_Z[p],
                           font=SCORE_FONT, text='0x00000000', shadow=False, internal_just=(0.5, 0.0),
                           fit_width='scale each line if larger', fit_height='scale down if larger')])]),
         ]))

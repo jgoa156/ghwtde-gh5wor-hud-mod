@@ -4,7 +4,105 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23, round 3): plugin 1.47 + mod BUILT (install when the game is closed)
+## START HERE (2026-10-23): HANDOFF GUIDE — plugin 1.48 + mod (see "Installed" below), multiplayer HUD by the book
+
+Everything after this section is older history; read it only for a detail.
+
+### 1. Where things stand
+- **Installed:** see the last line of this section (the session that installed it updates it).
+- **User-verified:** guitar + vocals and face-off positions looked right (1.45 test); singleplayer was correct before
+  round 1 (and should be again with 1.47's fill-size fix).
+- **Not verified in game yet:** everything in "What changed" below. The user still has to check band.
+- Offline tests: `python tests/run_offline.py` (25/25 at 1.48).
+
+### 2. Rules (user, still in force; more under "Rules you set" further down)
+- **Ask before EVERY game launch** (one approval per run). "stop" = kill the capture task, `python ... capture_band`
+  and `GHWT_Definitive.exe`, restore GHWTDE.ini + the save from the newest `tests/results/band-*/`, verify hashes.
+- **The save is sacred**: only launch through `tests/capture_band.py` (it backs up / restores GHWTDE.sav + Profiles).
+- **Never install while the game runs** (its files are locked; check `Get-Process GHWT_Definitive` first).
+- Commit and push finished work; keep this guide current; the mod is credited to WitchDoctoR.
+- Directive 2026-10-23: **stick by the book with how SINGLEPLAYER deals with highway elements** in every mode: the
+  same pieces, effects, shadows, layering and star power behaviour; keep the 2+ player angles (the user likes them);
+  pieces exactly on each highway's outer border.
+- Star power tube on every highway in face-off, pro face-off, quickplay band and solo quickplay; NOT in career
+  face-off (boss battles) and battle. All tube instances must run the same animation / details / effects.
+
+### 3. How the multiplayer HUD works now (don't re-derive)
+- **Highway geometry is exact** (`tools/hw_geom.py`): the DE builds each highway from one struct per number of
+  instrument highways (DE `scripts/guitar/guitar_tweaks.qb` highway_guitar1/2/3: top width 160/170/152, width growth
+  2.2/1.33/1.2, height 350/270/270, playline 655), shifted by Pos.x (x_offset_p2 230, x_offset_p3 225 x 1.8, our
+  theme + SEP 22 / SEP3 12.5). These edges sit exactly on every captured highway. The WoR border's outer edge is
+  a + b*f px outside (f = fraction from the top): 4.2+19.5f (1 highway), 4.7+18.9f (2), 5.0+18.5f (3).
+- **Pieces** (`tools/wor_mp.py`): every player container (g1..g3) of hud_1g1v / hud_2g / hud_2g1v / hud_3g1v shows the
+  1-player descs themselves: `wor_sp_mp_ghwor` (every sp_* element), `wor_side_mp1/_mp/_mp3_ghwor` (every rm_*
+  element + LEDs + the 1-player needle; one per DE needle path), `wor_mult_mp_ghwor` (the 1-player multiplier + the
+  face-off alias stand-in). Each instance is placed by `hw_geom.similarity` (the 1-player outer border laid onto this
+  highway's: 0.75 scale and -+3.1 deg on 2 highways) through the real container origins (`container_origins`) + the
+  1-player calibration (ROOT_CAL (1,3), G_CAL (1,9)). Guitar + vocals = the identity (it IS the 1-player highway).
+- **Layering** = singleplayer's absolute z (wor_1g.RAIL_Z): tubes 3.01-3.09 just above the border (z 3), badge and
+  tube balls 0.04-0.05 under the highway surface (0.1).
+- **Rock needle**: DE script 0x3205f550 moves an invisible stand-in on a path per number of instrument highways
+  (1: (0,0)(11,-24)(28,-57)(41,-80); 2: (0,0)(13,-28)(26,-58)(37,-84); 3+: (-4,2)(8,-32)(21,-67)(33,-100)); the plugin
+  finds each anchor by its unique scale (kNeedle*, kMpNeedle*, kMp3Needle*) and maps it onto the WoR LED stops.
+  Multiplayer needles sit 1.5 px left (MP_NEEDLE_DX, wor_battle.NEEDLE_DX; user).
+- **Star power, every tube** = the 1-player engine (plugin StarPower state per tube, `tube_set`). Singleplayer: the
+  band meter widget hook (`tube_update_hook`). Multiplayer: the DE's six segments sit in a zero-size window (sp_src,
+  z MP_SRC_Z 3.0525) as the level source; `mp_tube_source` reads level = scale y / x per segment every frame and
+  drives our own fill (sp_fill, z MP_FILL_Z 3.0515) in sp_clip, with the same glows, plasma, burst and feathers.
+  Our attach (`WoR_HUD_HUD_attach_widget_player_star_power`) must check the RESOLVED Star_Power element: the DE's
+  parent_id is the compound `:s{<g> child = Star_Power}` (1.40-1.46 checked `:s{parent_id child = sp_mp}`, which
+  never matched). The tube starts hidden and the attach shows it; boss battles / p1_career hide it.
+- **Tube textures** are shipped above art size (wor_1g.SP_TEX_SS 4x: sp_base, spfull(_b), neon caps; SP_PLASMA_SS 2x:
+  the 120 plasma frames at 60 fps in the UI pak, 24 MB). SetTexture resizes a sprite to its texture, so the plugin's
+  `set_tube_texture` keeps the fill at 64x256 after every swap (1.46 blew the fill up 2-4x without it).
+- **Streak meter**: the plugin recognises our multiplier by its elements (badge = the only z 0.05, 256x256 element;
+  lights = its siblings), not by the texture it shows (the DE's own names used to win the race).
+- **Versus score boxes**: the note streak is sized by the plugin by digit count, min(SCORE_K 0.26, 0.155 x 4 /
+  digits) (the desc's fit settings do nothing in game); each side's text is found by z (wor_versus.STREAK_Z) and the
+  plugin takes each player's streak from the streak-lights hook (g_streak). Career versus hides both score boxes.
+- **Battle** (`tools/wor_battle.py`, hud_2d layout): rock tube by the same highway map; slots keep their map (user:
+  right); layout z 4 (slots over the rail); cards CARD_FILL 0.375. The plugin finds cards by their parent
+  (battlemode_container), sizes them to their slot (1.48: the first card has no scale morph, its size now comes from
+  its current scale; it stayed 64 px before) and layers them bottom > middle > top relative to the game's card z.
+- **Menus**: our popup / pause descs are copied over the DE globals only when the theme changes (WoR_HUD_popup_ours /
+  WoR_HUD_pause_ours): copying them on every popup freed live desc structs (crash exe+0x1feea8 on face-off -> pro
+  face-off, found by scanning the first-chance dump's stack for the 0xc0000005 record).
+
+### 4. What changed this session (2026-10-23), by plugin version
+- 1.44: per-player tube take-over attempt (superseded by 1.46/1.47).
+- 1.45: by-the-book placement in every multi-highway layout; career versus without score/SP; battle rock tube by the
+  highway map, smaller cards, slots over the rail; streak meter by elements; SP textures 4x / plasma 2x.
+- 1.46: multiplayer tubes driven from the hidden level source; popup/pause swap guard (crash); needle 1.5 px left.
+- 1.47: fill keeps 64x256 after texture swaps; attach checks the resolved element.
+- 1.48: versus streak sized by digit count; first battle card sized; card layering relative to the game's z.
+
+### 5. Testing and diagnosis
+- Logs: `<game>\wor_hud_fixes.log` (this boot) and `wor_hud_fixes.prev.log` (the previous boot). Lines to look for:
+  "star power fill: smooth fill active" (singleplayer), "star power: multiplayer tube <ptr> level ..." (each
+  multiplayer tube), "2-highway / 3-highway rock needle: remapped", "battle card ... moved / not placed",
+  "battle needle: rot range" (the last battle log, 1.43, had the needle stand-in never turning: recheck).
+- Captures: `python tests/capture_band.py --lineup <1g1v|2g|2g1v|3g|3g1v|faceoff|profaceoff|battle>` (delete
+  `tests/results/capture_band.done` first; ask first). Mock of the placement: `python tools/mock_rails.py <out.jpg>`.
+- Crashes: WER dumps in `%LOCALAPPDATA%\CrashDumps`. The 0xc00001a5 one is secondary; the "(1)" dump or a scan of the
+  stack for an EXCEPTION_RECORD with code 0xc0000005 gives the real fault (tools/dump_mem.py `Dump`; game code isn't
+  in the dump: disassemble from GHWT_Definitive.exe with capstone). Map our plugin with `plugin\build_map.bat`.
+- Install without a full rebuild: copy build\WoR_HUD (minus *.txt / *.pak.xen) to DATA\MODS\WoR_HUD, the paks
+  (hud_ghwor, gems_*_hud, wor_hud_ui) to DATA\PAK, plugin\build\wor_hud_fixes.asi to the game folder; compare hashes.
+
+### 6. Open / next
+1. In-game check of 1.48: singleplayer tube (normal size, sharp lightning), every multiplayer tube animating like
+   singleplayer, career face-off without tube and scores, versus streak size, battle cards (size, layering), band.
+2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
+3. Battle needle tracking (stand-in rotation) if the new log still shows rot 0.0..0.0.
+4. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
+   pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
+
+Installed: plugin 1.48 + this mod build, 2026-10-23 (hashes verified: mod folder, hud_ghwor / gems_*_hud /
+wor_hud_ui paks, wor_hud_fixes.asi). Not tested in game yet.
+
+## Session log 2026-10-23 (details behind the guide above)
+
+### Session log 2026-10-23, round 3: plugin 1.47 + mod BUILT (install when the game is closed)
 
 User test of 1.46: quickplay singleplayer SP fill blown up / pixelated, cut into a block; face-off tubes gone.
 - Singleplayer: SetTexture sizes a sprite to its texture; with the fill textures at 2-4x (round 1) every plasma frame
@@ -13,7 +111,7 @@ User test of 1.46: quickplay singleplayer SP fill blown up / pixelated, cut into
   :s{<g> child = Star_Power}, so the check replaced its child and never matched: every multiplayer tube took the DE's
   3-segment branch (no engine; with 1.46's hidden default, no tube). Now checked on the resolved id.
 
-## 2026-10-23, round 2: plugin 1.46
+### Session log 2026-10-23, round 2: plugin 1.46
 
 User test of 1.45 (face-off screenshot + needle crop): positions accepted so far (band still to verify). Fixed:
 - Crash face-off -> pro face-off: real fault (first-chance dump, EXCEPTION_RECORD scanned on the stack) exe+0x1feea8,
@@ -29,7 +127,7 @@ User test of 1.45 (face-off screenshot + needle crop): positions accepted so far
   boxes) when boss_battle = 1 OR game_mode = p1_career.
 - Rock needle 1.5 px left on every multiplayer highway (wor_mp.MP_NEEDLE_DX, wor_battle.NEEDLE_DX).
 
-## 2026-10-23 round 1: every multi-highway layout "by the book" (plugin 1.45)
+### Session log 2026-10-23, round 1: every multi-highway layout "by the book" (plugin 1.45)
 
 User evidence 2026-10-23 (`OneDrive\Videos\GH\GHEvidence\`: video + 9 annotated stills, priority list): items 0-5.
 Directive: **stick by the book with how SINGLEPLAYER deals with highway elements**; angles in 2+ player modes are fine

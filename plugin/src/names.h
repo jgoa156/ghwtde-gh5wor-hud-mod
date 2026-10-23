@@ -144,6 +144,8 @@ static const float kMpNeedleWoR[4][2] = { { -3.8995f, 8.8529f }, { 12.3333f, -28
 static const float kMp3NeedleAX = 1.880504f, kMp3NeedleAY = 1.223853f;
 static const float kMp3NeedleDE[4][2] = { { -4.0000f, 2.0000f }, { 8.0000f, -32.0000f }, { 21.0000f, -67.0000f }, { 33.0000f, -100.0000f } };
 static const float kMp3NeedleWoR[4][2] = { { -7.8995f, 12.7500f }, { 8.3333f, -32.0000f }, { 20.6667f, -66.0000f }, { 29.6446f, -90.7500f } };
+static const float kVsStreakZ[2] = { 8.0011f, 8.0012f };   // versus streak texts
+static const float kVsStreakK4 = 0.1550f, kVsStreakKMax = 0.2600f;
 static const float kMpFillZ = 3.0515f, kMpSrcZ = 3.0525f;   // multiplayer tube fill / level source
 static const uint32_t kMpNeedleTex = 0x813b360d;   // the 1-player needle
 static const uint32_t kOurMult[8] = { 0x99c7e9f3, 0x00ceb849, 0x77c988df, 0xe9ad1d7c, 0x72b100bd, 0x9bd2a588, 0x75dcc4a4, 0x9264e9a3 };

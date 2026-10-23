@@ -31,7 +31,8 @@ LINEUPS = {
 MODES = {'faceoff': 'p2_faceoff', 'profaceoff': 'p2_pro_faceoff', 'battle': 'p2_battle'}
 
 
-SHOT_FROM, SHOT_EVERY, SHOT_UNTIL = 90, 15, 330   # seconds after the launch (the song plays ~T+100..320 s); the game
+SHOT_FROM, SHOT_EVERY, SHOT_WINDOW = 90, 15, 180   # seconds after the launch: shots start at T+90 and run for 3 minutes
+SHOT_UNTIL = SHOT_FROM + SHOT_WINDOW                 # (user 2026-10-22; ontheroadagain plays ~T+100..250 s); the game
 # then sits on the results screen (user 2026-10-22: it does not proceed), so it is closed at SHOT_UNTIL
 
 

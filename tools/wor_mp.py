@@ -239,7 +239,7 @@ MP_DX = -24.0
 ROCK_MP_DX = -50.0
 
 
-def edit_two_highways(d):
+def edit_two_highways(d, parent_fix=(0.0, 0.0)):
     """The 2-highway layouts (hud_2g: face-off / pro face-off / co-op; hud_2g1v: two instruments + vocals): the
     player containers follow the highways (wor_battle.SEP apart) and get our star power tube, rock tube and multiplier;
     the WT+ copy's own star power child (star_power_1g, not wired by the DE: its local id isn't Star_Power) hides."""
@@ -249,7 +249,7 @@ def edit_two_highways(d):
         d = _hide_child(d, g, 'star_power_1g')
         tl = _container_topleft(d, g)
         shift = 0.0 if p == 1 else B.p2_dx()
-        off = (shift - tl[0] + MP_DX, -tl[1])    # desc content in P1 screen px -> this container
+        off = (shift - tl[0] + MP_DX + parent_fix[0], -tl[1] + parent_fix[1])    # desc content in P1 screen px -> this container
         d = _set_player_meter(d, g, off)
         new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), z=2.0, desc=SP_NAME).render(0),
                E('BAND_side_meter', 'descinterface', pos=(off[0] + ROCK_MP_DX, off[1]), dims=(1280, 720), just=(-1, -1), z=3.0, alpha=0.0,
@@ -290,6 +290,55 @@ def highway_map(dst, src=RAILS_2G_P1):
             b += [xd, yd]
     s, tx, ty = np.linalg.lstsq(np.array(a), np.array(b), rcond=None)[0]
     return float(s), (float(tx), float(ty))
+
+
+def _retarget(d, g, child, desc_name, pos, scale):
+    """Container g's child element `child` (a descinterface): our desc, at pos with Scale scale, full canvas dims."""
+    import re
+    import desc_edit
+    a, b = V._element_bounds(d, g)
+    blk = d[a:b]
+    m = re.search(rf'StructQBKey local_id = {re.escape(child)}\s*\n', blk)
+    pa, pb = desc_edit._block_bounds(blk, m.start())
+    p = blk[pa:pb]
+    subs = [(r'StructString desc = "[^"]*"', f'StructString desc = "{desc_name}"'),
+            (r'StructFloatX2 Pos\s*\{\s*Floats \[[-\d.]+, [-\d.]+\]', f'StructFloatX2 Pos\n{{\n\tFloats [{pos[0]:.5f}, {pos[1]:.5f}]'),
+            (r'StructFloatX2 dims\s*\{\s*Floats \[[-\d.]+, [-\d.]+\]', 'StructFloatX2 dims\n{\n\tFloats [1280.00000, 720.00000]'),
+            (r'StructFloatX2 Scale\s*\{\s*Floats \[[-\d.]+, [-\d.]+\]', f'StructFloatX2 Scale\n{{\n\tFloats [{scale:.5f}, {scale:.5f}]'),
+            (r'(StructArray just\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000'),
+            (r'(StructArray pos_anchor\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000')]
+    for pat, rep in subs:
+        p, n = re.subn(pat, rep, p, count=1)
+        assert n == 1, (g, child, pat)
+    return d[:a] + blk[:pa] + p + blk[pb:] + d[b:]
+
+
+def edit_one_highway(d):
+    """hud_1g1v (one instrument + vocals): its highway is the 1-player one (get_highway_pos_and_scale: Pos 0, Scale 1
+    with one non-vocal player), so each multiplayer piece goes back to its 1-player spot: the inverse of the map that
+    made it (star power tube and multiplier: wor_versus.sp_map; rock tube: wor_battle.tube_maps 'rock'; both a
+    uniform scale + shift). The DE's player_meter (pink WT streak stack, tiny multiplier, instrument icon) and its
+    Star_Power (WT+ desc) become ours; BAND_side_meter is added (hidden until the DE attaches health)."""
+    tl = _container_topleft(d, 'g1')
+
+    def inverse(m):
+        k = float(m[0, 0])
+        return 1.0 / k, (-float(m[0, 2]) / k - tl[0], -float(m[1, 2]) / k - tl[1])
+
+    s_sp, off_sp = inverse(V.sp_map())
+    s_rk, off_rk = inverse(B.tube_maps()['rock'])
+    d = _set_player_meter(d, 'g1', off_sp, scale=s_sp)
+    d = _retarget(d, 'g1', 'Star_Power', SP_NAME, off_sp, s_sp)
+    d = _append_children(d, 'g1', [E('BAND_side_meter', 'descinterface', pos=off_rk, dims=(1280, 720), just=(-1, -1),
+                                     scale=(s_rk, s_rk), z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)])
+    return d
+
+
+# hud_2g's player containers sit in NewElement1 (just centre, at (49.95, 48.03)) and are placed from its centre
+# (pos_anchor 0): their real top-left is that much further than _container_topleft says, and hud_2g's pieces (MP_DX /
+# ROCK_MP_DX measured there) include it. hud_2g1v's containers have no such parent (capture 2026-10-22: every piece
+# ~50 px up and left of where hud_2g puts it), so they get it added.
+HUD_2G_PARENT_CENTRE = (49.9519, 48.0269)
 
 
 def edit_three_highways(d):

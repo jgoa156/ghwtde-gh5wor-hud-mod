@@ -16,6 +16,7 @@ import ingame_smoke as H  # noqa: E402
 
 # line-up -> the layout the DE picks for it (docs/research/de_layouts.md, update_hud_layout)
 LINEUPS = {
+    '1g': ['guitar'],                              # quickplay 1 player: the reference the multiplayer pieces copy
     '2g': ['guitar', 'drum'],
     '1g1v': ['guitar', 'vocals'],
     '2g1v': ['guitar', 'drum', 'vocals'],

@@ -32,10 +32,12 @@ BULB_C = (-140.0, -6.0)                  # from wor_1g.SCORE_C
 BULB_D = 84.0                            # drawn size of the 128 px bulb
 # the group's offset from its 1-player spot (score box centre wor_1g.SCORE_C ~ (1056, 581)) to WoR's band spot, top
 # right (user's WoR frames 2026-10-22: ~(1047, 187) without vocals, ~(1019, 257) under the vocal highway)
-OFFSET = {False: (-9.0, -394.0), True: (-37.0, -324.0)}
+OFFSET = {False: (-9.0, -394.0), True: (-37.0 + 130.0, -324.0 - 50.0)}
+# vocal layouts (capture 2026-10-22): moved to the right edge like the 2-player spot, and up to just under the lyrics
+# line (the 3g1v override of the first capture had it on the lyrics)
 # hud_3g1v (3 instruments, 4-player band): measured on the bot capture 2026-10-22 the group sat ~130 px left of the
 # 2-player spot and ~87 px below the vocal highway's bottom (y 135); moved to the right edge, top just under it
-OFFSET_BY_CONFIG = {'hud_3g1v': (-37.0 + 130.0, -324.0 - 87.0)}
+OFFSET_BY_CONFIG = {}
 TUBE_IDS = ('lights_bg', 'red_light', 'yellow_light', 'green_light')
 WTPLUS_PROPS = ['multiplier_text', 'band_mult_text'] + [
     f'band_HUD_{k}' for p in range(1, 5) for k in (

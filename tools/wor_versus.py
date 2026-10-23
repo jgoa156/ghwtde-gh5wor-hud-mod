@@ -86,7 +86,8 @@ NEEDLE_K = 1.65
 NEEDLE_SRC_DIMS = 3.125
 BOX_UP = 6.0                               # the boxes a little up: they cover the dial's bottom edge (user 2026-10-22)
 BOX_TUCK = 15.0                            # the boxes' inner ends this far under the dial (user 2026-10-22: no gap)
-STREAK_K = 0.26                            # = SCORE_K: 2 digits at the score's size; 3-4 shrink (fit, WoR's settings)
+STREAK_K = 0.155                           # the fixed size where 4 digits fit (capture 2026-10-22: the fit settings did
+                                           # not work in game, "235" showed cut off at 0.26; adaptive size would need the plugin)
 # (0.155 = the fixed 4-digit size of 2026-10-22, before the fit worked)
 STREAK_K_FIXED = 0.155                           # the streak's font scale: 4 digits fit the square (the DE ignored fit_width;
                                            # user 2026-10-22: one size that fits 4 digits)
@@ -395,8 +396,12 @@ def edit_layout(config, d):
         d = d[:a] + new + d[b:]
     else:
         d = _set_alpha(d, lid, 0.0)
-    if config in ('hud_2g', 'hud_2g1v'):          # two instrument highways (+ vocals): our per-player pieces
+    if config == 'hud_2g':                        # two instrument highways: our per-player pieces
         d = wor_mp.edit_two_highways(d)
+    elif config == 'hud_2g1v':                    # the same + vocals (containers without hud_2g's centred parent)
+        d = wor_mp.edit_two_highways(d, parent_fix=wor_mp.HUD_2G_PARENT_CENTRE)
+    elif config == 'hud_1g1v':                    # one instrument highway (the 1-player one) + vocals
+        d = wor_mp.edit_one_highway(d)
     elif config == 'hud_3g1v':                    # three instrument highways (+ vocals): the same pieces, scaled
         d = wor_mp.edit_three_highways(d)
     return d

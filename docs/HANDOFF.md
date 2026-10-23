@@ -4,6 +4,96 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
+## START HERE (2026-10-22 night): multiplayer HUD in progress, plugin 1.43 + mod installed (HEAD 547f7bb)
+
+Everything below this section is older history; read it only when a detail is needed.
+
+### Rules the user set today (on top of "Rules you set" further down)
+- **Ask before EVERY game launch.** The user approves runs one by one. "stop" means kill everything at once: stop the
+  background task, kill `python ... capture_band` and `GHWT_Definitive.exe`, then restore GHWTDE.ini + the save from
+  the newest `tests/results/band-*/` (`GHWTDE.ini.backup`, `save-backup/`) and verify the hashes.
+- **The save is sacred.** Bot runs boot without loading it and the game saves fresh progress over it after the song.
+  On 2026-10-22 that wiped the user's save. `tests/capture_band.py` backs up `GHWTDE.sav` + `Profiles\*.car` and
+  restores them after every run; never launch the game from a script that doesn't. Recovery copies:
+  `E:\Dev\ghwt\save-recovery` (shadow copies, damaged files, the 05:13 and 11-Oct versions). The user is now on the
+  11-Oct save plus their own play (written 19:16 on 10-22).
+- When the user says "just capture" / "don't do the analysis", capture and report only.
+- The user records the screen during runs; they spot artifacts themselves.
+
+### The capture harness (works; bots play, nobody needs to touch the PC)
+- `python tests/capture_band.py --lineup <name>` launches ONCE, then refuses again until
+  `tests/results/capture_band.done` is deleted (delete it before each approved run).
+- Line-ups: `1g`, `2g` (guitar + drum), `1g1v` (guitar + vocals), `2g1v`, `3g` (guitar + bass + drum), `3g1v` (full
+  band), `faceoff`, `profaceoff`, `battle`. Default song `ontheroadagain` (the on-disc one; the user's pick, short).
+  **Songs from DATA\MODS load no notes through AutoLaunch** (num917rb2dlc played on empty highways): use on-disc keys
+  (`DATA\MUSIC\<key>_1.fsb.xen`).
+- How it works: the DE's own [AutoLaunch] is developer-only (guitar_startup skips it while `WTDE_IsUser` = cd840670 is
+  true; that reads the devs' `babe.face` key: left alone). The mod's opt-in hook (build.py TEST_AUTOLAUNCH_SCRIPT,
+  plugin swap of ui_create_boot_iis) runs the DE's AutoLaunch setup 0x581325cc when `[WoR_HUD] TestAutoLaunch=1`; the
+  script sets that + `[AutoLaunch]` Players / Part<n> / Bot<n> / Song / GameMode, and restores the ini afterwards.
+- Focus: only the main window (class `AspyrGH3`) is brought forward, and only when no game window has the foreground.
+  The old helper also focused ReShade's `D3DProxyWindow`: that blanked the screen and paused the boot.
+- Frames: PIL screenshots every 15 s from T+90 s for 3 minutes (SHOT_WINDOW 180), then the game is closed. debug.txt
+  and wor_hud_fixes.log are locked while the game runs; the ghwt_bgfx dump add-on writes nothing on this install.
+- **Display changed:** the game now runs 3840x2160 (16:9) and screenshots come out 1280x720 = the HUD canvas as is.
+  Older captures (2560x1080) need the centred 16:9 crop `(320, 0, 2240, 1080)` resized to 1280x720.
+- No venue loads in bot runs (black background): good contrast for measuring.
+
+### State of the multiplayer HUD (what is verified and what is not)
+Verified in captures (21:9 runs of 10-22 evening + the 16:9 runs `band-20261022-2053..2115`):
+- hud_2g band: WoR pieces on the rails (rock tube needed ROCK_MP_DX -50 on top of MP_DX -24).
+- No orange band streak glow on the rails (theme flag `0xcd149bb0` makes highway_streak_glow return): highways look
+  like singleplayer.
+- hud_3g1v / 3g: singleplayer pieces on all three highways (wor_mp.edit_three_highways, highway_map fitted on
+  RAILS_3G), the DE's pink streak stacks + instrument icons gone; three highways spaced (x_offset_p3 + SEP3 12.5)
+  so the thick borders meet.
+
+Installed, NOT verified yet:
+1. **Pieces parallel to their rails** (75ff862): user close-up showed the 2-player SP tube ~8 deg steeper than its
+   rail. wor_battle.tube_maps now rotates the 1-player tube line onto each rail (SP -2.6 deg net, rock +2.95), the SP
+   container gets that rotation (sp_transform returns pos, k, rot), 3-highway pieces turn per side, 1g1v's inverse
+   carries it. ASSUMPTION to check: DE `rot_angle` > 0 = clockwise on screen (the multiplier code already assumed
+   it). If the tube comes out ~5 deg off the other way, flip the sign.
+2. A face-off capture of that build exists, **unanalysed**: `tests/results/band-20261022-222943` (11 frames). The
+   user said "artifacts were found already" in it: ask what they saw, then measure (rail vs tube angle per row, as
+   done in this session: rail highlight line x per row, teal fill edges).
+3. hud_1g1v (guitar + vocals): wor_mp.edit_one_highway, the 1-player pieces on its 1-player highway (inverse of each
+   piece's map). Was showing the DE's stock pink stack.
+4. hud_2g1v: pieces were ~50 px up-left; fix = hud_2g's parent-centre offset (HUD_2G_PARENT_CENTRE: hud_2g's g1/g2
+   are placed from NewElement1's centre, pos_anchor 0).
+5. Band score group: right edge, just under the lyrics line in vocal layouts (wor_band OFFSET[True]).
+6. Band star bar: the DE scales it x1.0 with >1 player (x0.7 with one), so the band copy's bar is 0.7 as long
+   (user saw it grow past the box).
+7. Band star sparks: the DE's multiplayer sparks d1be6858 use textures we don't ship (MISSING TEXTURE boxes); plugin
+   1.43 swaps it to the 1-player Star_Meter_Sparks01 with our theme.
+8. Face-off streak number: fixed size 0.155 (the fit settings did nothing in game; "235" was cut off). Adaptive size
+   (user wants it) would need the plugin.
+
+Open, not started:
+- **SP fill spills outside the tube in multiplayer** (16:9 face-off capture): the teal fill shows as a block with a
+  vertical left edge (x 549 on P1, 1051 on P2) outside the tube body. Likely the clip window (WindowElement) under the
+  scaled container: plugin place_fill / sp_frame set the clip's pos/dims in local units (kClipX/kClipW...). Check how
+  a WindowElement clips under a parent Scale/rot.
+- **Microphone meter** (v1 player_meter, top right of the vocal highway): our WoR multiplier textures on the WT+
+  vocal meter = an anomaly. User: show stock WT for the mic "if possible while we don't have the textures" -> needs
+  the WT vocal multiplier textures (not loaded with our theme; extract + ship them, or map back in set_texture_hook).
+- **Practice-mode crash when switching from quickplay**: logs were lost to the next launch. Plugin 1.43 now copies
+  `wor_hud_fixes.log` -> `wor_hud_fixes.prev.log` at boot (works); the DE `Logs\debug.prev.txt` copy did NOT appear
+  (the DE probably restarts debug.txt before our ASI loads): fix or ask the user to copy debug.txt right after a crash.
+  WER dumps: `%LOCALAPPDATA%\CrashDumps`; the real exception is on the stack (scan for c0000005), the 0xc00001a5 is
+  secondary.
+- Still pending from earlier: purple drum-fill pick (soft/strong, docs/mocks/mock_drumfill_v1.jpg, build.py
+  DRUM_FILL_RGBA), battle fade-in and 6th star in-game checks, release 0.50.
+
+### Geometry facts learned today (don't re-derive)
+- 1-player tube line lean 29.1 deg, 1-player border 27.3, 2-player rail 26.5 (RAIL_L/RAIL_R match the real rails;
+  the border highlight measured 26.4 in 16:9). 3-highway rails lean ~20 deg.
+- MP_DX / ROCK_MP_DX are hud_2g-only (its containers sit in a centred parent); 3g1v / 2g1v / 1g1v don't use them.
+- get_highway_pos_and_scale: 2 non-vocal highways at -+x_offset_p2; 3 at -+x_offset_p3 x 1.8 (drum centred);
+  1 non-vocal = the 1-player highway (Pos 0). Our wrapper adds SEP / SEP3 with our theme.
+- Layout by line-up: 2 instruments = hud_2g; guitar + vocals = hud_1g1v; 2 instruments + vocals = hud_2g1v;
+  3 instruments (with or without vocals) and every 4-player band = hud_3g1v.
+
 ## Start here (2026-10-21)
 
 State: HUD **0.49** released (releases/, bundles Ultrawide Fix **1.0**). HEAD has battle mode rebuilt in the WoR style

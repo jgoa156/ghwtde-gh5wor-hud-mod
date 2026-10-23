@@ -173,8 +173,7 @@ Everything after this section is older history; read it only for a detail.
 3. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.51 + mod (battle needle via SetPos, battle_hud_2d_elements swapped for our layout with this theme, multiplier source g1 + (1, 9)), 2026-10-23, hashes verified (9 files). Not tested in game yet.
-BUILT, NOT INSTALLED (the game was running): mod with the multiplier source reverted to g1 + (1, 3) and multiplier instance z 2.0 (plugin unchanged, still 1.51). Install with `python build.py --install` once GHWT_Definitive.exe is closed, then compare hashes.
+Installed: plugin 1.51 + mod (battle needle via SetPos, battle_hud_2d_elements swapped for our layout with this theme, multiplier source g1 + (1, 3) as in 1.50, multiplier instance z 2.0), 2026-10-23, hashes verified (9 files). Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

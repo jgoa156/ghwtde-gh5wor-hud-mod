@@ -480,6 +480,16 @@ namespace
 			reinterpret_cast<SetTextureFn>(kSetTexture)(e, nullptr, t);
 	}
 
+	// 1.47: the tube fill's textures are shipped above their art size (wor_1g.SP_TEX_SS / SP_PLASMA_SS) and a texture
+	// change sizes the sprite to the new texture (user 2026-10-23: a 2-4x fill, cut by the clip window, its lightning
+	// blown up): the fill keeps the 64x256 art dims its scale is made for
+	void set_tube_texture(void *e, uint32_t t)
+	{
+		set_texture(e, t);
+		if (f32(e, kElementDims) != 64.0f || f32(e, kElementDims + 4) != 256.0f)
+			reinterpret_cast<SetDimsFn>(kSetDims)(e, nullptr, 64.0f, 256.0f, 0);
+	}
+
 	struct StarPower
 	{
 		void *clip = nullptr, *fill = nullptr, *parent = nullptr;
@@ -618,7 +628,7 @@ namespace
 				set_dims(win, nullptr, kClipW, 0.0f, 0);
 				continue;
 			}
-			set_texture(fill, texture_of(g_sp.fill));
+			set_tube_texture(fill, texture_of(g_sp.fill));
 			set_dims(win, nullptr, kClipW, lo - t, 0);
 			set_pos(win, nullptr, kClipX, t, 1);
 			set_pos(fill, nullptr, kFillX - kClipX, kFillY - t, 1);
@@ -684,7 +694,7 @@ namespace
 		place_score_effects(t);
 		const bool shown = g_sp.level > 0.001f;
 		if (g_sp.ready && shown)
-			set_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
+			set_tube_texture(g_sp.fill, kPlasma[static_cast<long long>(t * kPlasmaFps) % (sizeof(kPlasma) / sizeof(kPlasma[0]))]);
 		place_feathers();
 		if (!g_sp.effects)
 			return;
@@ -1817,7 +1827,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.46 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.47 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

@@ -4,7 +4,16 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23, round 2): plugin 1.46 + mod INSTALLED, not tested
+## START HERE (2026-10-23, round 3): plugin 1.47 + mod BUILT (install when the game is closed)
+
+User test of 1.46: quickplay singleplayer SP fill blown up / pixelated, cut into a block; face-off tubes gone.
+- Singleplayer: SetTexture sizes a sprite to its texture; with the fill textures at 2-4x (round 1) every plasma frame
+  made the fill 2-4x too big (clipped by the window). Plugin 1.47 set_tube_texture keeps the fill at 64x256.
+- Multiplayer: since 1.40 our star power attach checked :s{parent_id child = sp_mp}; the DE's parent_id is
+  :s{<g> child = Star_Power}, so the check replaced its child and never matched: every multiplayer tube took the DE's
+  3-segment branch (no engine; with 1.46's hidden default, no tube). Now checked on the resolved id.
+
+## 2026-10-23, round 2: plugin 1.46
 
 User test of 1.45 (face-off screenshot + needle crop): positions accepted so far (band still to verify). Fixed:
 - Crash face-off -> pro face-off: real fault (first-chance dump, EXCEPTION_RECORD scanned on the stack) exe+0x1feea8,

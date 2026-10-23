@@ -320,7 +320,10 @@ SCRIPTS = (
     '\t:i $getplayerinfo$%GLOBAL%$player$$checksum$\n'
     '\t:i $ResolveScreenElementID$$id$ = %GLOBAL%$parent_id$$param$ = $id$\n'
     '\t:i if (~$current_num_players$ > %i(1))\n'
-    '\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$parent_id$$child$ = $sp_mp$:s}\n'
+    # parent_id is the DE's compound id :s{<g container> child = Star_Power}: our desc's root (sp_mp) is a child of the
+    # RESOLVED element (2026-10-23: the check on :s{parent_id child = sp_mp} replaced its child = Star_Power and never
+    # matched, so every multiplayer tube took the DE's 3-segment branch)
+    '\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$id$$child$ = $sp_mp$:s}\n'
     # career versus (boss battles): no star power tube (user 2026-10-23, WoR reference: only the streak meter)
     '\t\t\t:i if ((~$boss_battle$ = %i(1)) OR (~$game_mode$ = $p1_career$))\n'
     '\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$alpha$ = %i(0)\n'

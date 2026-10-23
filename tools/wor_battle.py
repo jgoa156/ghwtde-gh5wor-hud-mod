@@ -75,10 +75,10 @@ VISOR_GAP = 0.72                        # ring centres this many rim radii apart
 # surface (z 0.1); each card goes just above its own slot (CARD_Z), the bottom slot's pair over the middle one's
 VISOR_Z = {'big': 0.07, 'mid': 0.06, 'small': 0.05}
 CARD_Z = {'big': 0.075, 'mid': 0.065, 'small': 0.055}
-CARD_FILL = 0.375                       # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
-                                        # 2026-10-22, the slot's border must show around the card; 0.5 -> 0.375 user
-                                        # 2026-10-23: at least 25% less radius, so the middle card no longer reaches
-                                        # over the bottom slot)
+CARD_FILL = 0.82                        # a card fills this much of its visor's glass diameter (0.9 hid the rim: user
+                                        # 2026-10-22, the slot's border must show around the card). 2026-10-23: the
+                                        # cards weren't sized at all before the script (64 px, "huge"); at 0.375 they
+                                        # were too small: "just enough so we can see the rim border"
 HUD_Z = 0                               # the layout's z (stock 0); 4 (round 1) put the slots over the rail, but the
                                         # user wants them behind the highway (2026-10-23, test of 1.48)
 VISOR_INSET = 9.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
@@ -242,8 +242,23 @@ def visors(sep=SEP):
     nx, ny = -v[1], v[0]
     if nx > 0:                                          # the normal pointing at the highway (left of P1's right rail)
         nx, ny = -nx, -ny
-    move = lambda p: (p[0] + nx * VISOR_INSET, p[1] + ny * VISOR_INSET)
+    # 2026-10-23 (user: the slots' top aligned with the rock meter's top): the set slides along its rail until the
+    # top slot's rim top is level with the rock tube's top end (the rm_base art's first row, RM_TOP_ROW)
+    rock_top = apply(tube_maps(sep)['rock'], add_cal(wor_1g.LEFT.tex((wor_1g.TEX_CENTER[0] + wor_1g.TEX_CENTER[1] * RM_TOP_ROW,
+                                                                   RM_TOP_ROW))))
+    slot_top = min(g[1] - VISOR_RING[3] * k * VISOR_SCALES[key] for key, _, _, g, _ in out)
+    tau = (rock_top[1] - slot_top) / v[1]
+    slide = lambda p: (p[0] + v[0] * tau, p[1] + v[1] * tau)
+    move = lambda p: slide((p[0] + nx * VISOR_INSET, p[1] + ny * VISOR_INSET))
     return [(key, move(c), dims, move(g), r) for key, c, dims, g, r in out]
+
+
+RM_TOP_ROW = 4.0                        # the rock tube art's (rm_base) first opaque row
+
+
+def add_cal(p):
+    """A 1-player band meter point as drawn in game (preview_hud.GAME_CALIB, the band meter's (1, 3))."""
+    return (p[0] + 1.0, p[1] + 3.0)
 
 
 def slots_on_tube(sep=SEP):

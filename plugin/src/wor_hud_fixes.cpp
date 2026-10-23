@@ -942,14 +942,26 @@ namespace
 		g_battle_seen = now();
 		const float *swing = reinterpret_cast<const float *>(kNeedleSwing);
 		const float a = *reinterpret_cast<const uint8_t *>(kModeFlag) ? swing[0] : swing[1];
-		const float deg = f32(src, kElementRot) * 57.2957795f;
+		const bool p2 = id_of(src) == kBNeedleId[1];
+		const float deg = f32(src, kElementRot) * 57.2957795f;   // 0x465ab0: the same formula for both players
 		float h = 1.0f + deg / a;
+		static bool s_side_logged[2] = {};
+		if (!s_side_logged[p2] && (deg > 5.0f || deg < -5.0f))
+		{
+			s_side_logged[p2] = true;
+			log("battle needle P%d: deg %.1f -> health %.2f", p2 ? 2 : 1, deg, 1.0f + deg / a);
+		}
 		h = h < 0.0f ? 0.0f : h > 2.0f ? 2.0f : h;
 		const int i = h < 2.0f / 3.0f ? 0 : h < 4.0f / 3.0f ? 1 : 2;
 		float t = (h - i * (2.0f / 3.0f)) * 1.5f;
 		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
-		f32(needle, kElementPos) = f32(src, kElementPos) + kBNeedleD[i][0] + (kBNeedleD[i + 1][0] - kBNeedleD[i][0]) * t;
-		f32(needle, kElementPos + 4) = f32(src, kElementPos + 4) + kBNeedleD[i][1] + (kBNeedleD[i + 1][1] - kBNeedleD[i][1]) * t;
+		// 1.50: the tween target too (user 2026-10-23: the needle stayed at its health-1 spot whatever the LEDs showed;
+		// since 1.41 move_2d_elements_to_default tweens the battle pieces to their defaults, and an element under a tween
+		// is put back on its target every frame, overwriting the position written here)
+		const float nx = f32(src, kElementPos) + kBNeedleD[i][0] + (kBNeedleD[i + 1][0] - kBNeedleD[i][0]) * t;
+		const float ny = f32(src, kElementPos + 4) + kBNeedleD[i][1] + (kBNeedleD[i + 1][1] - kBNeedleD[i][1]) * t;
+		f32(needle, kElementPos) = f32(needle, kElementPosTarget) = nx;
+		f32(needle, kElementPos + 4) = f32(needle, kElementPosTarget + 4) = ny;
 		if (!g_bneedle_logged)
 		{
 			g_bneedle_logged = true;
@@ -1849,7 +1861,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.49 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.50 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

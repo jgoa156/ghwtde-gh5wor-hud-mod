@@ -37,7 +37,16 @@ NEEDLE_PATHS = {1: ((0.0, 0.0), (11.0, -24.0), (28.0, -57.0), (41.0, -80.0)),
                 3: ((-4.0, 2.0), (8.0, -32.0), (21.0, -67.0), (33.0, -100.0))}
 # where the game draws the 1-player descs (preview_hud.GAME_CALIB, measured on the v0.17 capture): root-level descs
 # (the band meter: both tubes) at their coordinates + ROOT_CAL, g1's descs (multiplier, side meter) at g1 + G_CAL
-ROOT_CAL, G_CAL = (1.0, 3.0), (1.0, 9.0)
+# 2026-10-23 (user test of 1.49, guitar + vocals vs quickplay): every container draws its descs like the root,
+# (1, 3); the (1, 9) measured on the v0.17 capture belongs to the multiplier / side meter descs themselves (their
+# content draws 6 lower), not to g1. With G_CAL (1, 9) every multiplayer tube sat 6 units too high (the lit LED 7.4 px
+# higher than quickplay's in the user's 2000 px frames), i.e. off the border on the slanted rail.
+ROOT_CAL, G_CAL = (1.0, 3.0), (1.0, 3.0)
+SIDE_INTRINSIC = (0.0, 6.0)   # the 1-player side meter desc's own +6 (its needle, moved into a band-meter-like desc)
+# how far the 1-player tubes' inner edges reach over the outer border (canvas units at the LED span, measured on the
+# rm_base / sp_base art through wor_1g.LEFT / RIGHT): the similarity scales that overlap with the highway (0.75 on
+# 2 highways); the pieces move inwards by the lost part so they stay attached to the border like in quickplay
+OVERLAP_1P = {'left': 9.7, 'right': 7.5}
 # the 1-player layout's draw-priority chains (hud_1g_ghwor): the tubes sit in band_meter (hud_container 0 + 1), the
 # multiplier in g1 / player_meter (0 + 2 + 2)
 Z_TUBES_1P, Z_MULT_1P = 1.0, 4.0
@@ -137,8 +146,7 @@ def side_desc(n):
     side = dg.ROOTS['wor_side_meter_ghwor']
     needle = copy.deepcopy(next(c for c in side.children if c.local_id == 'needle_anchor'))
     pos, (ax, ay), _ = needle_anchor(n)
-    dz = (G_CAL[0] - ROOT_CAL[0], G_CAL[1] - ROOT_CAL[1])
-    needle.pos = (pos[0] + dz[0] + MP_NEEDLE_DX, pos[1] + dz[1])
+    needle.pos = (pos[0] + SIDE_INTRINSIC[0] + MP_NEEDLE_DX, pos[1] + SIDE_INTRINSIC[1])
     needle.scale = (ax, ay)
     nd = 40.0                                        # needle size on screen (wor_1g.side_meter)
     for c in needle.children:
@@ -316,9 +324,14 @@ def placements(config, d=None):
         # every element layers against the highway exactly as in quickplay (user 2026-10-23: the band tubes, at
         # quickplay's exact spot, looked like floating over the highway)
         zt, zm = Z_TUBES_1P - gz, Z_MULT_1P - gz
-        out += [(g, 'player_meter', MULT_NAME, instance(right, o, g1), zm, 1.0),
-                (g, 'Star_Power', SP_NAME, instance(right, o, ROOT_CAL), zt, 0.0),   # shown when attached
-                (g, 'BAND_side_meter', SIDE_NAMES[n], instance(left, o, ROOT_CAL), zt, 0.0)]
+
+        def inward(inst, side, k):
+            (px, py), sc, rot = inst
+            d = (1.0 - k) * OVERLAP_1P[side] * (1.0 if side == 'left' else -1.0)
+            return (px + d, py), sc, rot
+        out += [(g, 'player_meter', MULT_NAME, inward(instance(right, o, g1), 'right', right[0]), zm, 1.0),
+                (g, 'Star_Power', SP_NAME, inward(instance(right, o, ROOT_CAL), 'right', right[0]), zt, 0.0),
+                (g, 'BAND_side_meter', SIDE_NAMES[n], inward(instance(left, o, ROOT_CAL), 'left', left[0]), zt, 0.0)]
     return out
 
 

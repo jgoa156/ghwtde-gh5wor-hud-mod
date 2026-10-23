@@ -51,9 +51,10 @@ def sp_transform():
     coordinates, sit in one scaled container (the 1-player desc is drawn GAME_CALIB off its coordinates)."""
     import preview_hud
     m = V.sp_map()
-    k = float(m[0, 0])
+    k = math.hypot(m[0, 0], m[1, 0])
+    rot = math.degrees(math.atan2(m[1, 0], m[0, 0]))      # the map's rotation (screen y down: + = clockwise)
     cal = preview_hud.GAME_CALIB['wor_band_meter_1g_ghwor']
-    return (float(m[0, 2]) + k * cal[0], float(m[1, 2]) + k * cal[1]), k
+    return (float(m[0, 2] + m[0, 0] * cal[0] + m[0, 1] * cal[1]), float(m[1, 2] + m[1, 0] * cal[0] + m[1, 1] * cal[1])), k, rot
 
 
 def sp_desc():
@@ -68,8 +69,9 @@ def sp_desc():
     src = desc_gen.ROOTS['wor_band_meter_1g_ghwor']
     meter = src                                   # the desc's root is meter_container itself
     kids = [copy.deepcopy(c) for c in meter.children if c.local_id.startswith('sp_')]
-    pos, k = sp_transform()
-    scaled = E('sp_scaled', 'ContainerElement', pos=pos, dims=(1280, 720), just=(-1, -1), scale=(k, k), children=kids)
+    pos, k, rot = sp_transform()
+    scaled = E('sp_scaled', 'ContainerElement', pos=pos, dims=(1280, 720), just=(-1, -1), scale=(k, k), rot=rot,
+               children=kids)
     props = [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
     props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
     return desc(SP_NAME, _root('sp_mp', [scaled]), props)
@@ -189,7 +191,7 @@ def _append_children(d, lid, blocks):
     return d[:a] + blk + d[b:]
 
 
-def _set_player_meter(d, g, offset, scale=None):
+def _set_player_meter(d, g, offset, scale=None, rot=0.0):
     """player_meter of container g: our desc, placed so its screen-authored content lands right (scale: the element's
     Scale, for highways smaller than the 2-player ones)."""
     import re
@@ -204,7 +206,7 @@ def _set_player_meter(d, g, offset, scale=None):
                     f'StructFloatX2 Pos\n{{\n\tFloats [{offset[0]:.5f}, {offset[1]:.5f}]', p, count=1)
     p, n3 = re.subn(r'(StructArray just\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000', p, count=1)
     p, n4 = re.subn(r'(StructArray pos_anchor\s*\{\s*ArrayFloat\s*\[)\s*[-\d.]+\s+[-\d.]+', r'\g<1>\n-1.00000\n-1.00000', p, count=1)
-    p = re.sub(r'StructFloat rot_angle = [-\d.]+', 'StructFloat rot_angle = 0.00', p, count=1)
+    p = re.sub(r'StructFloat rot_angle = [-\d.]+', f'StructFloat rot_angle = {rot:.4f}', p, count=1)
     if scale is not None:
         p, n5 = re.subn(r'StructFloatX2 Scale\s*\{\s*Floats \[[-\d.]+, [-\d.]+\]',
                         f'StructFloatX2 Scale\n{{\n\tFloats [{scale:.5f}, {scale:.5f}]', p, count=1)
@@ -292,7 +294,7 @@ def highway_map(dst, src=RAILS_2G_P1):
     return float(s), (float(tx), float(ty))
 
 
-def _retarget(d, g, child, desc_name, pos, scale):
+def _retarget(d, g, child, desc_name, pos, scale, rot=0.0):
     """Container g's child element `child` (a descinterface): our desc, at pos with Scale scale, full canvas dims."""
     import re
     import desc_edit
@@ -310,6 +312,7 @@ def _retarget(d, g, child, desc_name, pos, scale):
     for pat, rep in subs:
         p, n = re.subn(pat, rep, p, count=1)
         assert n == 1, (g, child, pat)
+    p = re.sub(r'StructFloat rot_angle = [-\d.]+', f'StructFloat rot_angle = {rot:.4f}', p, count=1)
     return d[:a] + blk[:pa] + p + blk[pb:] + d[b:]
 
 
@@ -322,15 +325,18 @@ def edit_one_highway(d):
     tl = _container_topleft(d, 'g1')
 
     def inverse(m):
-        k = float(m[0, 0])
-        return 1.0 / k, (-float(m[0, 2]) / k - tl[0], -float(m[1, 2]) / k - tl[1])
+        # m: p -> A p + t (uniform scale x rotation); its inverse as an element: Scale 1/k, rot -angle, at -A^-1 t
+        ainv = np.linalg.inv(m[:, :2])
+        t = -ainv @ m[:, 2]
+        k = math.hypot(m[0, 0], m[1, 0])
+        return 1.0 / k, -math.degrees(math.atan2(m[1, 0], m[0, 0])), (float(t[0]) - tl[0], float(t[1]) - tl[1])
 
-    s_sp, off_sp = inverse(V.sp_map())
-    s_rk, off_rk = inverse(B.tube_maps()['rock'])
-    d = _set_player_meter(d, 'g1', off_sp, scale=s_sp)
-    d = _retarget(d, 'g1', 'Star_Power', SP_NAME, off_sp, s_sp)
+    s_sp, r_sp, off_sp = inverse(V.sp_map())
+    s_rk, r_rk, off_rk = inverse(B.tube_maps()['rock'])
+    d = _set_player_meter(d, 'g1', off_sp, scale=s_sp, rot=r_sp)
+    d = _retarget(d, 'g1', 'Star_Power', SP_NAME, off_sp, s_sp, rot=r_sp)
     d = _append_children(d, 'g1', [E('BAND_side_meter', 'descinterface', pos=off_rk, dims=(1280, 720), just=(-1, -1),
-                                     scale=(s_rk, s_rk), z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)])
+                                     scale=(s_rk, s_rk), rot=r_rk, z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)])
     return d
 
 
@@ -352,12 +358,24 @@ def edit_three_highways(d):
         # correct hud_2g only (its highways are moved apart by our x_offset_p2 change); with them the 3-highway
         # capture of 2026-10-22 showed the SP tubes ~17 px and the rock tubes ~65 px left of their rails, which is
         # s * MP_DX and s * (MP_DX + ROCK_MP_DX) within a few px
-        off = (tx - tl[0], ty - tl[1])
-        d = _set_player_meter(d, g, off, scale=s)
-        new = [E('Star_Power', 'descinterface', pos=off, dims=(1280, 720), just=(-1, -1), scale=(s, s), z=2.0,
-                 desc=SP_NAME).render(0),
-               E('BAND_side_meter', 'descinterface', pos=off, dims=(1280, 720),
-                 just=(-1, -1), scale=(s, s), z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)]
+        # each side also turns by its rail's lean change (2026-10-22, user: the pieces must stay parallel to their
+        # rail, as in quickplay; these highways lean ~20 deg, the 2-player ones ~26), about a point on the rail
+        def side(si):
+            src, dst = RAILS_2G_P1[si], rails[si]
+            th = (math.atan2(dst[1][1] - dst[0][1], dst[1][0] - dst[0][0])
+                  - math.atan2(src[1][1] - src[0][1], src[1][0] - src[0][0]))
+            a = np.array((B._line_x(src, 590.0), 590.0))
+            b = s * a + np.array((tx, ty))
+            r = s * np.array([[math.cos(th), -math.sin(th)], [math.sin(th), math.cos(th)]])
+            pos = b - r @ a
+            return (float(pos[0]) - tl[0], float(pos[1]) - tl[1]), math.degrees(th)
+        off_r, rot_r = side(1)       # star power tube + multiplier: right rail
+        off_l, rot_l = side(0)       # rock tube: left rail
+        d = _set_player_meter(d, g, off_r, scale=s, rot=rot_r)
+        new = [E('Star_Power', 'descinterface', pos=off_r, dims=(1280, 720), just=(-1, -1), scale=(s, s), rot=rot_r,
+                 z=2.0, desc=SP_NAME).render(0),
+               E('BAND_side_meter', 'descinterface', pos=off_l, dims=(1280, 720), just=(-1, -1), scale=(s, s),
+                 rot=rot_l, z=3.0, alpha=0.0, desc=SIDE_NAME).render(0)]
         d = _append_children(d, g, new)
     return d
 

@@ -144,12 +144,24 @@ def tube_maps(sep=SEP):
     # the 1-player angle kept (user 2026-10-22: the sheared tubes looked more tilted than in quickplay; one angle in
     # every mode): each map = uniform scale (the rail map's size) about the border point at the LED span's middle,
     # which still lands on the rail
+    # 2026-10-22 (user, close-up of the 2-player SP tube): the pieces must keep their angle RELATIVE TO THE RAIL, as
+    # in quickplay (parallel to it); the 1-player screen angle left them visibly off the 2-player rails, which lean
+    # less. So each map = uniform scale x rotation (the 1-player rail's direction onto this rail's; no shear) about
+    # the border point at the LED span's middle.
+    # The source line is the 1-player TUBE line (not its border), so the multiplayer tube ends up exactly parallel to
+    # its rail (rotating border onto rail only gave ~1 deg; the user's close-up still showed the tube ~8 deg off).
     ym = (yb + yt) / 2
-    for m, anchor in ((rock, (cl(ym), ym)), (sp, (cr(ym), ym))):
+    tl_, tr_ = wor_1g.LEFT, wor_1g.RIGHT
+    for m, anchor, src_line, dst_line in (
+            (rock, (cl(ym), ym), (tl_.at(wor_1g.LED_BOTTOM), tl_.at(wor_1g.LED_TOP)), ((L(yb2), yb2), (L(yt2), yt2))),
+            (sp, (cr(ym), ym), (tr_.at(wor_1g.LED_BOTTOM), tr_.at(wor_1g.LED_TOP)), ((R(yb2), yb2), (R(yt2), yt2)))):
         k = math.sqrt(abs(np.linalg.det(m[:, :2])))
         a2 = apply(m, anchor)
-        m[:, :2] = np.eye(2) * k
-        m[:, 2] = (a2[0] - k * anchor[0], a2[1] - k * anchor[1])
+        th = (math.atan2(dst_line[1][1] - dst_line[0][1], dst_line[1][0] - dst_line[0][0])
+              - math.atan2(src_line[1][1] - src_line[0][1], src_line[1][0] - src_line[0][0]))
+        c, s = math.cos(th), math.sin(th)
+        m[:, :2] = k * np.array([[c, -s], [s, c]])
+        m[:, 2] = (a2[0] - (m[0, 0] * anchor[0] + m[0, 1] * anchor[1]), a2[1] - (m[1, 0] * anchor[0] + m[1, 1] * anchor[1]))
     rock[:, 2] += ROCK_NUDGE
     return {'rock': rock, 'sp': sp}
 

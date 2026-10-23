@@ -1,10 +1,10 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
+﻿# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23): HANDOFF GUIDE — plugin 1.48 + mod (see "Installed" below), multiplayer HUD by the book
+## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.48 + mod (see "Installed" below), multiplayer HUD by the book
 
 Everything after this section is older history; read it only for a detail.
 
@@ -89,6 +89,18 @@ Everything after this section is older history; read it only for a detail.
 - Install without a full rebuild: copy build\WoR_HUD (minus *.txt / *.pak.xen) to DATA\MODS\WoR_HUD, the paks
   (hud_ghwor, gems_*_hud, wor_hud_ui) to DATA\PAK, plugin\build\wor_hud_fixes.asi to the game folder; compare hashes.
 
+### 5b. User test of 1.48 (2026-10-23): what came back
+- Star power butchered in EVERY mode (singleplayer too): the fill spilled outside the tube, blocky bands. Cause: the
+  round-1 texture supersampling (sp_base / spfull / caps 4x, plasma 2x). Our .img.xen DDS have ONE mip level
+  (tools/png2img.js via GHSDK DDStoIMG), so a 256 px texture minified ~2x aliased, and the fill stopped matching the
+  tube. Reverted (wor_1g.SP_TEX_SS / SP_PLASMA_SS = 1; the 60 fps plasma stays). Sharper tubes = mipmapped DDS first.
+- "Different effects on the multiplayer tubes": the rock tubes compare identical (singleplayer vs guitar + vocals
+  crops); the star power differences were the textures above. If 2/3-highway tubes still differ, get a crop.
+- Vocals streak meter shows our WoR multiplier art: the vocal player_meter (Band_vocal_multiplier) reads the same
+  theme multiplier arrays as the instrument meters, and WT's HUD_score_nixie_* aren't loaded with our theme. Deferred
+  (user: leave it until the WoR vocals layout): needs our own vocal multiplier desc + shipped WT nixie copies + a
+  plugin mapping on that desc's nixie.
+
 ### 6. Open / next
 1. In-game check of 1.48: singleplayer tube (normal size, sharp lightning), every multiplayer tube animating like
    singleplayer, career face-off without tube and scores, versus streak size, battle cards (size, layering), band.
@@ -97,8 +109,7 @@ Everything after this section is older history; read it only for a detail.
 4. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
-Installed: plugin 1.48 + this mod build, 2026-10-23 (hashes verified: mod folder, hud_ghwor / gems_*_hud /
-wor_hud_ui paks, wor_hud_fixes.asi). Not tested in game yet.
+Installed: plugin 1.48 + mod with art-size tube textures (theme pak 2.15 MB, UI pak 18.35 MB), 2026-10-23, hashes verified. Not tested in game yet.
 
 ## Session log 2026-10-23 (details behind the guide above)
 
@@ -781,3 +792,4 @@ object bug (same family as "Zone not found"), not the HUD. Tools used: scratchpa
   3 highways (they had put the SP tubes ~17 px and the rock tubes ~65 px left of the rails). Next: one 3g1v capture.
 - Still open: band SP fill / per-tube engine with 3 tubes (bots' SP not checked in frames), hud_1g1v and hud_2g1v
   (not captured yet), the purple drum fill pick, the battle fade / 6th star in-game checks.
+

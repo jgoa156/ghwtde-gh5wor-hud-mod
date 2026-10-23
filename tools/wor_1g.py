@@ -343,7 +343,10 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 # pak budget): the tube's textures are shipped resampled (Lanczos, premultiplied) to SP_TEX_SS x their 64x256 art,
 # the plasma frames (UI pak, 120 of them) to SP_PLASMA_SS x; the sprites keep their dims, so only the sampling changes
 # (DXT5 4x4 blocks at 64 px wide were the visible blockiness at 4K)
-SP_TEX_SS, SP_PLASMA_SS = 4, 2
+# 2026-10-23, user test of 1.48: back to 1 (the art size). The textures carry ONE mip level (tools/png2img.js), so the
+# 256 px fill drawn ~135 px wide at 4K aliased into blocks, and the fill no longer stayed inside the tube; every tube
+# looked butchered. Sharper tubes need a mipmapped DDS first.
+SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:

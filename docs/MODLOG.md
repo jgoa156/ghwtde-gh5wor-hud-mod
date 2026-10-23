@@ -1498,3 +1498,6 @@ docs/mocks/mock_modes_v2_faceoff_band.jpg (tools/mock_mp.py, frames of the user'
   the stock big-slot spot.
 - Multiplayer streak meter: source point g1 + (1, 9) (wor_mp.MULT_CAL, singleplayer's real draw spot); 1.50's (1, 3)
   left the badge 4.5 units high on 2 highways, its arm over the border's bevel instead of tucked behind the tube top.
+- Correction (user test of 1.51): positions were already right; the streak meter issue is layering only. Reverted the
+  multiplier source to g1 + (1, 3). Multiplier instance z back to 2.0 (wor_mp.Z_MULT_INSTANCE, solo's player_meter
+  z): 1.49's chain-total z (3 on 2 highways) put the badge's arm over the border's bevel.

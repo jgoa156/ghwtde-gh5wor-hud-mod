@@ -66,7 +66,7 @@ def state(n, health, sp, mult):
 
 def roots(n):
     out = []
-    g1 = (wor_1g.G1[0] + M.MULT_CAL[0], wor_1g.G1[1] + M.MULT_CAL[1])
+    g1 = (wor_1g.G1[0] + M.G_CAL[0], wor_1g.G1[1] + M.G_CAL[1])
     for shift in HG.shifts(n):
         for side, name, src in (('right', M.MULT_NAME, g1), ('right', M.SP_NAME, M.ROOT_CAL),
                                 ('left', M.SIDE_NAMES[n], M.ROOT_CAL)):

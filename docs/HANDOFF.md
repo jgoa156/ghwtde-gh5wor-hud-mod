@@ -154,21 +154,27 @@ Everything after this section is older history; read it only for a detail.
   (WoR_HUD_battle_stock) and, with this theme, sets the whole global to a copy of our layout struct WoR_HUD_battle
   (it has every field above, with our offsets), or puts the stock one back otherwise. If the path is still two-legged,
   the global copy didn't take either (check the swap; next idea: wrap battlemode_ready).
-- Multiplayer streak meter over the border instead of behind it like solo. It's placement, not z: the badge (z 0.05)
-  is the same in both descs, and every desc root is the same plain container. The +6 of GAME_CALIB (1, 9) belongs to
-  singleplayer's own g1 container, which the DE's player containers don't have. 1.50 took the multiplier's source
-  point from g1 + (1, 3), so on 2 highways the badge sat 0.75 x 6 = 4.5 units too high: its arm lifted off the star
-  power tube's top onto the border's bevel (the user's crop: arm on the bevel, a gap above the tube). The source is
-  now g1 + wor_mp.MULT_CAL (1, 9). Mock (tools/mock_rails.py): the arm meets the tube top again.
+- Multiplayer streak meter over the border instead of behind it like solo. 1.51 first moved the badge 4.5 units
+  down (source g1 + (1, 9)). WRONG, reverted: the user says every multiplayer position is perfect in band quickplay,
+  and the issue is layering only. The real cause is a regression from 1.49's z-chain change. The multiplier
+  instance's own z decides how it layers against the highway, not the chain's sum. Up to 1.48 the instance had z 2
+  (= solo's player_meter), and the user's guitar + vocals frame at 02:45 (1.48 installed) shows the arm tucked
+  behind the border. 1.49 set it to Z_MULT_1P - g1's z = 3 on 2 highways, and since then the arm draws over the
+  border's bevel (likely the DE's z 3 sys_sidebar2D sprite: 2.05 under it, 3.05 over it). Now
+  wor_mp.Z_MULT_INSTANCE = 2.0 on every multiplier instance; positions back to 1.50's. The tubes keep the chain value
+  (user: perfect). So "absolute priorities" (5e) is only half right: the priority that counts seems to be the
+  descinterface instance's z + the element's own z, with plain containers and desc roots not counting. Unproven: if
+  the arm still shows, this model is wrong.
 
 ### 6. Open / next
 1. In-game check of 1.51: battle needle sliding with health (both players), new attack cards going straight into the
    big slot (and the shift down after a release), streak meter arm tucked behind the highway on 2 / 3 highways.
-2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL / MULT_CAL) is the suspect.
+2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
 3. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
    pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
 
 Installed: plugin 1.51 + mod (battle needle via SetPos, battle_hud_2d_elements swapped for our layout with this theme, multiplier source g1 + (1, 9)), 2026-10-23, hashes verified (9 files). Not tested in game yet.
+BUILT, NOT INSTALLED (the game was running): mod with the multiplier source reverted to g1 + (1, 3) and multiplier instance z 2.0 (plugin unchanged, still 1.51). Install with `python build.py --install` once GHWT_Definitive.exe is closed, then compare hashes.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

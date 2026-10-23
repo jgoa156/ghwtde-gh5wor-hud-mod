@@ -1,12 +1,25 @@
 # GH5 / WoR HUD: release notes
 
-## 0.50 (WIP, not released)
+## 0.50 (beta) - multiplayer
 
+`GH5-WoR_HUD_0.50.zip` (plugin `wor_hud_fixes.asi` 1.52), on top of 0.49:
+- **Every multiplayer layout in the WoR style**, by the book with singleplayer: band (2 / 3 instrument highways, with
+  or without vocals), face-off and pro face-off get the 1-player rock tube, star power tube and multiplier on each
+  highway's outer border, at each highway's angle, with the same layering, shadows and effects. Every star power tube
+  runs the singleplayer engine (smooth fill, glow, 60 fps plasma, burst). Career face-off (boss battles) has no star
+  power tube or score boxes.
+- **Versus score boxes:** WoR's 1v1 dial colours (P1 blue / P2 red), each player's note streak and score, the streak
+  sized to its digit count.
+- **Battle:** each player's rock tube is the band one (same position on the highway, layering and effects), the
+  needle follows health, attack slots are WoR streak-meter visors on the rail, behind the highway, aligned with the
+  rock tube's top; new attack cards go straight into the big slot.
+- No in-play messages in any mode; WoR's 6th star at 100% notes in quickplay; score separators in 2-player modes.
+- Crash fixes: switching face-off -> pro face-off (menu desc swaps), orphan HUD elements.
 - Bundles **GHWT:DE Ultrawide Fix 1.1** next to the HUD plugin (`ghwtde_ultrawide.asi` + `.ini`, loaded by the same
   ASI loader; no ReShade needed): the 3D view keeps 16:9's vertical field of view, so the highway is no longer zoomed
   in on ultrawide screens. Updating: delete `ghwtde_ultrawide.addon32` from the game folder.
 - Recommends **All Main Menu Music** (one menu music mod with ten games' menu songs).
-- Battle mode in the WoR style (plugin 1.32): first in-game test showed it misaligned, being reworked.
+- Known: the microphone's streak meter shows the WoR instrument multiplier art (WoR vocals layout to come).
 
 ## 0.49 (beta)
 

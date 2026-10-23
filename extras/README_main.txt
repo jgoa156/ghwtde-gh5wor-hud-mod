@@ -3,7 +3,7 @@ GH5 / Warriors of Rock HUD for Guitar Hero World Tour: Definitive Edition  (BETA
 By WitchDoctoR
 
 A Guitar Hero 5 / Warriors of Rock style HUD: rock meter and star power tubes along the highway, the WoR
-multiplier, score box, star meter and fonts, laid out from GH5 gameplay. Single player (guitar, bass, drums).
+multiplier, score box, star meter and fonts, laid out from GH5 gameplay. Single player (guitar, bass, drums), band, face-off, pro face-off and battle.
 
 REQUIREMENTS
   - Guitar Hero World Tour: Definitive Edition.
@@ -35,7 +35,7 @@ OPTIONAL: "Optional - ReShade (WoR shaders)" folder
                        qUINT (MXAO, depth of field, sharpen): tick "qUINT" in the ReShade installer for those
     ghwt_bgfx.addon32  background-only add-on: effects apply to the venue, never the HUD or highway
   Already have ReShade? Keep your d3d9.dll and ReShade.ini; copy only GHWoRHudModPreset.ini, ghwt_bgfx.addon32
-  and the shaders and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
+  and the shaders, then pick GHWoRHudModPreset.ini in the ReShade overlay (Home key).
 
 RECOMMENDED (separate downloads, by WitchDoctoR)
   - GHWT:DE All Main Menu Music: the main menu music of ten Guitar Hero games (Warriors of Rock included) in one
@@ -43,7 +43,7 @@ RECOMMENDED (separate downloads, by WitchDoctoR)
 
 KNOWN ISSUES (beta)
   - Switching HUD theme in the options can crash the game. Pick the theme and restart if needed.
-  - Band, multiplayer and microphone layouts still use the stock layouts.
+  - The microphone's streak meter still shows the WoR instrument multiplier art (WoR vocals layout to come).
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
 
 ULTRAWIDE SCREENS

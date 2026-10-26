@@ -274,8 +274,8 @@ SCORE_X_K = 1.039               # GH5's box is ~8 px longer: box, star holder, s
 # frame unit K0; score_bg centre at BG_OFF in that frame).
 K0 = SCORE_K / 1.35
 BG_OFF = (37.011, 16.931)
-SCORE_TEXT_KX = 1.08            # GH5 digits are wider (pitch 19 vs 18) ...
-SCORE_TEXT_KY = 1.26            # ... and taller (17 px vs 13) than WoR's numerals
+SCORE_TEXT_KX = 1.242           # GH5 digits are wider (pitch 19 vs 18) ... (x1.15 more, user 2026-10-25: wider, as WoR)
+SCORE_TEXT_KY = 1.147           # ... and taller than WoR's numerals (x0.91, 2026-10-25: WoR's 10.5 x 17 proportions)
 SCORE_TEXT_K = 0.90             # overall score digit size, kept centred on the same line
 SCORE_TEXT_SHIFT = (0.4, -2.0)
 STAR_K = 1.14                   # gold star size

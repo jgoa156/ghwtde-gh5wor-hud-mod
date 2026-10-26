@@ -808,7 +808,9 @@ def rock_scripts():
               f'\t\t\t:i $CreateScreenElement$:s{{$type$ = $descinterface$$parent$ = $battlemode_container$$id$ = ${i}$'
               f'$desc$ = %s("{M.SIDE_NAMES[2]}")$Pos$ = %vec2({x:.4f},{y:.4f})$just$ = :a{{$left$$top$:a}}'
               '$dims$ = %vec2(1280.0,720.0)$autosizedims$ = $false$'
-              f'$Scale$ = %vec2({k:.5f},{k:.5f})$rot_angle$ = %f({rot:.4f})$z_priority$ = %f(0.0)$alpha$ = %i(0):s}}\n'
+              # z = band's chain total (wor_mp.Z_TUBES_1P; user 2026-10-25: battle still lacked quickplay's shadows):
+              # at 0 the tube's end ball / drop shadow sank under the highway surface
+              f'$Scale$ = %vec2({k:.5f},{k:.5f})$rot_angle$ = %f({rot:.4f})$z_priority$ = %f({M.Z_TUBES_1P:.1f})$alpha$ = %i(0):s}}\n'
               f'\t\t\t:i $HUD_attach_widget_player_health$$parent_id$ = ${i}$$player$ = %i({p})\n'
               f'\t\t\t:i $SetScreenElementProps$$id$ = ${i}$$alpha$ = %i(0)\n'
               f'\t\t\t:i ${i}$.$se_setprops$:s{{$alpha$ = %i(1)$time$ = %f(0.25):s}}\n'

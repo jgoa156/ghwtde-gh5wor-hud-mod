@@ -180,6 +180,17 @@ Everything after this section is older history; read it only for a detail.
 - Then the user asked for release 0.50 (with Ultrawide Fix 1.1) published on GitHub. None of 1.52 was seen in game
   before the release.
 
+### 5h. User test of 0.50 (2026-10-25): plugin 1.53 (installed, not seen in game)
+- 3-highway star power butchered: a window's children don't take the window's ancestors' rotation, so the fill drew at
+  the 1-player angle (measured 26.2 deg vs the tube's 19.6 on the 3g1v capture). place_in_window adds the ancestors'
+  rotation to the fill, turns its offset and widens the window by kRotMargin (rot 0 on the 1-player tube: unchanged).
+- Band score had no thousands separators (the hook needed the 1-player star bar): also on while a multiplayer tube's
+  level source updates (g_mp_seen).
+- Score digits wider (user, mock docs/mocks/mock_score_font_v1.png): SCORE_TEXT_KX 1.242, KY 1.147.
+- Battle rock tube shadow / end ball missing vs band: battle's instance had chain total 0 (band 1), now z
+  Z_TUBES_1P. Unverified hypothesis (no capture, user's call); if it still differs, capture 2g vs battle and diff.
+- Vocals: analysis + plan in docs/research/wor_vocals_hud.md, mock docs/mocks/mock_vocals_v1.jpg (not started).
+
 ### 6. Open / next
 1. In-game check of 1.52 / 0.50: battle rock tubes look and layer like band quickplay (LEDs, needle tracking health
    on both players, slots aligned), versus streak no longer flashes, band needle top stop matches quickplay; plus the

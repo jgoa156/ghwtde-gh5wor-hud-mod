@@ -18,6 +18,7 @@ import ingame_smoke as H  # noqa: E402
 LINEUPS = {
     '1g': ['guitar'],                              # quickplay 1 player: the reference the multiplayer pieces copy
     '2g': ['guitar', 'drum'],
+    '1v': ['vocals'],
     '1g1v': ['guitar', 'vocals'],
     '2g1v': ['guitar', 'drum', 'vocals'],
     '3g': ['guitar', 'bass', 'drum'],              # 3 instruments, no vocals: hud_3g1v without its vocal highway

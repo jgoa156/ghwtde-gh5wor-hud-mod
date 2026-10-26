@@ -509,6 +509,8 @@ namespace
 		double glide_t0 = 0.0, glide_dur = 0.0, last_update = 0.0;
 		bool ready = false, seen = false;
 		double burst_t0 = -1.0;
+		float rot = 0.0f;       // 1.53: the tube's ancestors' rotation (radians; 0 on the 1-player tube)
+		float fill_rot0 = 0.0f; // the fill's own rotation from the desc
 	};
 	// 1.40: one state per tube (the multiplayer tubes are copies of the 1-player tube, tools/wor_mp.py sp_desc); the
 	// engine below works on the current one (g_sp), picked by the update hooks
@@ -571,6 +573,10 @@ namespace
 		g_sp.parent = *reinterpret_cast<void **>(field(clip, kElementParent));
 		if (!g_sp.parent)
 			return;
+		for (void *a = g_sp.parent; a; a = *reinterpret_cast<void **>(field(a, kElementParent)))
+			g_sp.rot += f32(a, kElementRot);
+		g_sp.fill_rot0 = f32(fill, kElementRot);
+		log("star power tube %p: ancestors' rotation %.3f deg", clip, g_sp.rot * 57.2957795f);
 		int bursts = 0;
 		for (void *e = *reinterpret_cast<void **>(field(g_sp.parent, kElementFirstChild)); e;
 		     e = *reinterpret_cast<void **>(field(e, kElementNextSibling)))
@@ -613,11 +619,30 @@ namespace
 		return kLevel50 + (kLevel100 - kLevel50) * ((level - 0.5f) / 0.5f);
 	}
 
+	// 1.53 (user 2026-10-25: star power butchered on 3 highways): a window's children don't take the rotation of the
+	// window's ancestors (the multiplayer tube instances turn -+3.1 deg on 2 highways, -+7.1 on 3), so the fill drew at
+	// the 1-player angle across the turned glass (measured on the 3-highway capture: 26.2 deg vs the tube's 19.6). The
+	// fill gets that rotation added, its offset in the window is turned by it, and the window grows by kRotMargin so the
+	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
+	constexpr float kRotMargin = 40.0f;
+
+	void place_in_window(void *win, void *fill, float top, float h)
+	{
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
+		const float m = g_sp.rot != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
+		set_dims(win, nullptr, kClipW + 2.0f * m, h > 0.0f ? h + m : 0.0f, 0);
+		set_pos(win, nullptr, wx, top, 1);
+		const float dx = kFillX - wx, dy = kFillY - top, c = cosf(g_sp.rot), s = sinf(g_sp.rot);
+		if (m != 0.0f)
+			f32(fill, kElementRot) = g_sp.fill_rot0 + g_sp.rot;
+		set_pos(fill, nullptr, dx * c - dy * s, dx * s + dy * c, 1);
+	}
+
 	// the feather windows: bands of kFeatherH / kFeathers above the level, each showing the fill's texture faded (the
 	// desc gives each band's fill its alpha), so the fill's top edge is a soft gradient instead of a pixel-hard cut
 	void place_feathers()
 	{
-		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		const bool hidden = g_sp.level <= 0.001f || g_sp.level >= 0.999f;
 		const float top = hidden ? 0.0f : level_y(g_sp.level), band = kFeatherH / kFeathers;
@@ -633,22 +658,16 @@ namespace
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			set_dims(win, nullptr, kClipW, lo - t, 0);
-			set_pos(win, nullptr, kClipX, t, 1);
-			set_pos(fill, nullptr, kFillX - kClipX, kFillY - t, 1);
+			place_in_window(win, fill, t, lo - t);
 		}
 	}
 
 	// the clip window's top edge is the displayed level (none at 0, unclipped at 100%); it keeps its bottom
 	void place_fill()
 	{
-		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
-		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		const float level = g_sp.level, bottom = kClipY + kClipH;
 		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
-		set_dims(g_sp.clip, nullptr, kClipW, bottom - top, 0);
-		set_pos(g_sp.clip, nullptr, kClipX, top, 1);
-		set_pos(g_sp.fill, nullptr, kFillX - kClipX, kFillY - top, 1);
+		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top);
 	}
 
 	// the star bar's and the song line's dots (WoR's HUD_star_lead): comets with the dot at kCometHead of their width,
@@ -921,6 +940,7 @@ namespace
 	// layout units).
 	double g_battle_seen = -100.0;
 	double g_vs_seen = -100.0;          // 1.39: our versus needle last updated (2-player WoR HUD up)
+	double g_mp_seen = -100.0;          // 1.53: a multiplayer star power tube's level source last updated (band HUD up)
 	bool g_bneedle_logged = false;
 	float g_brot_lo = 1e9f, g_brot_hi = -1e9f;
 	int g_brange_logs = 0, g_bcards = 0;
@@ -1402,6 +1422,7 @@ namespace
 
 	void mp_tube_source(void *src)
 	{
+		g_mp_seen = now();
 		void *parent = *reinterpret_cast<void **>(field(src, kElementParent));
 		if (!parent)
 			return;
@@ -1481,8 +1502,10 @@ namespace
 	int __cdecl score_text_hook(wchar_t *buf, size_t count, const wchar_t *fmt, int value)
 	{
 		const auto orig = reinterpret_cast<int(__cdecl *)(wchar_t *, size_t, const wchar_t *, int)>(kSnwprintf);
-		// 1.39: also in the 2-player modes (no 1-player star bar there): while our versus needle or battle meter is up
-		const bool ours = any_star_bar() || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0;
+		// 1.39: also in the 2-player modes (no 1-player star bar there): while our versus needle or battle meter is up;
+		// 1.53 (user 2026-10-25: no separators in band): and while a multiplayer star power tube is up
+		const bool ours = any_star_bar() || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0 ||
+		                  now() - g_mp_seen < 2.0;
 		if (!ours || value < 0 || count < 2)
 			return orig(buf, count, fmt, value);
 		wchar_t digits[12];
@@ -1879,7 +1902,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.52 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.53 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

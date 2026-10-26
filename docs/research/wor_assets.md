@@ -120,3 +120,37 @@ lists them by name, scripts by checksum (`tools`-style qbkey search over `ghwor-
 | "quote-like" glyph right of the competitive bar | The player's difficulty icon: `ui_shared_png/icon_difficulty_*` (expert = two silver gems, hard = red gem, ...; also _1.._6, gold, platinum, diamond, vinyl), element `difficulty` in `uidesc_vocals_competitive_meters`; `difficulty_up` / `_down` arrows are for Momentum. |
 | WoR band rock meter | No band-wide meter: WoR uses each highway's sidebar rock tube (`uidesc_hud_sidebar_rockmeter`, z_in_game; `setup_sidebar_rockmeter` in `init_standard_highway_hud`), i.e. the tube our 1-player HUD already ports. |
 | instrument icon at song start | `setup_player_instrument_icon`; textures `ui_shared_png/mixer_icon_guitar`, `_bass`, `_drums`, `_vox`. |
+
+## 2026-10-26 additions: badges, freeform fill, vocals art (full-disc catalog)
+
+`E:\Dev\ghwt\ghwor-extract\all\catalog.tsv` indexes the whole WoR disc (pak, file, size; 40k files, unpacked under
+`all\x\compressed_*`). Searched it for the band bulb, instrument badges, freeform fill and vocals art.
+
+- **Instrument badges (now decoded)** to `ghwor-extract\band_lobby_png\` (tools x360img.py): `bandlobby_bord_instrument`
+  (128 px, dark disc in a gold ring = WoR's round instrument badge), `bandlobby_bord_instrument_color` (64 px white
+  disc, tinted with the player colour), `bandlobby_bord_instrument_color_fg` (64 px glow ring); same pak also gave
+  `gh_*_iconON`, `ghmix_*_icon`, `*_square_lg`, `*_stat`, `icon_instrument_bass_top`. The badge's instrument glyphs
+  are U\icon_guitar/bass/drum/vocals_fill (gold metal, 64 px) with U\icon_*_out (white silhouette: glow / outline).
+  Sheets: docs/research/wor_badges_sheet.png, docs/research/wor_icons_sheet.png.
+- **Purple improvisation fill: NOT a texture, in either mode.** WoR draws it with the audio visualizer into a render
+  target: drums `mat_drum_fill` / `_fill2` (technique drumfill, Add) sample `tex\models\Highway\highway_vis_texture.dds`,
+  fed by av_preset `og_highway_drum_freeform` (+ _rb / _ps3); vocals freeform sections use av_presets
+  `og_vocals_freeform`, `_effects`, `_static` (9-17 waveform Lines with History, 2 Hypotrochoids, a sprite, BlendPrev
+  feedback). U\vocals_freeform, vocals_freeform2, vocals_visualizer, vocals_visualizer2 are those render targets: 64 px,
+  all zero. The DE exe has no visualizer (no AudioVisualize / BlendPrev / Hypotrochoid strings). The DE's own looks:
+  drums = `mat_drum_fill(2)` (AnimatedTexture_UI_3Pass loop, colour 1,1,1,0.3); vocals = `vocals_create_freeform_section`
+  (DE tb.pak scripts/guitar/vocals_highway.qb) tiling `VH_FF_FX01` (scrolling VH_freeform02.dds, multi-pass) for melodic
+  sections and `VH_Crowd_Noise` (VH_crowdraz.dds, colour 0,1,1,1) otherwise. A WoR look = recolour those materials to
+  WoR's purple (preset Lines RGB 147,0,255, Add); they are global material arrays (every HUD theme) unless swapped per
+  theme.
+- **Vocals art: nothing left to extract.** z_in_game: vocal_anchor_dot, vocal_fireball_bg, vocal_highway_note_space,
+  vocal_HUD_score_2a/3a/4a/6a/8b, lyric_bg_middle/side, lyric_stripe_end/mid, outline / outline_mask / _middle / _side.
+  ui_shared: vocal_health_meter (+ amber / green / red / needle / sheen), vocal_meter_backing (+ _div),
+  vocal_meter_color_stripe (+ _ON), vocal_starpower_bg / border / fill / tube / tube_cap, vocals_meter_cap,
+  HUD_meter_combovocal, vocal_flip_bg / border, rp_judy_vocals_tube(_glow01). All already in z_in_game_png2 /
+  ui_shared_png2; the only WoR vocals visuals without art are the visualizer ones (freeform, comet presets
+  og_vocal_comet / bb_vocal_comet(_lines)).
+- **Band multiplier bulb:** art complete in Z\ (band_HUD_multiplier_bulb, _Glow01, band_HUD_bulb_x,
+  band_HUD_multiplier_one..eleven). Built since plugin 1.40 (tools/wor_band.py): a semultipliernixie on band1_multiplier
+  with blank at x1, so it only shows while the DE's band multiplier is above x1 (WT rule: members in star power at the
+  same time). WoR keeps the bulb on screen the whole song.

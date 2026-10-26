@@ -212,6 +212,16 @@ Everything after this section is older history; read it only for a detail.
   converted into the theme pak like the score font); guitar + vocals (hud_1g1v) v1 gets the same panel, 430 units
   higher (the DE places the vocal highway at y 0 with more than one player, 430 with one).
 
+### 5j. 2026-10-26 research (user: bulb, purple fill, vocals art, instrument badges): docs/research/wor_assets.md end
+- Band multiplier bulb: built (1.40) but blank at x1, and the DE's band multiplier is x1 unless members' star power
+  overlaps, so it is almost never seen; WoR shows it all song (art band_HUD_multiplier_one..eleven exists).
+- Purple improvisation fill (drums + vocals): WoR's audio visualizer, not art (the vocals_freeform / _visualizer
+  textures are empty render targets); the DE has no visualizer. Only route: recolour the DE's materials (drums
+  mat_drum_fill(2), mock_drumfill_v1 pending; vocals VH_FF_FX01 / VH_Crowd_Noise) to WoR's purple 147,0,255.
+- Vocals: all WoR vocals art is already decoded; nothing left to extract.
+- Instrument badges: decoded now to ghwor-extract\band_lobby_png (bandlobby_bord_instrument + _color + _color_fg) +
+  U\icon_*_fill / _out glyphs (sheets docs/research/wor_badges_sheet.png, wor_icons_sheet.png).
+
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
    tests/capture_band.py, `1g1v` too; ask before launching). Look for:

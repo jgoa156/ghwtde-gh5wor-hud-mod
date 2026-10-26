@@ -71,6 +71,9 @@ VISOR_ARM = (50, 101, 84, 126)          # in that art: the short arm joining the
 VISOR_ART = (154.0, 137.0)              # the art's extent (top-left of the 256 px texture)
 VISOR_SCALES = {'big': 1.0, 'mid': 0.85, 'small': 0.72}
 VISOR_GAP = 0.72                        # ring centres this many rim radii apart along the rail (a little overlap)
+VISOR_SPACE = 2.0                       # + this many canvas units between ring centres (~3 px at 1080p; user 2026-10-26)
+VISOR_DX = 2.7                          # the whole set this many canvas units right (~4 px; user 2026-10-26: the arms a
+                                        # bit more visible)
 # 2026-10-23 (user: the slots must sit BEHIND the highway, like the 1-player multiplier badge): under the highway
 # surface (z 0.1); each card goes just above its own slot (CARD_Z), the bottom slot's pair over the middle one's
 VISOR_Z = {'big': 0.07, 'mid': 0.06, 'small': 0.05}
@@ -235,7 +238,7 @@ def visors(sep=SEP):
     for key in ('big', 'mid', 'small'):
         s = VISOR_SCALES[key]
         rim = VISOR_RING[3] * k * s
-        t = rim if prev is None else t + (prev + rim) * VISOR_GAP
+        t = rim if prev is None else t + (prev + rim) * VISOR_GAP + VISOR_SPACE
         tau = t - along(shrink(ring, s, 0.0))              # slide so the glass centre lands at t along the rail
         out.append((key, shrink(bc, s, tau), (s * tw / SS, s * th / SS), shrink(ring, s, tau), VISOR_RING[2] * k * s))
         prev = rim
@@ -249,7 +252,7 @@ def visors(sep=SEP):
     slot_top = min(g[1] - VISOR_RING[3] * k * VISOR_SCALES[key] for key, _, _, g, _ in out)
     tau = (rock_top[1] - slot_top) / v[1]
     slide = lambda p: (p[0] + v[0] * tau, p[1] + v[1] * tau)
-    move = lambda p: slide((p[0] + nx * VISOR_INSET, p[1] + ny * VISOR_INSET))
+    move = lambda p: slide((p[0] + nx * VISOR_INSET + VISOR_DX, p[1] + ny * VISOR_INSET))
     return [(key, move(c), dims, move(g), r) for key, c, dims, g, r in out]
 
 
@@ -663,9 +666,14 @@ def scripts():
         '\t\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_id$\n'
         f'\t\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_id$$dims$ = %vec2({big:.2f},{big:.2f})'
         '$z_priority$ = (%GLOBAL%$WoR_z$:a{%GLOBAL%$WoR_slot$:a})\n'
-        '\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$'
+        # 2026-10-26 (user: the collect animation must stay, ending in our slots): the newest card (the big slot) is
+        # flying in from its note button on battlemode_ready's own 0.3 s morph, which already aims at our big slot
+        # (battle_hud_2d_elements is our layout); a second morph here restarted that flight. Only the older cards move.
+        '\t\t\t\t\t:i if (%GLOBAL%$WoR_slot$ > %i(0))\n'
+        '\t\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$'
         '$Pos$ = (%GLOBAL%$WoR_slots$:a{%GLOBAL%$WoR_slot$:a})$Scale$ = (%GLOBAL%$WoR_scales$:a{%GLOBAL%$WoR_slot$:a})'
         '$alpha$ = %i(1)$time$ = %f(0.3):s}\n'
+        '\t\t\t\t\t:i endif\n'
         '\t\t\t\t:i endif\n'
         '\t\t\t:i endif\n'
         '\t\t:i endif\n'

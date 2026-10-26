@@ -73,6 +73,82 @@ the multiplier text needs the plugin if the DE only swaps nixie textures; 1v has
 the SP-active look (Tesla FX, red multiplier) isn't verified from our side; the theme pak budget (4 MiB) grows by
 about 60 KB for these textures.
 
+## v2 findings (2026-10-26, user review of mock v1: 8 points)
+
+Corrections to the v1 table above:
+- **Star power vs phrase progress were swapped.** `vocals_all_meters`: `Star_Power_Meter` (desc
+  `vocals_star_power_meter`, Star_Power scale (2.1, 0.35)) is the thin strip **on the highway's top line under the
+  panel** (x 145-383, y ~492-499): `vocals_meter_cap` shell, fill `vocals_meter_cap` tinted (0,166,255) Add in a 115x29
+  window, `MiddleMark` (2x30, Sub, a 0.5) at 50 %. The white box in the panel's right section is
+  `Phrase_Progress_Meter` (`vocals_phrase_progress_meter`): `vocal_starpower_tube` glass + `vocal_starpower_fill`
+  tinted (245,255,0) Add (reads white).
+- **Panel frame**: `vocal_meter_backing` + `vocal_meter_backing_div` (x2) + `vocal_meter_color_stripe` tinted with
+  `vocals_hud_rgba[band]` (band 1 = 77,95,153: the blue rim) + `vocal_meter_color_stripe_ON` (glow, alpha 0 normally,
+  driven by `vocal_meter_color_stripe_ON_alpha` / `_rgba` in vocals_highway.txt). These are the "ready" panel textures
+  (all in `ui_shared_png2`).
+- **Score box (point 5)**: WoR's `uidesc_hud_standard_1v` uses the same `star_meter` desc as 1p
+  (`band_HUD_star_score_meter` + `_front`): there is **no separate vocal score-box texture**. Vocal differences are in
+  script only: `HUD_attach_star_meter` sets `divide_by_10` on the streak (phrase streak) and `always_show_ns_meter = 1`.
+  The vocal-only art `z_in_game_png2/vocal_HUD_score_2a/4a/6a/8b` are the SP multiplier nixies
+  (`semultipliernixie sp_textures` for part Vocals, hud_widgets.txt ~1265), not a score box. Uncertain whether the user
+  meant the panel art above.
+- **Badge (point 6)**: dropped (WT has no challenges/RP widgets; `rp_*` descs in all_meters).
+
+Point by point:
+1. **Tip balls**: WoR `uidesc_star_meter` star_tip_FX = 5 sprites: 2x `hud_progression_bar_lead` (Add, 32x20) +
+   `star_ball_head` (Fire_UI/Fire_2D on `balloflame`) + 2x `star_ball_effecs` (Fire_UI on the lead, 32x32), all with
+   `noise_32x32x32` (animated flicker). Measured on the video: core (lum > 200) **12 x 8** canvas, glow (> 140)
+   **16 x 10**. Ours (`WoR_HUD_star_lead` 64x16 at STAR_LEAD_S 1.1): core 7.7 x 6.6, glow 9.9 x 8.8. Match: scale
+   **(1.7, 1.3)** on our art, or WoR's own `hud_progression_bar_lead` (32x16, core 10x9 texels) at **(1.2, 0.9)**
+   drawn twice (Add) + a 1.6x halo at 0.35 (what the mock does). The fire flicker needs a Fire_UI material (DE?) or a
+   plugin alpha wobble.
+1.1 **Star animation**: (a) `band_HUD_gold_star_glow` uses material `FC_GLOW` = Fire_UI/Fire_2D on
+   `band_HUD_gold_star_glow` with noise (speed 0.01 / 0.2 / 0.1): a constantly flickering glow, alpha by
+   `screenelementconditional` on `has_missed_note` (glow only while no note is missed); (b) on every star count change
+   `star_meter_change_fx` -> `son_of_HUD_animate_star_meter_flames` (dec/guitar_events.txt:4015): wait 0.3 s, two
+   additive `Mat_Meter_Wibble_Glow` sprites (tex `SB_Tubeglow02`, 228 and 128 px, rgba 255,200,64) fade in 0.1 s /
+   out 0.3 s, plus three 2D particle bursts in `Star_Earn_FX`: `sys_Particle_lnzflare02` (255,255,128 -> 255,128,0,
+   scale .25 -> 1, 0.1 s), `Spark01` gold -> white (scale .5 -> 1.5, 0.25 s), `Spark01` streaks white -> black
+   (scale 1.5 -> 5.5 x 0.15); the number sits in a 38x38 `rotating_star_window`. Ours: static `star_shine` (Add) +
+   the DE's `Star_Meter_Sparks01` in `star_flame` + the plugin's star fire loop; no wibble glow pair, no lens flare.
+2. **Fonts**: lyrics `fontgrid_lyric_a1` (SectionQBKey `vocal_lyric_font`, scale 0.4 / karaoke 0.45 x 0.55, offset
+   (0,-44)); multiplier `fontgrid_text_a1` "x" + number with an Add 0.3 overlay in `fontgrid_numeral_A1_b`; phrase
+   compliment (`vocals_word_compliment`) `fontgrid_text_a1`; count-in / messages `fontgrid_title_a1`; score
+   `fontgrid_numeral_a1` (ours already). All in `ghwor-extract/ui_shared/*.fnt.xen` (tools/wor_font.py converts them).
+   Lyric colours: upcoming 210,210,210; sung 0,102,255; scrolling 255,242,213; highlight 254,233,53.
+3. **Notes / now line**: notes are 3D-highway materials in `matqb/guitar_material.txt`: `vocal_note_sung` =
+   passes `Vocal_Note_Glow` (tex `vocal_highway_note_Glow01`, colour 1.3,0.8,0.6,0.9) + `Vocal_Note_Line`
+   (`vocal_highway_note01`, **colour 1,1,0**) + warble; `vocal_note_sung_sp` = `Vocal_Note_Glow_SP`
+   (`vocal_highway_note_Glow02`, 0,0.75,0.75,0.9) + the line. Textures (Xbox basic_gems dict, extracted):
+   note01 `basic_gems_png/18fc2c43.png`, note01_cap `660d0f87`, Glow01 `954fd9a7`, Glow01_cap `d0fe6a35`, Glow02
+   `d2efa377`, Glow02_cap `e97356f0`, spoken01 `db6620de`, Vocal_BM_Gradient `524efa45` (name -> file:
+   qbkey of `tex\models\highway\<name>.dds`). Sung paint = the `VocalEKG` shader material, colours set by
+   `vocals_paint_star_power_off/on` (vocals_highway_fx.txt 860-893): normal m_psColors0 (0.99,0.99,0.26), SP
+   (0.26,1,0.99). Measured: hollow tube 18 canvas tall, edge lines ~4 thick, yellow ~(255,246,38).
+   **Now line**: green, ~2 px bright core with a wavy plasma look and a ~30 px soft green glow, silver arrowheads
+   (`vocal_health_meter_needle` in uidesc_vocals_highway `visible_highway`) on both lines. **Uncertain**: its texture.
+   `now_bar` in uidesc_vocals_highway is an empty hidden container; no `Mat_*` for it found in the vocal scripts. Best
+   candidates in basic_gems: vertical lightning strips `ad13f425` / `ee2de665` (tinted green, Add) over a soft column
+   (`d96d3be3` / `9ecd4133`); likely engine-drawn by the EKG shader.
+4. **Highway position** (video, 9 frames): silver lines at canvas **y 494** (core, rows 493-498) and **596**
+   (595-597); lyric band 600-632, lyric glyphs ~612-622; now line x **406** (394-407 across frames); phrase divider
+   (grey) x ~642. Ours (1v bot frame): 464 / 567, now line ~270: move down 30, now line +136.
+8. **Star power look** (6.webp): the top silver line becomes a cyan glow band (core ~122,251,255, glow 0,166,255,
+   +-12 canvas), a cyan glow on the lyric band's bottom edge, the bottom silver line stays silver, SP notes cyan-green
+   (yellow line over the cyan SP glow), sung paint cyan, multiplier x8 in pale yellow-green, SP strip draining with a
+   white ball at its fill end. Script: `vocals_activate_star_power` -> `Create_Vocals_Star_Power_Effect`, particles
+   with material `VH_SP_FX01`, `vocals_highway_border_flash_spawned` (rgba), `vocals_lightning_starpower_spawned*`.
+
+Mock v2: `docs/mocks/mock_vocals_v2.jpg` (WoR frame above, mock below), `mock_vocals_v2_sp.jpg` (star power),
+`ref_vocals_v2.jpg` (zoomed WoR vs mock: panel, score box, now line). Black background; panel/lamps/plate/tubes from
+the WoR textures at measured geometry; notes and lines drawn at the measured sizes with the WoR note textures' glow;
+lyrics in `fontgrid_lyric_a1`; score box = our in-game box with 1.53 digit proportions, commas and WoR-size balls.
+Generator: scratch `mock_vocals_v2.py` + `wfont.py` (WoR font renderer), not in the repo.
+
+Open questions: the now-line texture; whether the DE can draw the note line yellow (its vocal note materials /
+colours live in the DE's own guitar_material); the Fire_UI flicker (does the DE ship that template?); what the user's
+"ready texture for the vocals scoremeter" refers to (the panel art above is the best match).
+
 ## Mock
 
 - `docs/mocks/mock_vocals_v1.jpg`: our 1v bot frame (t165). Our left cluster is blacked out, and the WoR panel is

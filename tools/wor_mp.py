@@ -118,6 +118,17 @@ MP_NEEDLE_DX = 0.0          # desc units. Was -2 (user 2026-10-23, round 2: the 
                             # fixed in 1.50). With the tubes on the border it only made band differ from quickplay:
                             # user test of 1.51, the needle's top stop sat lower than in quickplay (on the slanted cap,
                             # a needle moved left sits lower). Now exactly the 1-player needle.
+MP_NEEDLE_OUT = 2.5         # desc units, 2026-10-26 (user: the multiplayer needle a few px left, its top / bottom stops
+                            # where quickplay has them): moved outwards PERPENDICULAR to the tube (left and a bit up on
+                            # the slanted rail), so every stop keeps its height along the tube
+
+
+def needle_out():
+    """The outward shift (perpendicular to the 1-player rock tube's centre line) of the multiplayer needle."""
+    import math
+    import wor_1g
+    a = math.radians(wor_1g.LEFT.angle)
+    return (-math.cos(a) * MP_NEEDLE_OUT, -math.sin(a) * MP_NEEDLE_OUT)
 
 
 def needle_anchor(n):
@@ -150,7 +161,8 @@ def side_desc(n):
     side = dg.ROOTS['wor_side_meter_ghwor']
     needle = copy.deepcopy(next(c for c in side.children if c.local_id == 'needle_anchor'))
     pos, (ax, ay), _ = needle_anchor(n)
-    needle.pos = (pos[0] + SIDE_INTRINSIC[0] + MP_NEEDLE_DX, pos[1] + SIDE_INTRINSIC[1])
+    out = needle_out()
+    needle.pos = (pos[0] + SIDE_INTRINSIC[0] + MP_NEEDLE_DX + out[0], pos[1] + SIDE_INTRINSIC[1] + out[1])
     needle.scale = (ax, ay)
     nd = 40.0                                        # needle size on screen (wor_1g.side_meter)
     for c in needle.children:

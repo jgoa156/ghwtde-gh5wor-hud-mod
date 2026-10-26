@@ -128,12 +128,12 @@ static const float kBNeedleD[4][2] = { { 0.0000f, 0.0000f }, { 27.4643f, -56.328
 static const float kBCard = 27.9346f;   // guitar_battle cards are 64x64
 // per slot (P1 big, mid, small, P2 big, mid, small): stock morph target, our slot centre, card size (screen)
 static const float kBSlot[6][5] = {
-	{ 306.00f, 214.00f, 598.18f, 575.52f, 27.93f },
-	{ 262.00f, 225.00f, 582.00f, 551.39f, 23.74f },
-	{ 253.00f, 251.00f, 568.21f, 530.95f, 20.11f },
-	{ 980.00f, 214.00f, 1100.62f, 575.52f, 27.93f },
-	{ 1026.00f, 227.00f, 1084.44f, 551.39f, 23.74f },
-	{ 1033.00f, 253.00f, 1070.65f, 530.95f, 20.11f },
+	{ 306.00f, 214.00f, 602.67f, 579.10f, 27.93f },
+	{ 262.00f, 225.00f, 585.59f, 553.18f, 23.74f },
+	{ 253.00f, 251.00f, 570.91f, 530.95f, 20.11f },
+	{ 980.00f, 214.00f, 1105.11f, 579.10f, 27.93f },
+	{ 1026.00f, 227.00f, 1088.03f, 553.18f, 23.74f },
+	{ 1033.00f, 253.00f, 1073.35f, 530.95f, 20.11f },
 };
 static const uint32_t kBattlemodeContainer = 0xe2ef4f36;
 

@@ -514,7 +514,7 @@ namespace
 	};
 	// 1.40: one state per tube (the multiplayer tubes are copies of the 1-player tube, tools/wor_mp.py sp_desc); the
 	// engine below works on the current one (g_sp), picked by the update hooks
-	constexpr int kTubes = 4;
+	constexpr int kTubes = 8;   // 1.55: was 4 (3 band tubes + the hidden 1-player one + vocals could recycle a live slot)
 	StarPower g_tubes[kTubes];
 	StarPower *g_spp = &g_tubes[0];
 #define g_sp (*g_spp)
@@ -626,14 +626,21 @@ namespace
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
 
-	void place_in_window(void *win, void *fill, float top, float h)
+	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
+	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
+	// window's top moves by the turn so its (screen-horizontal) cut passes through the level at the window's centre,
+	// where the cap glow sits, not at its wider left corner
+	void place_in_window(void *win, void *fill, float top, float h, bool grow_bottom)
 	{
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		const float m = g_sp.rot != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
-		set_dims(win, nullptr, kClipW + 2.0f * m, h > 0.0f ? h + m : 0.0f, 0);
-		set_pos(win, nullptr, wx, top, 1);
-		const float dx = kFillX - wx, dy = kFillY - top, c = cosf(g_sp.rot), s = sinf(g_sp.rot);
+		const float c = cosf(g_sp.rot), s = sinf(g_sp.rot);
+		const float t = top + (kClipX + 0.5f * kClipW - wx) * s / c;
+		const float hh = h > 0.0f ? h + (top - t) + (grow_bottom ? m : 0.0f) : 0.0f;
+		set_dims(win, nullptr, kClipW + 2.0f * m, hh > 0.0f ? hh : 0.0f, 0);
+		set_pos(win, nullptr, wx, t, 1);
+		const float dx = kFillX - wx, dy = kFillY - t;
 		if (m != 0.0f)
 			f32(fill, kElementRot) = g_sp.fill_rot0 + g_sp.rot;
 		set_pos(fill, nullptr, dx * c - dy * s, dx * s + dy * c, 1);
@@ -658,7 +665,7 @@ namespace
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			place_in_window(win, fill, t, lo - t);
+			place_in_window(win, fill, t, lo - t, false);
 		}
 	}
 
@@ -667,28 +674,59 @@ namespace
 	{
 		const float level = g_sp.level, bottom = kClipY + kClipH;
 		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
-		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top);
+		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top, true);
 	}
 
 	// the star bar's and the song line's dots (WoR's HUD_star_lead): comets with the dot at kCometHead of their width,
 	// placed on the tip of the bar the DE grows (scale / dims set by its own scripts); the star's fire glow loop + swell
+	void place_star_lead(void *bar, void *lead)
+	{
+		const float w = f32(bar, kElementDims) * f32(bar, kElementScale);
+		const float x = f32(bar, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kStarLeadS;
+		reinterpret_cast<SetPosFn>(kSetPos)(lead, nullptr, x, f32(bar, kElementPos + 4), 1);
+		set_alpha(lead, w > 2.0f ? 1.0f : 0.0f);
+	}
+
+	void place_prog_lead(void *fill, void *lead)
+	{
+		const float w = f32(fill, kElementDims);
+		const float x = f32(fill, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kProgLeadS;
+		reinterpret_cast<SetPosFn>(kSetPos)(lead, nullptr, x, f32(fill, kElementPos + 4) + f32(fill, kElementDims + 4) * 0.5f, 1);
+		set_alpha(lead, w > 2.0f ? 1.0f : 0.0f);
+	}
+
+	void *sibling_with(void *e, uint32_t tex)
+	{
+		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		if (!parent)
+			return nullptr;
+		for (void *s = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); s;
+		     s = *reinterpret_cast<void **>(field(s, kElementNextSibling)))
+			if (s != e && texture_of(s) == tex)
+				return s;
+		return nullptr;
+	}
+
+	// 1.54 (user 2026-10-26: no glowing balls on the star bar / song line in band and vocals): the dots were only
+	// placed for the score box found next to the 1-player tube; the band layouts' score box has nothing driving it.
+	// Every star bar / song line now places its own sibling dot from its own update.
+	void score_lead_from(void *element, uint32_t tex)
+	{
+		if (tex == kStarBar)
+		{
+			if (void *lead = sibling_with(element, kStarLead))
+				place_star_lead(element, lead);
+		}
+		else if (void *lead = sibling_with(element, kProgLead))
+			place_prog_lead(element, lead);
+	}
+
 	void place_score_effects(double t)
 	{
-		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		if (g_sp.star_bar && g_sp.star_lead)
-		{
-			const float w = f32(g_sp.star_bar, kElementDims) * f32(g_sp.star_bar, kElementScale);
-			const float x = f32(g_sp.star_bar, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kStarLeadS;
-			set_pos(g_sp.star_lead, nullptr, x, f32(g_sp.star_bar, kElementPos + 4), 1);
-			set_alpha(g_sp.star_lead, w > 2.0f ? 1.0f : 0.0f);
-		}
+			place_star_lead(g_sp.star_bar, g_sp.star_lead);
 		if (g_sp.prog_fill && g_sp.prog_lead)
-		{
-			const float w = f32(g_sp.prog_fill, kElementDims);
-			const float x = f32(g_sp.prog_fill, kElementPos) + w - (kCometHead - 0.5f) * 64.0f * kProgLeadS;
-			set_pos(g_sp.prog_lead, nullptr, x, f32(g_sp.prog_fill, kElementPos + 4) + f32(g_sp.prog_fill, kElementDims + 4) * 0.5f, 1);
-			set_alpha(g_sp.prog_lead, w > 2.0f ? 1.0f : 0.0f);
-		}
+			place_prog_lead(g_sp.prog_fill, g_sp.prog_lead);
 		if (g_sp.star_fire)
 		{
 			set_texture(g_sp.star_fire, kStarFire[static_cast<long long>(t * kFireFps) % (sizeof(kStarFire) / sizeof(kStarFire[0]))]);
@@ -1179,8 +1217,11 @@ namespace
 			if (fabsf(f32(element, kElementZ) - kMpSrcZ) < 1e-4f)
 				mp_tube_source(element);
 			vs_streak_size(element);
-			if (texture_of(element) == kVsNeedleTex)
+			const uint32_t tex = texture_of(element);
+			if (tex == kVsNeedleTex)
 				vs_needle(element);
+			if (tex == kStarBar || tex == kProgFill)
+				score_lead_from(element, tex);
 			for (const Grow &g : g_grow)
 				if (g.e == element && g.t0 > 0.0)
 				{
@@ -1902,7 +1943,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.53 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.55 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

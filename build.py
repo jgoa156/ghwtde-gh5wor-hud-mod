@@ -241,6 +241,9 @@ def main():
     extra += wor_vocals.theme_extra()        # vocalist multiplier images (tools/wor_vocals.py)
     wor, n = re.subn(r'StructString 0x3fb45eb1 = "[^"]*"', f'StructString 0x3fb45eb1 = "{wor_vocals.VH_NAME}"', wor)
     assert n == 1, 'theme row: no vocal highway desc field'
+    wor, n = re.subn(r'StructQBKey vocal_lyric_font = \S+', f'StructQBKey vocal_lyric_font = {wor_vocals.LYRIC_FONT}', wor)
+    if not n:
+        extra += f'\t\t\t\tStructQBKey vocal_lyric_font = {wor_vocals.LYRIC_FONT}\n'
     extra += wor_modes.theme_extra()         # multiplayer modes: no messages above the highway (tools/wor_modes.py)
     k = wor.rindex('}', 0, wor.rindex('}'))
     wor = wor[:k] + extra + '\t\t\t' + wor[k:]
@@ -292,7 +295,7 @@ def main():
     for new_id, src in wor_1g.MULT_NORMAL + wor_1g.MULT_SP:
         ship(new_id, os.path.join(paths.GH3WOR_PNG, src + '.png'), (1, 1, 155, 138), wor_1g.BADGE_TEX)
     # WoR's numeral font, converted from the Xbox format (same layout, PC texture), shipped in the theme pak
-    for font_id, src in wor_1g.FONT_SRC.items():
+    for font_id, src in list(wor_1g.FONT_SRC.items()) + list(wor_vocals.FONT_SRC.items()):   # + WoR's lyric font
         wor_font.convert(src, os.path.join(pak_src, font_id + '.fnt.xen'))
         sources[font_id] = {'src': src, 'box': None}
     # note-streak counter: GH3:WoR's light images (state 0 off, 1 half, 2 lit). Never under the DE's own names

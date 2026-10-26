@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-23): HANDOFF GUIDE â€” plugin 1.52 + mod (release 0.50) (see "Installed" below), multiplayer HUD by the book
+## START HERE (2026-10-26): HANDOFF GUIDE: plugin 1.56 + mod with WoR vocals (stages A + B), see "Installed" and section 6 below
 
 Everything after this section is older history; read it only for a detail.
 
@@ -191,7 +191,7 @@ Everything after this section is older history; read it only for a detail.
   Z_TUBES_1P. Unverified hypothesis (no capture, user's call); if it still differs, capture 2g vs battle and diff.
 - Vocals: analysis + plan in docs/research/wor_vocals_hud.md, mock docs/mocks/mock_vocals_v1.jpg (not started).
 
-### 5i. 2026-10-26: plugin 1.55 + vocals stage A (installed, not seen in game)
+### 5i. 2026-10-26: plugin 1.55 + vocals stages A and B (installed, not seen in game)
 - 1.55: balls on every star bar / song line (score_lead_from, from each bar's own update); multiplayer SP feather
   bands no longer grow down (place_in_window grow_bottom), turned tube's cut through the window centre, kTubes 8;
   multiplayer needle MP_NEEDLE_OUT 2.5 (perpendicular to the tube); battle VISOR_SPACE 2 / VISOR_DX 2.7, the newest
@@ -204,18 +204,51 @@ Everything after this section is older history; read it only for a detail.
   WoR's vocals spot. Theme 0x3fb45eb1 = vocals_highway_ghwor (the DE's vocals_highway_wtde, root y 0 -> 32).
 - Research correction: the DE's now line is already at WoR's x (root 288 + now_bar 121); the line at x ~270 in our
   frames is a phrase marker.
-- Next (stage B): lyric font, note colours / thickness, green plasma now line, lyric band, star power look; the phrase
-  meter's driver; guitar + vocals reuse; plugin for a smoother SP strip if setubes steps.
+- Vocals stage B (same day): VH_DY 29 (not 32: the DE draws 3 units lower than WoR for the same root; lines now at
+  canvas 494 / 596 like WoR); lyric band (root's bg_middle / bg_left / bg_right) alpha 0.9 at desc y 141, 32 tall
+  (canvas 600..632), lyrics container y 142 (words centred ~617); fireball_bg (comet) scale 0.35 (WoR's); a green now
+  line WoR_now_line (texture WoR_HUD_v_nowline = basic_gems d96d3be3 tinted green + a 4 px core) appended to
+  pitch_area so it rides at the comet's x; theme row vocal_lyric_font = WoR_HUD_lyric_a1 (WoR fontgrid_lyric_a1,
+  converted into the theme pak like the score font); guitar + vocals (hud_1g1v) v1 gets the same panel, 430 units
+  higher (the DE places the vocal highway at y 0 with more than one player, 430 with one).
 
-### 6. Open / next
-1. In-game check of 1.52 / 0.50: battle rock tubes look and layer like band quickplay (LEDs, needle tracking health
-   on both players, slots aligned), versus streak no longer flashes, band needle top stop matches quickplay; plus the
-   1.51 items (new attack cards straight into the big slot, streak meter arm behind the border on 2 / 3 highways).
-2. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
-3. Older items: microphone meter (WT textures for the vocal multiplier), practice-mode crash logs, purple drum-fill
-   pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check, release 0.50.
+### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
+1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
+   tests/capture_band.py, `1g1v` too; ask before launching). Look for:
+   - panel at canvas 141..386 x 457..499 glued on the highway's top line; score group top right (890,410) like the
+     mock; if the panel is off by a constant, the v1 container origin / G_CAL (1,3) is the suspect;
+   - health needle sliding LEFT->RIGHT with health (0 at the red end). If it runs the wrong way or vertically, the
+     -90 deg anchor's sign is wrong: flip rot to +90 (and the needle sprite to -90) in wor_vocals.health_desc;
+   - star power strip filling left->right along the top line in 3 segments. Same sign risk (seg containers rot -90);
+     the DE may also write glowN_scale x != 1 (strip thickness): then set the fill sprite dims by it;
+   - multiplier "x1".."x4" images (WoR colours), "x2".."x8" pale green in star power;
+   - lyric font size: the DE's own vocal_lyric_font_scale / offset globals stay; if WoR's font reads too big or small,
+     those are DE globals (not theme fields): change them from a theme-conditional wrapper;
+   - lyric band dark under the words; now line green at the comet; comet smaller.
+   - score commas in vocals-only: plugin 1.56 marks the HUD as ours from any score box update (g_score_seen in
+     score_lead_from); check they show.
+2. **Vocals still missing** (research in docs/research/wor_vocals_hud.md, "v2 findings"):
+   - note look: WoR's notes are thin hollow YELLOW outlines (Vocal_Note_Line colour 1,1,0), solid yellow when sung
+     (vocals_paint colours 0.99,0.99,0.26), cyan in star power. They are DE materials in guitar_material
+     (vocal_note_sung / _sp, VocalEKG paint): build.py's recolour_materials works on the material arrays but applies
+     to EVERY theme (like the dark metal): needs a theme-conditional swap of the arrays (e.g. in the theme-change
+     hook where popup/pause descs are swapped) before doing it;
+   - star power look (6.webp): cyan glow band on the top line + cyan edge under the lyric band while SP is active:
+     extra sprites in vocals_highway_ghwor (alpha 0) shown by a wrapper of vocals_activate_star_power /
+     the deactivate script (plugin script swap pattern, kScriptSwaps);
+   - phrase meter box: empty (its DE driver is unknown; WoR's vocals_phrase_progress_meter fill x -104..0);
+   - "EXCELLENT!" phrase compliment inside the panel (WoR) instead of at the comet (DE vocals_message);
+   - star power strip smoothness: if the DE's setubes steps, drive it from the plugin (like mp_tube_source);
+   - star animation (WoR FC_GLOW flicker while no note missed + on star change two SB_Tubeglow02 flashes and three
+     particle bursts, guitar_events son_of_HUD_animate_star_meter_flames) and thicker tip balls (WoR 12x8 core:
+     STAR_LEAD_S (1.7, 1.3) or WoR's hud_progression_bar_lead x2 Add at (1.2, 0.9)) - user asked for both.
+3. **1.55 checks** (multiplayer): 3-highway star power fill now turned with its tube (never seen in game; if the fill
+   is turned the WRONG way, flip the sign in place_in_window: fill rot0 - rot and the offset rotation), no washed
+   band below the fill level on 2/3 highways, needle position, battle slots spacing and the collect flight.
+4. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
+5. Older: practice-mode crash logs, purple drum-fill pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check.
 
-Installed: plugin 1.52 + mod = release 0.50 (battle rock tube = band desc, versus streak re-sized after the update, MP_NEEDLE_DX 0), 2026-10-23, hashes verified (9 files). Not tested in game yet.
+Installed: plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

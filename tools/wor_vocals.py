@@ -75,7 +75,23 @@ V1_POS = (95.0, 72.0)
 # the score group: WoR's vocals spot (the mock: our guitar + vocals group moved by (-56.67, +223.33))
 SCORE_POS = (17.058 - 56.67, -363.2697 + 223.33)
 VH_NAME = 'vocals_highway_ghwor'
-VH_DY = 32.0                                 # WoR's vocals_highway root y (the DE's: 0)
+# the root moves down so the silver lines land on WoR's canvas y 494 / 596 (WoR's own root is at y 32; ours draws 3
+# units lower than WoR's for the same root, measured: the DE's lines at 464 / 567 with root y 0)
+VH_DY = 29.0
+# lyric band: WoR's dark band at canvas y 600..632 with the words centred at ~617 (the DE: a 0.4 alpha band 39 tall a
+# little lower, words centred ~11 units lower); desc y = canvas y - 430 (the DE's 1-player instance) - VH_DY
+LYRIC_BAND_Y, LYRIC_BAND_H, LYRIC_BAND_A = 141.0, 32.0, 0.9
+LYRICS_Y = 142.0
+COMET_SCALE = 0.35                           # WoR's fireball_bg (the DE's: 0.55)
+# the green now line: WoR draws a bright core with a soft green glow down the highway at the pitch comet's x; ours
+# rides in pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below
+# the root; the lines' centres at root y 35 / 137)
+NOW_TEX = 'WoR_HUD_v_nowline'
+NOW_SRC = os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', 'd96d3be3.png')   # a soft vertical column (highway FX)
+NOW_GLOW, NOW_CORE = (20, 190, 20), (150, 255, 120)
+NOW_BOX = (10.0, 35.0 - 48.0, 24.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
+LYRIC_FONT = 'WoR_HUD_lyric_a1'
+FONT_SRC = {LYRIC_FONT: paths.wor('ui_shared', 'fontgrid_lyric_a1.fnt.xen')}
 
 HEALTH_NAME, MULT_NAME, SP_NAME = 'wor_vocal_health_ghwor', 'wor_vocal_mult_ghwor', 'wor_vocal_sp_ghwor'
 
@@ -196,12 +212,28 @@ def _mult_image(n, rgb):
     return out
 
 
+def _now_line():
+    """The extracted soft column tinted green as the glow, with a 4 px copy of it as the bright core (32 x 128)."""
+    col = Image.open(NOW_SRC).convert('RGBA').resize((32, 128), Image.LANCZOS)
+
+    def tinted(im, rgb, a):
+        lum = im.convert('L')
+        return Image.merge('RGBA', [lum.point(lambda v, m=m: v * m // 255) for m in rgb] +
+                           [Image.eval(Image.composite(lum, Image.new('L', lum.size, 0), im.getchannel('A')),
+                                       lambda v: int(v * a))])
+    out = tinted(col, NOW_GLOW, 0.8)
+    core = tinted(col.resize((4, 128), Image.LANCZOS), NOW_CORE, 1.0)
+    out.alpha_composite(core, (14, 0))
+    return out
+
+
 def textures():
     out = {name: _png(name) for name in ART}
     cap = _png('WoR_HUD_v_cap')
     r, g, b, a = cap.split()
     tinted = Image.merge('RGBA', [c.point(lambda v, m=m: v * m // 255) for c, m in zip((r, g, b), (255, 255, 255))] + [a])
     out[SP_FILL] = tinted.transpose(Image.ROTATE_90)
+    out[NOW_TEX] = _now_line()
     out.update({MULT_TEX[n]: _mult_image(n, MULT_RGB[n]) for n in MULT_TEX})
     out.update({MULT_SP_TEX[n]: _mult_image(n, MULT_SP_RGB) for n in MULT_SP_TEX})
     return out
@@ -210,6 +242,7 @@ def textures():
 def sources():
     s = {name: {'src': os.path.join(d, n + '.png'), 'box': None, 'flip': False} for name, (d, n) in ART.items()}
     s[SP_FILL] = {'src': os.path.join(UI, 'vocals_meter_cap.png'), 'rotated': 90, 'box': None, 'flip': False}
+    s[NOW_TEX] = {'src': NOW_SRC, 'glow': list(NOW_GLOW), 'core': list(NOW_CORE), 'box': None, 'flip': False}
     for n in MULT_TEX:
         s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1', 'text': f'x{n}', 'rgb': list(MULT_RGB[n]), 'box': None, 'flip': False}
     for n in MULT_SP_TEX:
@@ -218,13 +251,35 @@ def sources():
 
 
 def theme_extra():
-    """The vocalist's multiplier images (normal / star power) for semultipliernixie."""
+    """The vocalist's multiplier images (normal / star power) for semultipliernixie (the lyric font field is set by
+    build.py: the copied WT+ row may already have one)."""
     out = ''
     for key, names in (('112feba3', [MULT_TEX[n] for n in (1, 2, 3, 4)]),
                        ('bc95780d', [MULT_SP_TEX[n] for n in (2, 4, 6, 8)])):
         out += (f'\t\t\t\tStructArray {key}\n\t\t\t\t{{\n\t\t\t\t\tArrayQBKey\n\t\t\t\t\t[\n'
                 + ''.join(f'\t\t\t\t\t\t{t}\n' for t in names) + '\t\t\t\t\t]\n\t\t\t\t}\n')
     return out
+
+
+def _panel_in_v1(d, dy):
+    """The panel in a band layout's v1 container (guitar + vocals): the vocal highway sits at y 0 there (the DE's
+    vocals_create_highway with more than one player), dy from its 1-player y 430."""
+    import desc_edit
+    import wor_mp
+    import wor_versus as V
+    ox, oy = wor_mp.container_origins(d)['v1'][:2]
+    pos = (-ox - wor_mp.G_CAL[0], dy - oy - wor_mp.G_CAL[1])
+    a, b = V._element_bounds(d, 'v1')
+    blk = d[a:b].replace('StructString desc = "Band_vocal_multiplier"', f'StructString desc = "{MULT_NAME}"', 1)
+    blk = desc_edit.set_elem(blk, 'player_meter', pos=pos, dims=(1280, 720))
+    try:
+        blk = desc_edit.set_elem(blk, 'player_meter', just=(-1, -1))
+    except ValueError:
+        pass
+    d = d[:a] + blk + d[b:]
+    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=2.0, desc=name).render(0)
+              for child, name in (('BAND_top_meter', HEALTH_NAME), ('vocal_multiplier_star', SP_NAME))]
+    return wor_mp._append_children(d, 'v1', blocks)
 
 
 def vocal_highway_desc(de_text):
@@ -236,11 +291,40 @@ def vocal_highway_desc(de_text):
         d = d[:nxt]
     d = d.replace('SectionStruct 0x196b50e4', f'SectionStruct uidesc_{VH_NAME}', 1)
     d = d.replace('StructQBKey name = 0x196b50e4', f'StructQBKey name = uidesc_{VH_NAME}', 1)
+    import desc_edit
+    import wor_mp
     m = re.search(r'StructQBKey local_id = root\b', d)
     p = re.compile(r'StructFloatX2 Pos\s*\{\s*Floats \[([-\d.]+), ([-\d.]+)\]')
     mm = p.search(d, m.end())
     x, y = float(mm.group(1)), float(mm.group(2))
-    return d[:mm.start()] + f'StructFloatX2 Pos\n{{\n\tFloats [{x:.5f}, {y + VH_DY:.5f}]' + d[mm.end():]
+    d = d[:mm.start()] + f'StructFloatX2 Pos\n{{\n\tFloats [{x:.5f}, {y + VH_DY:.5f}]' + d[mm.end():]
+    # the lyric band (the root's own bg_* row; the copies under NewElement1 / static_next_phrase_bg are other views)
+    for lid in ('bg_middle', 'bg_left', 'bg_right'):
+        d = _edit_first(d, lid, lambda blk: _band(blk))
+    d = desc_edit.set_elem(d, 'lyrics', pos=(303.0, LYRICS_Y))
+    d = desc_edit.set_elem(d, 'fireball_bg', scale=(COMET_SCALE, COMET_SCALE))
+    xc, top, w, h = NOW_BOX
+    line = E('WoR_now_line', 'SpriteElement', pos=(xc, top), dims=(w, h), just=(0, -1), z=0.5, texture=NOW_TEX,
+             blend='Add').render(0)
+    return wor_mp._append_children(d, 'pitch_area', [line])
+
+
+def _edit_first(d, lid, fn):
+    """Apply fn to the props block of the first element named lid."""
+    import re
+    import desc_edit
+    m = re.search(rf'StructQBKey local_id = {lid}\s*\n', d)
+    a, b = desc_edit._block_bounds(d, m.start())
+    return d[:a] + fn(d[a:b]) + d[b:]
+
+
+def _band(blk):
+    import re
+    blk = re.sub(r'StructFloat alpha = \S+', f'StructFloat alpha = {LYRIC_BAND_A:.2f}', blk, count=1)
+    blk = re.sub(r'(StructFloatX2 Pos\s*\{\s*Floats \[)([-\d.]+), [-\d.]+(\])',
+                 lambda mm: f'{mm.group(1)}{mm.group(2)}, {LYRIC_BAND_Y:.5f}{mm.group(3)}', blk, count=1)
+    return re.sub(r'(StructFloatX2 Scale\s*\{\s*Floats \[)([-\d.]+), [-\d.]+(\])',
+                  lambda mm: f'{mm.group(1)}{mm.group(2)}, {LYRIC_BAND_H / 30.0:.5f}{mm.group(3)}', blk, count=1)
 
 
 def edit_layout(config, d):
@@ -249,6 +333,8 @@ def edit_layout(config, d):
     import desc_edit
     import wor_band
     import wor_mp
+    if config == 'hud_1g1v':
+        return _panel_in_v1(d, dy=-430.0)
     if config != 'hud_1v':
         return d
     d = d.replace('StructString desc = "solo_play_rock_meter_ghwor"', f'StructString desc = "{wor_band.NAME}"', 1)

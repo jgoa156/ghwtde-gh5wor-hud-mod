@@ -710,8 +710,11 @@ namespace
 	// 1.54 (user 2026-10-26: no glowing balls on the star bar / song line in band and vocals): the dots were only
 	// placed for the score box found next to the 1-player tube; the band layouts' score box has nothing driving it.
 	// Every star bar / song line now places its own sibling dot from its own update.
+	double g_score_seen = -100.0;        // 1.56: one of our score boxes updated (vocals: no tube marks the HUD as ours)
+
 	void score_lead_from(void *element, uint32_t tex)
 	{
+		g_score_seen = now();
 		if (tex == kStarBar)
 		{
 			if (void *lead = sibling_with(element, kStarLead))
@@ -1544,9 +1547,10 @@ namespace
 	{
 		const auto orig = reinterpret_cast<int(__cdecl *)(wchar_t *, size_t, const wchar_t *, int)>(kSnwprintf);
 		// 1.39: also in the 2-player modes (no 1-player star bar there): while our versus needle or battle meter is up;
-		// 1.53 (user 2026-10-25: no separators in band): and while a multiplayer star power tube is up
+		// 1.53 (user 2026-10-25: no separators in band): and while a multiplayer star power tube is up; 1.56: or any
+		// of our score boxes (vocals)
 		const bool ours = any_star_bar() || now() - g_vs_seen < 2.0 || now() - g_battle_seen < 2.0 ||
-		                  now() - g_mp_seen < 2.0;
+		                  now() - g_mp_seen < 2.0 || now() - g_score_seen < 2.0;
 		if (!ours || value < 0 || count < 2)
 			return orig(buf, count, fmt, value);
 		wchar_t digits[12];
@@ -1943,7 +1947,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.55 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.56 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

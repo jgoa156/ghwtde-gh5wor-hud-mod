@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-26): HANDOFF GUIDE: plugin 1.56 + mod with WoR vocals (stages A + B), see "Installed" and section 6 below
+## START HERE (2026-10-26): HANDOFF GUIDE: plugin 1.57 + mod with WoR vocals (stages A + B), x1 bulb, purple drum fill, star power test bots (5k), see "Installed" and section 6 below
 
 Everything after this section is older history; read it only for a detail.
 
@@ -222,6 +222,22 @@ Everything after this section is older history; read it only for a detail.
 - Instrument badges: decoded now to ghwor-extract\band_lobby_png (bandlobby_bord_instrument + _color + _color_fg) +
   U\icon_*_fill / _out glyphs (sheets docs/research/wor_badges_sheet.png, wor_icons_sheet.png).
 
+### 5k. 2026-10-26 evening: plugin 1.57 (installed, not seen in game)
+- Band bulb shown at x1 (user: "turn on the lightbulb for 1x"): WoR_HUD_bandbulb_1 (band_HUD_multiplier_one) is the
+  nixie's first texture; plugin 1.57 runs the grow (popup) on every bulb change, not only blank -> bulb, so it pops at
+  song start and on each multiplier step.
+- Drum fill purple applied (user: "purple color on the current DE line works for now"): DRUM_FILL_RGBA =
+  (0.58, 0, 1, 0.8), the mock's strong variant (soft = alpha 0.5). Only the 2nd guitar_material array (af201180)
+  holds mat_drum_fill(2). Global to every theme like the dark metal. Vocals freeform (VH_FF_FX01 / VH_Crowd_Noise,
+  vocals_highway.qb) NOT recoloured yet.
+- Test bots deploy star power (user: "fix tests to actually use star power, at the same time when in bands"):
+  DE bots never do (player_status bot_star_power = 0; vocals: global vocal_bot_uses_starpower = 0). With
+  TestAutoLaunch=1 our setup_hud wrapper starts WoR_HUD_test_sp (build.py, after TEST_AUTOLAUNCH_SCRIPT): every
+  0.25 s, when no one is in star power and all players are ready (>= 50, or band scoring: band1 pool >= n x 100/6),
+  it spawns the DE's star_power_activate_and_drain for every player at once (fallback: the ready ones after 20 s).
+  Not in battle. debug.txt prints "WoR_HUD: test star power, r of n players ready". Never run yet: if star power
+  never shows in captures, check that line first (setup_hud wrapper ran? getplayerinfo checksum ok?).
+
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
    tests/capture_band.py, `1g1v` too; ask before launching). Look for:
@@ -256,9 +272,10 @@ Everything after this section is older history; read it only for a detail.
    is turned the WRONG way, flip the sign in place_in_window: fill rot0 - rot and the offset rotation), no washed
    band below the fill level on 2/3 highways, needle position, battle slots spacing and the collect flight.
 4. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
-5. Older: practice-mode crash logs, purple drum-fill pick (docs/mocks/mock_drumfill_v1.jpg), 6th star check.
+5. Older: practice-mode crash logs, 6th star check.
+6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
+Installed: plugin 1.57 + mod (5k) on top of plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

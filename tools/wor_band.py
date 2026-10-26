@@ -2,12 +2,13 @@
 icons: the "huge guitar") is replaced by the quickplay score group (wor_1g.band_meter without its tubes), at the top
 right like WoR's band HUD (lower, under the vocal highway, when the layout has a vocalist), plus WoR's band
 multiplier bulb (uidesc_star_meter band_multiplier: band_HUD_multiplier_bulb with a nixie digit
-band_HUD_multiplier_<n> and an "x"), shown from x2 up and growing out of the score group (plugin 1.40).
+band_HUD_multiplier_<n> and an "x"), growing out of the score group (plugin 1.40) when it appears and (1.57) on
+every multiplier change. Shown at x1 too (user 2026-10-26: "turn on the lightbulb for 1x").
 
 The DE's HUD_attach_widget_band_meter drives the band score, streak, star meter and band star power on this desc like
 on the 1-player one; every WT+ band meter prop we don't show (needle, lanes, instrument icons, multiplier text) lands
 on a hidden stand-in. Our wrapper of that script adds a semultipliernixie widget on band1_multiplier (values 1-4, x2
-in star power: 2 / 4 / 6 / 8) writing the bulb texture: blank at x1.
+in star power: 2 / 4 / 6 / 8) writing the bulb texture (blank only until the widget's first write).
 """
 import copy
 import os
@@ -20,7 +21,7 @@ ROOT_ID = 'band_score_wor'
 WOR_ZIG = os.path.join(paths.WOR_EXTRACT, 'z_in_game_png2')
 BULB_SRC = os.path.join(WOR_ZIG, 'band_HUD_multiplier_bulb.png')
 DIGIT_SRC = {n: os.path.join(WOR_ZIG, f'band_HUD_multiplier_{w}.png')
-             for n, w in ((2, 'two'), (3, 'three'), (4, 'four'), (6, 'six'), (8, 'eight'))}
+             for n, w in ((1, 'one'), (2, 'two'), (3, 'three'), (4, 'four'), (6, 'six'), (8, 'eight'))}
 BULB_TEX = {n: f'WoR_HUD_bandbulb_{n}' for n in DIGIT_SRC}
 BULB_ID = 'band_bulb'
 # WoR's bulb: 128 px art; the digit (64 px, scale 0.8) and the "x" (32 px, scale 0.9) centred at these points of it
@@ -166,7 +167,7 @@ SCRIPTS = (
     '\t\t\t\t\t\t:i $desc_id$ = %GLOBAL%$WoR_HUD_bm_id$\n'
     '\t\t\t\t\t\t:i $property$ = $band_bulb_texture$\n'
     '\t\t\t\t\t\t:i $player$ = %i(1)\n'
-    f'\t\t\t\t\t\t:i $textures$ = :a{{$WoR_HUD_blank${"".join(f"${BULB_TEX[n]}$" for n in (2, 3, 4))}:a}}\n'
+    f'\t\t\t\t\t\t:i $textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in (1, 2, 3, 4))}:a}}\n'
     f'\t\t\t\t\t\t:i $sp_textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in (2, 4, 6, 8))}:a}}\n'
     '\t\t\t\t\t:i :s}\n'
     '\t\t\t\t:i :s}\n'

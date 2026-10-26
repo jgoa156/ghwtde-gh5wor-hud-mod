@@ -1289,14 +1289,21 @@ namespace
 						texture = kLights[0][sl[1]];
 					break;
 				}
-			// 1.40: the band bulb appears (blank -> a bulb texture): grow it out of the score group
-			if (texture_of(element) == kBlankTex)
+			// 1.40: the band bulb appears (blank -> a bulb texture): grow it out of the score group; 1.57: and on every
+			// multiplier change (bulb -> another bulb; the x1 bulb is shown now, user 2026-10-26)
+			if (texture_of(element) != texture)
+			{
+				bool from_bulb = texture_of(element) == kBlankTex;
 				for (uint32_t b : kBandBulb)
-					if (b == texture)
-					{
-						bulb_grow(element);
-						break;
-					}
+					from_bulb |= b == texture_of(element);
+				if (from_bulb)
+					for (uint32_t b : kBandBulb)
+						if (b == texture)
+						{
+							bulb_grow(element);
+							break;
+						}
+			}
 			// 1.36: the versus bars show the multiplier as text ("x1"): the same DE names, our text textures there
 			for (const auto &n : kVsNixieMap)
 			{
@@ -1947,7 +1954,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.56 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.57 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

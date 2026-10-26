@@ -159,7 +159,7 @@ static const uint32_t kVsNeedleTex = 0xfab273ed;
 static const float kVsNeedleSrcDims = 3.1250f, kVsNeedleK = 1.6500f;
 // the DE's stock streak light names (bulb_textures of HUD_attach_widget_player_multiplier) -> state 0..2
 static const uint32_t kStockLights[12][2] = { { 0xb2f82657, 0 }, { 0xc5ff16c1, 1 }, { 0x5cf6477b, 2 }, { 0x316255c3, 0 }, { 0x97155e77, 1 }, { 0xa6fd44ea, 2 }, { 0x7662e684, 0 }, { 0xbac8e61a, 1 }, { 0x3447e1f9, 2 }, { 0x677f40d9, 0 }, { 0xac23937c, 1 }, { 0x2ab7e1d2, 2 } };
-// band score group (tools/wor_band.py): WoR's bulb textures (the expand-out starts when one replaces blank)
-static const uint32_t kBandBulb[5] = { 0xc0944658, 0xb79376ce, 0x29f7e36d, 0xc7f98241, 0x2041af46 };
+// band score group (tools/wor_band.py): WoR's bulb textures (the expand-out starts when one replaces blank or another bulb)
+static const uint32_t kBandBulb[6] = { 0x599d17e2, 0xc0944658, 0xb79376ce, 0x29f7e36d, 0xc7f98241, 0x2041af46 };
 static const uint32_t kBlankTex = 0xf8b85bcb;
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

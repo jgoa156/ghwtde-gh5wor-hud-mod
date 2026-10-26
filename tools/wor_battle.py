@@ -767,6 +767,7 @@ def scripts():
             # script and fades both containers at the moment it fades hud_root.
             'Script WoR_HUD_setup_hud [\n'
             '\t:i $WoR_HUD_setup_hud_orig$ isNull\n'
+            '\t:i $WoR_HUD_test_sp_start$ isNull\n'   # test harness only (build.py TEST_AUTOLAUNCH_SCRIPT)
             f'\t:i if {is_ours}\n'
             '\t\t:i if (~$game_mode$ = $p2_battle$)\n'
             '\t\t\t:i $FormatText$$checksumname$ = $container$%s("HUD_2D_Container%p")$p$ = %GLOBAL%$player_text$\n'

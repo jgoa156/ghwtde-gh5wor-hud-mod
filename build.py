@@ -665,6 +665,82 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i $printf$%s("WoR_HUD: test autolaunch into %g")$g$ = %GLOBAL%$[3684fc56]$\n'
                           '\t:i $change$$primary_controller_assigned$ = %i(1)\n'
                           '\t:i $[581325cc]$$venue_string$ = %GLOBAL%$[3684fc56]$\n'
+                          '\t:i endfunction\n]\n\n'
+                          # Bot star power (user 2026-10-26: "fix tests to actually use star power, at the same time
+                          # when in bands"): the DE's bots never deploy it (player_status bot_star_power stays 0). With
+                          # TestAutoLaunch=1, every song's setup_hud (our wrapper) starts one watcher that deploys star
+                          # power for every player at once through the DE's own star_power_activate_and_drain (what the
+                          # band tutorial and vocals_activate_starpower spawn): when all are ready (band scoring: the
+                          # band pool holds a deployment for each), or after 20 s for the ones that are. Not in battle
+                          # (its star power is the attacks).
+                          'Script WoR_HUD_test_sp_start [\n'
+                          '\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestAutoLaunch")$default$ = %i(0)\n'
+                          '\t:i if (%GLOBAL%$value$ = %i(1))\n'
+                          '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_test_sp$\n'
+                          '\t\t:i $spawnscriptnow$$WoR_HUD_test_sp$$id$ = $WoR_HUD_test_sp$\n'
+                          '\t:i endif\n'
+                          '\t:i endfunction\n]\n\n'
+                          'Script WoR_HUD_test_sp [\n'
+                          '\t:i if (~$game_mode$ = $p2_battle$)\n'
+                          '\t\t:i return\n'
+                          '\t:i endif\n'
+                          '\t:i $printf$%s("WoR_HUD: test star power watcher on")\n'
+                          '\t:i $waited$ = %i(0)\n'
+                          '\t:i while \n'
+                          '\t\t:i $wait$%f(0.25)$seconds$\n'
+                          '\t\t:i $GameMode_GetNumPlayersShown$\n'
+                          '\t\t:i $ready$ = %i(0)\n'
+                          '\t\t:i $active$ = %i(0)\n'
+                          '\t\t:i $p$ = %i(1)\n'
+                          '\t\t:i while \n'
+                          '\t\t\t:i $getplayerinfo$%GLOBAL%$p$$checksum$\n'
+                          '\t\t\t:i if (~%GLOBAL%$checksum$->$star_power_used$ = %i(1))\n'
+                          '\t\t\t\t:i %GLOBAL%$active$ = (%GLOBAL%$active$ + %i(1))\n'
+                          '\t\t\t:i elseif (~%GLOBAL%$checksum$->$star_power_amount$ >= %i(50))\n'
+                          '\t\t\t\t:i %GLOBAL%$ready$ = (%GLOBAL%$ready$ + %i(1))\n'
+                          '\t\t\t:i endif\n'
+                          '\t\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
+                          '\t\t:i loop_to %GLOBAL%$num_players_shown$\n'
+                          '\t\t:i $go$ = %i(0)\n'
+                          '\t\t:i if (%GLOBAL%$active$ = %i(0))\n'
+                          '\t\t\t:i if (%GLOBAL%$ready$ = %GLOBAL%$num_players_shown$)\n'
+                          '\t\t\t\t:i $go$ = %i(1)\n'
+                          '\t\t\t:i endif\n'
+                          '\t\t\t:i if ($GameMode_IsBandScoring$)\n'
+                          '\t\t\t\t:i if (~$band1_status$->$star_power_amount$ >= (%GLOBAL%$num_players_shown$ * (%f(100.0) / %f(6.0))))\n'
+                          '\t\t\t\t\t:i $go$ = %i(1)\n'
+                          '\t\t\t\t:i endif\n'
+                          '\t\t\t:i endif\n'
+                          '\t\t\t:i if (%GLOBAL%$ready$ > %i(0))\n'
+                          '\t\t\t\t:i %GLOBAL%$waited$ = (%GLOBAL%$waited$ + %i(1))\n'
+                          '\t\t\t\t:i if (%GLOBAL%$waited$ >= %i(80))\n'
+                          '\t\t\t\t\t:i $go$ = %i(1)\n'
+                          '\t\t\t\t:i endif\n'
+                          '\t\t\t:i endif\n'
+                          '\t\t:i endif\n'
+                          '\t\t:i if (%GLOBAL%$go$ = %i(1))\n'
+                          '\t\t\t:i $printf$%s("WoR_HUD: test star power, %r of %n players ready")$r$ = %GLOBAL%$ready$$n$ = %GLOBAL%$num_players_shown$\n'
+                          '\t\t\t:i $p$ = %i(1)\n'
+                          '\t\t\t:i while \n'
+                          '\t\t\t\t:i $getplayerinfo$%GLOBAL%$p$$checksum$\n'
+                          '\t\t\t\t:i $getplayerinfo$%GLOBAL%$p$$player$\n'
+                          '\t\t\t\t:i $getplayerinfo$%GLOBAL%$p$$text$\n'
+                          '\t\t\t\t:i $fire$ = %i(0)\n'
+                          '\t\t\t\t:i if (~%GLOBAL%$checksum$->$star_power_amount$ >= %i(50))\n'
+                          '\t\t\t\t\t:i $fire$ = %i(1)\n'
+                          '\t\t\t\t:i endif\n'
+                          '\t\t\t\t:i if ($GameMode_IsBandScoring$)\n'
+                          '\t\t\t\t\t:i $fire$ = %i(1)\n'
+                          '\t\t\t\t:i endif\n'
+                          '\t\t\t\t:i if (%GLOBAL%$fire$ = %i(1))\n'
+                          '\t\t\t\t\t:i $spawnscriptnow$$star_power_activate_and_drain$$params$ = :s{$player_status$ = %GLOBAL%$checksum$$player$ = %GLOBAL%$player$$player_text$ = %GLOBAL%$text$:s}\n'
+                          '\t\t\t\t:i endif\n'
+                          '\t\t\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
+                          '\t\t\t:i loop_to %GLOBAL%$num_players_shown$\n'
+                          '\t\t\t:i $waited$ = %i(0)\n'
+                          '\t\t\t:i $wait$%f(2.0)$seconds$\n'
+                          '\t\t:i endif\n'
+                          '\t:i loop_to \n'
                           '\t:i endfunction\n]\n')
 
 
@@ -754,9 +830,10 @@ DARK_MATERIALS = ['sys_sidebar2D_sys_sidebar2D', 'sys_fretbar_large_sys_fretbar_
                   'sys_fretbar_medium_sys_fretbar_medium', 'sys_fretbar_small_sys_fretbar_small', 'Mat_NB_Neck']
 # Drum fill / freeform sections: WoR draws a purple line there (an AudioVisualize av_preset, og_highway_drum_freeform:
 # RGB 147,0,255, additive), which the DE engine lacks; the DE's own scrolling Drum_fill streaks get WoR's purple
-# instead (DE colour (1, 1, 1, 0.3)). None = DE white. Mock: docs/mocks/mock_drumfill_v1.jpg (awaiting the user's pick).
+# instead (DE colour (1, 1, 1, 0.3)). None = DE white. Mock: docs/mocks/mock_drumfill_v1.jpg; user 2026-10-26: "purple
+# color on the current DE line works for now" (the mock's strong variant, closest to WoR's solid line; soft = 0.5)
 DRUM_FILL_MATERIALS = ['mat_drum_fill', 'mat_drum_fill2']
-DRUM_FILL_RGBA = None
+DRUM_FILL_RGBA = (0.58, 0.0, 1.0, 0.8)
 DARK_PATTERNS = []   # v0.24: strikeline cups untouched (their chrome ring already matches GH5)
 
 

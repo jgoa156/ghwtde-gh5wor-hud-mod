@@ -191,6 +191,22 @@ Everything after this section is older history; read it only for a detail.
   Z_TUBES_1P. Unverified hypothesis (no capture, user's call); if it still differs, capture 2g vs battle and diff.
 - Vocals: analysis + plan in docs/research/wor_vocals_hud.md, mock docs/mocks/mock_vocals_v1.jpg (not started).
 
+### 5i. 2026-10-26: plugin 1.55 + vocals stage A (installed, not seen in game)
+- 1.55: balls on every star bar / song line (score_lead_from, from each bar's own update); multiplayer SP feather
+  bands no longer grow down (place_in_window grow_bottom), turned tube's cut through the window centre, kTubes 8;
+  multiplayer needle MP_NEEDLE_OUT 2.5 (perpendicular to the tube); battle VISOR_SPACE 2 / VISOR_DX 2.7, the newest
+  card keeps battlemode_ready's own 0.3 s collect flight (battlecards_place morphs only slots 1-2).
+- Vocals stage A (tools/wor_vocals.py, mock v2 approved): hud_1v's v1 gets three descs on the DE's vocal widget slots:
+  player_meter = wor_vocal_mult_ghwor (panel backing + blue stripe + dividers + combo plate + "xN" image from the
+  theme's vocalist arrays 112feba3 / bc95780d + phrase box, empty), BAND_top_meter = wor_vocal_health_ghwor (lamps on
+  TOP_meter_*_ON_alpha, needle on side_meter_needle_pos (0,-105)..(0,-5) in a -90 deg anchor), vocal_multiplier_star =
+  wor_vocal_sp_ghwor (3 segments in -90 deg containers on glow0..2_scale). band_meter = the quickplay score group at
+  WoR's vocals spot. Theme 0x3fb45eb1 = vocals_highway_ghwor (the DE's vocals_highway_wtde, root y 0 -> 32).
+- Research correction: the DE's now line is already at WoR's x (root 288 + now_bar 121); the line at x ~270 in our
+  frames is a phrase marker.
+- Next (stage B): lyric font, note colours / thickness, green plasma now line, lyric band, star power look; the phrase
+  meter's driver; guitar + vocals reuse; plugin for a smoother SP strip if setubes steps.
+
 ### 6. Open / next
 1. In-game check of 1.52 / 0.50: battle rock tubes look and layer like band quickplay (LEDs, needle tracking health
    on both players, slots aligned), versus streak no longer flashes, band needle top stop matches quickplay; plus the

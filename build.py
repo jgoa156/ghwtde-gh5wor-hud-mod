@@ -15,7 +15,7 @@ import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_band, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_yourock  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_band, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_vocals, wor_yourock  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -159,6 +159,8 @@ def main():
     _, ui_wtde = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'ui_shared_wtde.pak.xen'), work,
                                    only={v[1] for v in wor_menus.DLG.values()})
     _, vh = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'hud_vh.pak.xen'), work, only={'0x2fdc39e1.qb.xen'})
+    _, hsa = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'hud_shared_assets.pak.xen'), work)
+    vocal_hw = next(t for t in hsa.values() if 'SectionStruct 0x196b50e4' in t)   # the DE's vocals_highway_wtde
 
     # ---- descs: copy WT+ descs, rename to *_ghwor, retarget textures
     desc_by_key = {}
@@ -183,6 +185,7 @@ def main():
             d = re.sub(rf'texture = {re.escape(old)}\b', f'texture = {new_id}', d)
         d = wor_versus.edit_layout(name.replace('_ghwtwithtime', ''), d)     # versus meter: ours / hidden
         d = wor_band.edit_layout(name.replace('_ghwtwithtime', ''), d)       # band meter: the quickplay score group
+        d = wor_vocals.edit_layout(name.replace('_ghwtwithtime', ''), d)     # vocals: WoR's meter panel + score spot
         if name == 'solo_play_rock_meter_ghwtwithtime':
             for local_id, changes in ROCK_METER_EDITS.items():
                 d = desc_edit.set_elem(d, local_id, **changes)
@@ -190,7 +193,9 @@ def main():
     descs += wor_1g.all_descs()
     descs.append(wor_versus.versus_desc())        # face-off / pro face-off: WoR versus meter (tools/wor_versus.py)
     descs += wor_mp.descs()
-    descs += wor_band.descs()                     # band layouts: the quickplay score group + WoR's band bulb                       # 2-highway layouts: per-player SP tube, rock tube, multiplier
+    descs += wor_band.descs()                     # band layouts: the quickplay score group + WoR's band bulb
+    descs += wor_vocals.descs()                   # vocalist: WoR's meter panel (health, multiplier, star power)
+    descs.append(wor_vocals.vocal_highway_desc(vocal_hw))   # vocal highway at WoR's height                       # 2-highway layouts: per-player SP tube, rock tube, multiplier
     descs.append(wor_battle.gamertag_desc(next(v for k, v in vh.items() if k.endswith('0x2fdc39e1.qb.xen'))))
 
     # ---- layouts and theme row
@@ -233,6 +238,9 @@ def main():
         extra += (f'\t\t\t\tStructArray {key}\n\t\t\t\t{{\n\t\t\t\t\tArrayQBKey\n\t\t\t\t\t[\n'
                   + ''.join(f'\t\t\t\t\t\t{t[0]}\n' for t in lst) + '\t\t\t\t\t]\n\t\t\t\t}\n')
     extra += wor_battle.theme_extra()        # battle: WoR layout, WoR name plates (tools/wor_battle.py)
+    extra += wor_vocals.theme_extra()        # vocalist multiplier images (tools/wor_vocals.py)
+    wor, n = re.subn(r'StructString 0x3fb45eb1 = "[^"]*"', f'StructString 0x3fb45eb1 = "{wor_vocals.VH_NAME}"', wor)
+    assert n == 1, 'theme row: no vocal highway desc field'
     extra += wor_modes.theme_extra()         # multiplayer modes: no messages above the highway (tools/wor_modes.py)
     k = wor.rindex('}', 0, wor.rindex('}'))
     wor = wor[:k] + extra + '\t\t\t' + wor[k:]
@@ -402,6 +410,11 @@ def main():
         im.save(out)
         pngs.append(out)
     sources.update(wor_band.sources())
+    for name, im in wor_vocals.textures().items():    # vocalist meter panel, multiplier images
+        out = os.path.join(work, name + '.png')
+        im.save(out)
+        pngs.append(out)
+    sources.update(wor_vocals.sources())
     # (the multiplayer tubes are copies of the 1-player tube since 2026-10-22: no WoR_HUD_vsseg / vs_sptube any more)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
     open(p, 'wb').write(blank_png(4, 4))

@@ -1,4 +1,4 @@
-﻿"""Battle mode (p2_battle) in the WoR style (mock docs/mocks/mock_battle_v8.jpg, approved 2026-10-20).
+"""Battle mode (p2_battle) in the WoR style (mock docs/mocks/mock_battle_v8.jpg, approved 2026-10-20).
 
 The DE draws battle with a GH3-style hud_2d layout: the theme row's 0x6bd128d8 names it (default
 battle_hud_2d_elements). Its rock container holds the health meter (the DE switches the HUD2D_rock_lights_* alphas and turns
@@ -769,6 +769,7 @@ def scripts():
             '\t:i $WoR_HUD_setup_hud_orig$ isNull\n'
             '\t:i $WoR_HUD_test_sp_start$ isNull\n'   # test harness only (build.py TEST_AUTOLAUNCH_SCRIPT)
             '\t:i $WoR_HUD_vocals_globals$ isNull\n'  # the DE's vocal globals for this theme (tools/wor_vocals.py)
+            '\t:i $WoR_HUD_vocal_health_start$ isNull\n'   # the vocalist's health meter in 4-player band (wor_vocals)
             f'\t:i if {is_ours}\n'
             '\t\t:i if (~$game_mode$ = $p2_battle$)\n'
             '\t\t\t:i $FormatText$$checksumname$ = $container$%s("HUD_2D_Container%p")$p$ = %GLOBAL%$player_text$\n'

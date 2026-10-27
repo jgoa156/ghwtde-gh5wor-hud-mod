@@ -86,6 +86,7 @@ namespace
 	constexpr size_t kElementScale = 0xc0;           // float x, y
 	constexpr size_t kElementDims = 0x1bc;           // float w, h
 	constexpr size_t kElementRot = 0xd0;             // float, radians (SetRot 0x5a1970 takes degrees)
+	constexpr size_t kElementRotTarget = 0x114;      // float, radians: what the per-frame tween moves +0xd0 to
 	constexpr size_t kElementZ = 0x1c8;              // float z_priority
 	constexpr size_t kElementPosTarget = 0xec;       // float x, y: where a move (morph) goes (start at 0x130)
 	constexpr size_t kElementScaleTarget = 0x10c;    // float x, y: the scale a morph goes to
@@ -630,14 +631,25 @@ namespace
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
 	// window's top moves by the turn so its (screen-horizontal) cut passes through the level at the window's centre,
 	// where the cap glow sits, not at its wider left corner
-	// 1.59 (user 2026-10-27 recording, 3 highways: the fill a thin sliver along the glass, once a huge beam, empty in star
-	// power): the turn goes the other way. Every band tube logs ancestors' rotation +7.08 deg and 1.53 measured the fill
-	// 6.6 deg too steep (26.2 vs the glass's 19.6), so the fill, its offset and the window's cut turn by -rot.
+	// 1.60: a sprite's rotation is tweened every frame from its current angle (+0xd0) to its target (+0x114, SetRot
+	// 0x5a1970), so writing +0xd0 alone was undone at once: the band fill kept the desc's 1-player angle whatever 1.53 /
+	// 1.59 wrote (user 2026-10-27 recordings: 6.6 deg too steep both times; 1.59's flipped offset then pushed it out of
+	// the glass). Both fields and the recompute flag, like set_alpha.
+	void set_rot(void *e, float rad)
+	{
+		if (f32(e, kElementRot) == rad && f32(e, kElementRotTarget) == rad)
+			return;
+		f32(e, kElementRot) = rad;
+		f32(e, kElementRotTarget) = rad;
+		*reinterpret_cast<uint32_t *>(field(e, 8)) |= 0x400;
+	}
+
+	// 1.60: back to +rot (1.53): the glass's own +7.08 deg makes it less steep, the fill needs the same turn
 	void place_in_window(void *win, void *fill, float top, float h, bool grow_bottom)
 	{
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
-		const float r = -g_sp.rot;
+		const float r = g_sp.rot;
 		const float m = r != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
 		const float c = cosf(r), s = sinf(r);
 		const float t = top + (kClipX + 0.5f * kClipW - wx) * s / c;
@@ -646,7 +658,7 @@ namespace
 		set_pos(win, nullptr, wx, t, 1);
 		const float dx = kFillX - wx, dy = kFillY - t;
 		if (m != 0.0f)
-			f32(fill, kElementRot) = g_sp.fill_rot0 + r;
+			set_rot(fill, g_sp.fill_rot0 + r);
 		set_pos(fill, nullptr, dx * c - dy * s, dx * s + dy * c, 1);
 	}
 
@@ -2078,7 +2090,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.59 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.60 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

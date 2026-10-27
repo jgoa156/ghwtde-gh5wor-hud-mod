@@ -44,6 +44,9 @@ BULB_D = 84.0                            # drawn size of the 128 px bulb
 # the group's offset from its 1-player spot (score box centre wor_1g.SCORE_C ~ (1056, 581)) to WoR's band spot, top
 # right (user's WoR frames 2026-10-22: ~(1047, 187) without vocals, ~(1019, 257) under the vocal highway)
 OFFSET = {False: (-9.0, -394.0), True: (-37.0 + 130.0, -324.0 - 50.0)}
+# with a vocalist: 50 lower (user 2026-10-27, WoR full band video: the box sits under the vocal highway's lyric row;
+# ours overlapped the lyrics, box top canvas ~198 vs WoR's ~248)
+VOCAL_DY = 50.0
 # vocal layouts (capture 2026-10-22): moved to the right edge like the 2-player spot, and up to just under the lyrics
 # line (the 3g1v override of the first capture had it on the lyrics)
 # hud_3g1v (3 instruments, 4-player band): measured on the bot capture 2026-10-22 the group sat ~130 px left of the
@@ -162,6 +165,8 @@ def edit_layout(config, d):
     lid = ids[0]
     d = d.replace('StructString desc = "band_meter_ghwor"', f'StructString desc = "{NAME}"', 1)
     dx, dy = OFFSET_BY_CONFIG.get(config, OFFSET[config != 'hud_2g'])
+    if config.endswith('v'):
+        dy += VOCAL_DY
     a, b = V._element_bounds(d, lid)
     blk = d[a:b]
     m = re.search(r'StructFloatX2 Pos\s*\{\s*Floats \[([-\d.]+), ([-\d.]+)\]', blk)

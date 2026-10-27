@@ -139,6 +139,8 @@ def run(name, parts, a, out):
         for i, p in enumerate(parts):
             sfx = '' if i == 0 else str(i + 1)
             sets += [('AutoLaunch', 'Part' + sfx, p), ('AutoLaunch', 'Bot' + sfx, '1')]
+        if a.bulb_cycle:          # the band bulb steps through x1..x4 and star power x2..x8 (tools/wor_band.py)
+            sets.append(('WoR_HUD', 'TestBulbCycle', '1'))
         for sec, k, v in sets:
             t = H.set_ini(t, sec, k, v)
         open(H.INI, 'w', encoding='utf-8', errors='surrogateescape', newline='').write(t)
@@ -200,6 +202,7 @@ def main():
     ap.add_argument('--song', default='ontheroadagain')   # on-disc, short (user 2026-10-22); MODS songs load no notes via AutoLaunch
     ap.add_argument('--wait', type=int, default=150)
     ap.add_argument('--frames', type=int, default=5)
+    ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')
     if os.path.exists(done):

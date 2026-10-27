@@ -4,7 +4,7 @@ usage: python tools/gen_plugin_names.py"""
 import os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import paths, wor_1g, wor_band, wor_battle, wor_mp, wor_versus  # noqa: E402
+import paths, wor_1g, wor_band, wor_battle, wor_mp, wor_versus, wor_vocals  # noqa: E402
 
 
 def qbkey(s):
@@ -129,6 +129,19 @@ def main():
             '// band score group (tools/wor_band.py): WoR\'s bulb textures (the expand-out starts when one replaces blank or another bulb)',
             f'static const uint32_t kBandBulb[{len(wor_band.BULB_TEX)}] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_band.BULB_TEX.values()) + ' };',
             f'static const uint32_t kBlankTex = 0x{qbkey("WoR_HUD_blank"):08x};',
+            '// 1.58: the bulb popup (WoR HUD_setup_band_mult_animation): from behind the score box at half size, 0.3 s; the',
+            '// orange glow (Add) flashes with it',
+            f'static const uint32_t kBandBulbGlow = 0x{qbkey(wor_band.GLOW_TEX):08x};',
+            f'static const float kBulbFrom[2] = {{ {wor_band.POPUP_FROM[0]:.4f}f, {wor_band.POPUP_FROM[1]:.4f}f }};   // canvas units',
+            f'static const float kBulbFromScale = {wor_band.POPUP_SCALE:.4f}f, kBulbPopupTime = {wor_band.POPUP_TIME:.4f}f;',
+            '// 1.58 vocals (tools/wor_vocals.py): note textures by on-screen length band, the now line frames (green / star',
+            '// power cyan), the star power glow bands, the vocalist star power flag (a QB global set by the SP wrappers)',
+            f'static const uint32_t kVNote[{len(wor_vocals.NOTE_TEX)}] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOTE_TEX) + ' };',
+            f'static const float kVNoteBand[{len(wor_vocals.NOTE_BANDS)}] = {{ ' + ', '.join(f'{b:.3f}f' for b in wor_vocals.NOTE_BANDS) + ' };',
+            f'static const uint32_t kVNow[2][{wor_vocals.NOW_FRAMES}] = {{ {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_TEX)
+            + ' }, { ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_SP_TEX) + ' } };',
+            f'static const uint32_t kVSpGlow = 0x{qbkey(wor_vocals.SP_GLOW_TEX):08x};',
+            f'static const uint32_t kVocalSpFlag = 0x{qbkey("WoR_HUD_vocal_sp"):08x};',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

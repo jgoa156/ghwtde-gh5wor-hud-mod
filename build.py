@@ -152,7 +152,9 @@ def main():
     os.makedirs(OUT)
 
     # ---- DE sources
-    _, tb = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'tb.pak.xen'), work, only={'0x29ebe78e.qb.xen', '0xbb76de6b.qb.xen'})
+    _, tb = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'tb.pak.xen'), work,
+                              only={'0x29ebe78e.qb.xen', '0xbb76de6b.qb.xen', 'vocals_highway_fx.qb.xen'})
+    vocals_fx = next(v for k, v in tb.items() if k.endswith('vocals_highway_fx.qb.xen'))
     themes = block(tb['0x29ebe78e.qb.xen'], 'SectionStruct 0x8ef7f1be')
     choices = block(tb['0xbb76de6b.qb.xen'], 'SectionArray 0x1f644846')
     wtp_dir, wtp = extract_decompile(os.path.join(GAME, 'DATA', 'PAK', 'hud_ghwt_withtime.pak.xen'), work)
@@ -275,8 +277,10 @@ def main():
             wor_art.flip_h(src, p)
         else:
             shutil.copy(src, p)
+        if name in wor_1g.ART_EDITS:            # our edits of WoR art (wor_1g.ART_EDITS)
+            wor_1g.ART_EDITS[name](p)
         pngs.append(p)
-        sources[name] = {'src': src, 'box': box, 'flip': flip}
+        sources[name] = {'src': src, 'box': box, 'flip': flip, **({'edit': name} if name in wor_1g.ART_EDITS else {})}
 
     for old, (new_id, (kind, src)) in TEXTURES.items():
         if kind == 'wtplus':
@@ -466,9 +470,9 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
-                       *wor_menus.sections(ui_wtde), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
+                       *wor_menus.sections(ui_wtde), wor_vocals.global_sections(vocals_fx), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
     open(os.path.join(OUT, 'Mod.ini'), 'w').write(mod_ini('GH5 / Warriors of Rock HUD', MOD_DESCRIPTION, VERSION))
     sdk('compile', f'{MOD_NAME}.txt', cwd=OUT)
@@ -540,6 +544,10 @@ SP_HIGHWAY_SCRIPTS = (
     '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t\t:i $spawnscriptnow$$[68e7427a]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
+    # a vocalist: our flag for the plugin (1.58: cyan now line and glow bands on the vocal highway)
+    '\t\t:i if $playerinfoequals$%GLOBAL%$player$$part$ = $Vocals$\n'
+    '\t\t\t:i $change$$WoR_HUD_vocal_sp$ = %i(1)\n'
+    '\t\t:i endif\n'
     # Star Power Activation SFX "HUD Theme Dependent" (default) falls back to World Tour's sounds; with this theme it
     # plays Band Hero's (user, 2026-10-10) until star power ends. A sound the player picked stays as it is.
     '\t\t:i if (~$[0f3ca55b]$ = $default$)\n'
@@ -554,6 +562,9 @@ SP_HIGHWAY_SCRIPTS = (
     'Script WoR_HUD_sp_verb_off [\n'
     '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
     '\t\t:i $spawnscriptnow$$[b2114e69]$$params$ = :s{$player$ = %GLOBAL%$player$:s}\n'
+    '\t:i endif\n'
+    '\t:i if $playerinfoequals$%GLOBAL%$player$$part$ = $Vocals$\n'
+    '\t\t:i $change$$WoR_HUD_vocal_sp$ = %i(0)\n'
     '\t:i endif\n'
     '\t:i $WoR_HUD_sp_verb_off_orig$$player$ = %GLOBAL%$player$\n'
     '\t:i if (~$WoR_HUD_sp_sfx_set$ = %i(1))\n'

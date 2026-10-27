@@ -1,10 +1,10 @@
-﻿# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
+# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-26): HANDOFF GUIDE: plugin 1.57 + mod with WoR vocals (stages A + B), x1 bulb, purple drum fill, star power test bots (5k), see "Installed" and section 6 below
+## START HERE (2026-10-27): HANDOFF GUIDE: plugin 1.58, vocals v3-v5 (5l) on top of 1.57 (5k), see "Installed" and section 6 below
 
 Everything after this section is older history; read it only for a detail.
 
@@ -238,6 +238,40 @@ Everything after this section is older history; read it only for a detail.
   Not in battle. debug.txt prints "WoR_HUD: test star power, r of n players ready". Never run yet: if star power
   never shows in captures, check that line first (setup_hud wrapper ran? getplayerinfo checksum ok?).
 
+### 5l. 2026-10-27: plugin 1.58, vocals v3-v5 + panel multiplier + score box + bulb (not seen in game)
+User test of 1v (2026-10-26, own recording) -> mocks docs/mocks/mock_vocals_v3.jpg, _v4, _v5, mock_vocals_mult_v1.jpg
+(all approved; "don't apply changes to NOTE streak": the streak box under the score is untouched). Built:
+- Lyrics: scale 0.4 x 0.4 (DE 0.55 x 0.75); sung words WoR blue (120,112,245), current word WoR yellow (254,233,53),
+  upcoming 236. These are DE globals: WoR_HUD_vocals_globals (tools/wor_vocals.py) sets them with our theme and
+  puts the DE values back otherwise; run from a wrapper of the DE's per-theme vocal setup 0x74586fa3 (plugin swap)
+  and from our setup_hud wrapper (every song).
+- Purple ball = the DE comet's "miss" sparks (vocals_comet_particle_effects, start 128,0,255): our copy
+  WoR_HUD_vcomet_wor has them at alpha 0 (DE copy WoR_HUD_vcomet_de restored with other themes).
+- Notes: theme field c5e00a8d (sung-note texture, DE's 0x74586fa3) -> WoR_HUD_vnote_*; f6faf84b (connector) blank;
+  vocal_gem_colors white with our theme (the DE tints its teal art with it). A note is ONE sprite with the texture
+  stretched along it (DE art: 32x32 profile, tube rows 7..24), so the rectangle's end edges are in the texture:
+  12 length bands (wor_vocals.NOTE_BANDS), the plugin picks the band from the sprite's on-screen width (dims x the
+  ancestors' x scales) and logs the first 6 notes ("vocal note: dims ..."). CHECK in game: if the ends look too
+  thick/thin, the band calibration (canvas units) is off; if the texture tiles instead of stretching, rethink.
+  NOT DONE: star power phrase notes' cyan glow (top/bottom): the DE marks them only by colour (vocal_gem_colors
+  index unknown) and the plugin doesn't know the element rgba offset.
+- Now line: 4 green / 4 cyan lightning frames, the plugin steps them at 20 fps, cyan while the QB global
+  WoR_HUD_vocal_sp = 1 (set/cleared by our GH_Star_Power_Verb_On/Off wrappers for a Vocals player). White
+  arrowheads on both lines (sprites in pitch_area). Star power glow bands on the top line and the lyric band's bottom
+  edge (root children, faded by the plugin with the same flag).
+- Highway background: bG black at 0.45; the DE's bg_rgba prop (the teal) repointed to a hidden root child
+  WoR_bg_sink (prop paths address children by index: appended at the end of root, index checked = 17).
+- Panel: meter inner shadow + gloss (WoR_HUD_v_meter_shade), per-lamp blurred inner shadow (v_lamp_shade), the "xN"
+  images per mock_vocals_mult_v1 (box baked in, combo art hidden), star power strip 9 tall / 1 up / border /
+  5-wide mark, its instance at z SP_Z 4 (above the vocal highway's lines, z 2).
+- Score (every mode): digits 0.86 as wide (SCORE_TEXT_KX), housing inside x0.45 and the front's rim grown 2 texels
+  each side and lifted (wor_1g.ART_EDITS, applied by build.py ship()).
+- Bulb: WoR's band_HUD_bulb_x texture (decoded into ghwor-extract z_in_game_png2), digit and x tilted 10 deg CCW
+  (WoR rot_angle -10); popup = WoR's slide from behind the score box (+118,+32 frame units, scale 0.5, 0.3 s) with
+  the orange Glow01 flash (sprite band_bulb_glow, the plugin moves it with the bulb).
+- Tests: tests/capture_band.py --bulb-cycle sets [WoR_HUD] TestBulbCycle=1: the bulb steps x1 x2 x3 x4 then star
+  power x2 x4 x6 x8 every 2 s (WoR_HUD_test_bulb_cycle in tools/wor_band.py), each with the popup.
+
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
    tests/capture_band.py, `1g1v` too; ask before launching). Look for:
@@ -275,7 +309,7 @@ Everything after this section is older history; read it only for a detail.
 5. Older: practice-mode crash logs, 6th star check.
 6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.57 + mod (5k) on top of plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
+Installed: plugin 1.58 + mod (5l), 1.57 (5k), on top of plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

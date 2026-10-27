@@ -274,7 +274,9 @@ SCORE_X_K = 1.039               # GH5's box is ~8 px longer: box, star holder, s
 # frame unit K0; score_bg centre at BG_OFF in that frame).
 K0 = SCORE_K / 1.35
 BG_OFF = (37.011, 16.931)
-SCORE_TEXT_KX = 1.242           # GH5 digits are wider (pitch 19 vs 18) ... (x1.15 more, user 2026-10-25: wider, as WoR)
+# GH5 digits are wider (pitch 19 vs 18) ... (x1.15 more, user 2026-10-25: wider, as WoR); x0.86 (user 2026-10-26, mock
+# docs/mocks/mock_vocals_v4.jpg: "way too stretched", 0.86 as wide, height kept)
+SCORE_TEXT_KX = 1.242 * 0.86
 SCORE_TEXT_KY = 1.147           # ... and taller than WoR's numerals (x0.91, 2026-10-25: WoR's 10.5 x 17 proportions)
 SCORE_TEXT_K = 0.90             # overall score digit size, kept centred on the same line
 SCORE_TEXT_SHIFT = (0.4, -2.0)
@@ -850,6 +852,46 @@ TEXTURES = {
     'WoR_HUD_void': paths.wor('circle_png', 'circle_gradient_64.png'),   # WoR global_textures
 }
 # Multiplier images: (theme texture name, GH3:WoR source). Normal x1..x4, star power x2..x8.
+
+
+# The score box (user 2026-10-26, mock docs/mocks/mock_vocals_v4.jpg): a thicker, lighter rim and a blacker inside,
+# like WoR's on screen. Edits of the shipped pngs (build.py ship), every mode (the note streak box is left alone).
+SCORE_INSIDE_K = 0.45           # the housing's dark inside (33, 36, 33) times this
+SCORE_RIM_GROW = 2              # rim texels added on each side
+SCORE_RIM_LIFT = (1.6, 40)      # rim colour = old * a + b
+
+
+def _score_box_edit(p):
+    import numpy as np
+    from PIL import Image
+    im = Image.open(p).convert('RGBA')
+    a = np.asarray(im).astype(np.float32)
+    lum = a[..., :3].mean(axis=2)
+    inside = (a[..., 3] > 200) & (lum < 70)
+    inside[:, 345:] = False                        # the star holder stays (the gold star covers it)
+    a[inside, :3] *= SCORE_INSIDE_K
+    Image.fromarray(a.clip(0, 255).astype('uint8'), 'RGBA').save(p)
+
+
+def _score_front_edit(p):
+    import numpy as np
+    from PIL import Image, ImageFilter
+    im = Image.open(p).convert('RGBA')
+    a = np.asarray(im).astype(np.float32)
+    rim = a[..., 3] > 200
+    grown = np.asarray(Image.fromarray((rim * 255).astype('uint8')).filter(
+        ImageFilter.MaxFilter(2 * SCORE_RIM_GROW + 1))) > 0
+    # new rim texels take the nearest rim colour (the max of the neighbourhood), then the whole rim is lifted
+    rgb = Image.fromarray(np.where(rim[..., None], a[..., :3], 0).astype('uint8'), 'RGB').filter(
+        ImageFilter.MaxFilter(2 * SCORE_RIM_GROW + 1))
+    a[grown & ~rim, :3] = np.asarray(rgb).astype(np.float32)[grown & ~rim]
+    a[grown & ~rim, 3] = 255
+    k, b = SCORE_RIM_LIFT
+    a[grown, :3] = a[grown, :3] * k + b
+    Image.fromarray(a.clip(0, 255).astype('uint8'), 'RGBA').save(p)
+
+
+ART_EDITS = {'WoR_HUD_score_box': _score_box_edit, 'WoR_HUD_score_front': _score_front_edit}
 MULT_NORMAL = [('WoR_HUD_mult_1', 'HUD_score_nixie_1a'), ('WoR_HUD_mult_2', 'HUD_score_nixie_2a'),
                ('WoR_HUD_mult_3', 'HUD_score_nixie_3a'), ('WoR_HUD_mult_4', 'HUD_score_nixie_4a')]
 MULT_SP = [(f'WoR_HUD_mult_sp{n}', f'HUD_score_nixie_{n}b') for n in (2, 4, 6, 8)]

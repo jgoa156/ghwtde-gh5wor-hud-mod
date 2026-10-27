@@ -51,6 +51,17 @@ MULT_RGB = {1: (255, 180, 180), 2: (243, 169, 64), 3: (128, 236, 68), 4: (175, 1
 MULT_SP_RGB = (225, 240, 150)
 MULT_TEX = {n: f'WoR_HUD_vmult_{n}' for n in (1, 2, 3, 4)}
 MULT_SP_TEX = {n: f'WoR_HUD_vmult_sp{n}' for n in (2, 4, 6, 8)}
+# the "xN" image (mock docs/mocks/mock_vocals_mult_v1.jpg, user 2026-10-27: "not wide enough and the colour is wrong"):
+# WoR's x (~12 tall, bottom left) and digit (~20 tall, its text font 1.2 wide + numeral_A1_b at 0.3 on top) fill the
+# box; pale digit with a glow in the multiplier colour, coloured x, on a dark box tinted the same way. The box is
+# baked into each image (the combo sprite is hidden). (x colour, digit fill, glow, box tint), measured for x4 and x8.
+MULT_STYLE = {
+    1: ((235, 150, 150), (255, 228, 228), (235, 120, 120), (52, 36, 38)),
+    2: ((243, 160, 60), (255, 232, 196), (243, 150, 50), (54, 42, 30)),
+    3: ((110, 220, 70), (226, 255, 210), (100, 220, 60), (36, 50, 34)),
+    4: ((150, 100, 235), (238, 212, 255), (175, 101, 238), (46, 36, 62)),
+    'sp': ((150, 235, 150), (228, 252, 222), (80, 210, 85), (34, 42, 44)),
+}
 
 # ---- geometry (canvas, the mock's boxes: a texture's opaque bounding box is fitted to each)
 BACKING = (141, 457, 386, 494)
@@ -65,9 +76,18 @@ SHEEN = (148, 462, 236, 475)
 COMBO = (241, 463, 279, 487)
 MULT_BOX = (241, 465, 281, 485)              # the "xN" image (40 x 20 canvas = 128 x 64 texels)
 PHRASE = (285, 465, 378, 487)
-SP_CAP = (145, 491.5, 383, 499.5)
-SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (492.5, 498.5)
-SP_MARK = (263.5, 491.5, 265.0, 499.5)       # the strip's 50 % mark
+# star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
+# mark 5 wide, drawn over the highway's top line
+SP_CAP = (145, 491.0, 383, 500.0)
+SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (493.0, 498.0)
+SP_MARK = (262.0, 491.0, 267.0, 500.0)       # the strip's 50 % mark
+SP_BORDER = (144, 490.0, 384, 501.0)
+SP_BORDER_TEX = 'WoR_HUD_v_spborder'
+SP_Z = 4.0                                   # above the vocal highway's lines (its outline sprites: z 2)
+# health meter (mock v5): an inner shadow (top + left) and a white gloss over the meter, and a blurred inner shadow in
+# each lamp cell
+METER_SHADE = 'WoR_HUD_v_meter_shade'
+LAMP_SHADE = 'WoR_HUD_v_lamp_shade'
 SP_SEGS = 3                                  # the DE's setubes on a vocalist: glow0..2
 # the v1 container draws at its layout spot (95, 72) + the container calibration (wor_mp.G_CAL): our descs carry canvas
 # coordinates, so their instances sit at minus that
@@ -83,13 +103,41 @@ VH_DY = 29.0
 LYRIC_BAND_Y, LYRIC_BAND_H, LYRIC_BAND_A = 141.0, 32.0, 0.9
 LYRICS_Y = 142.0
 COMET_SCALE = 0.35                           # WoR's fireball_bg (the DE's: 0.55)
-# the green now line: WoR draws a bright core with a soft green glow down the highway at the pitch comet's x; ours
-# rides in pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below
-# the root; the lines' centres at root y 35 / 137)
-NOW_TEX = 'WoR_HUD_v_nowline'
-NOW_SRC = os.path.join(paths.WOR_EXTRACT, 'basic_gems_png', 'd96d3be3.png')   # a soft vertical column (highway FX)
-NOW_GLOW, NOW_CORE = (20, 190, 20), (150, 255, 120)
-NOW_BOX = (10.0, 35.0 - 48.0, 24.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
+# the now line (mock v3, user 2026-10-26): WoR's green crackling lightning, cyan in star power; ours rides in
+# pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below the root;
+# the lines' centres at root y 35 / 137). NOW_FRAMES bolts per colour, the plugin (1.58) steps through them.
+NOW_FRAMES = 4
+NOW_TEX = [f'WoR_HUD_vnow_g{i}' for i in range(NOW_FRAMES)]
+NOW_SP_TEX = [f'WoR_HUD_vnow_c{i}' for i in range(NOW_FRAMES)]
+NOW_GLOW, NOW_CORE = (20, 200, 20), (190, 255, 150)
+NOW_SP_GLOW, NOW_SP_CORE = (0, 190, 255), (210, 255, 255)
+NOW_BOX = (10.0, 35.0 - 48.0, 28.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
+# white arrowheads on both lines at the now line (mock v4: 10 x 13, on the lines, over the lightning)
+SPIKE_TEX = {'down': 'WoR_HUD_vspike_down', 'up': 'WoR_HUD_vspike_up'}
+SPIKE_W, SPIKE_H = 10.0, 13.0
+# star power (mock v3): a cyan glow band on the top line and along the lyric band's bottom edge, in the root (the top
+# line spans root x -221..880; the lyric band's bottom edge is at root y 157)
+SP_GLOW_TEX = 'WoR_HUD_vsp_glow'
+SP_GLOW_X = (-221.0, 880.0)
+SP_GLOW_Y = (35.0, 157.0)
+SP_GLOW_H = 26.0
+# the highway's background (the DE: white 0.3 tinted teal by its bg_rgba prop): WoR's dim dark
+HIGHWAY_BG_RGBA, HIGHWAY_BG_ALPHA = (0, 0, 0, 255), 0.45
+# notes (mock v5): WoR's thin yellow outline, rectangular, with a warm blur. The DE draws a note as one sprite with
+# the theme's sung-note texture (field c5e00a8d, a 32-row profile: tube rows 7..24) stretched along it, so the end
+# edges are in the texture: one texture per length band (the plugin picks the band from the sprite's width on screen),
+# each with ends ~3 canvas units wide. The connector between notes (field f6faf84b) is blank like WoR.
+NOTE_W = 256
+NOTE_BANDS = [12.0 * 2 ** (i / 2) for i in range(12)]      # lower edges of the length bands, canvas units
+NOTE_TEX = [f'WoR_HUD_vnote_{i}' for i in range(len(NOTE_BANDS))]
+NOTE_RGB, NOTE_CORE, NOTE_GLOW = (255, 244, 60), (255, 255, 190), (255, 215, 70)
+NOTE_EDGE = 3.0                                             # outline thickness, canvas units
+NOTE_H_CANVAS = 15.0                                        # vocal_sung_note_height
+# lyrics (mock v3): WoR's scale 0.4 (the DE: 0.55 x 0.75); sung words WoR blue, the current one WoR yellow
+LYRIC_SCALE = (0.4, 0.4)
+LYRIC_RGBA = {'upcoming': (236, 236, 236, 255), 'current': (254, 233, 53, 255), 'sung': (120, 112, 245, 255)}
+LYRIC_RGBA_DE = {'upcoming': (200, 200, 200, 255), 'current': (240, 60, 240, 255), 'sung': (64, 64, 64, 255)}
+LYRIC_SCALE_DE = (0.55, 0.75)
 LYRIC_FONT = 'WoR_HUD_lyric_a1'
 FONT_SRC = {LYRIC_FONT: paths.wor('ui_shared', 'fontgrid_lyric_a1.fnt.xen')}
 
@@ -145,7 +193,14 @@ def health_desc():
     src = E('needle_src', 'ContainerElement', pos=(0.0, -5.0), dims=(4, 4), just=(0, 0), z=0.5, children=[nd])
     anchor = E('needle_anchor', 'ContainerElement', pos=(anchor_x, ny), dims=(4, 4), just=(0, 0), scale=(k, k),
                rot=-90.0, z=0.5, children=[src])
-    kids = [_fit('meter', 'WoR_HUD_v_health', HEALTH, 0.13), *lamps, anchor,
+    # inner shadows: one over the meter (top + left edge, and the gloss), one per lamp cell, both above the lamps
+    shades = [E('meter_shade', 'SpriteElement', pos=(HEALTH[0], HEALTH[1]), dims=(HEALTH[2] - HEALTH[0], HEALTH[3] - HEALTH[1]),
+                just=(-1, -1), z=0.145, texture=METER_SHADE)]
+    for c in ('red', 'amber', 'green'):
+        cx = gx + LAMP_DX[c] * s
+        shades.append(E(f'lamp_shade_{c}', 'SpriteElement', pos=(cx, gy), dims=(gw, gh), just=(0, 0), z=0.146,
+                        texture=LAMP_SHADE))
+    kids = [_fit('meter', 'WoR_HUD_v_health', HEALTH, 0.13), *lamps, *shades, anchor,
             _fit('sheen', 'WoR_HUD_v_sheen', SHEEN, 0.15, alpha=0.7),
             _sink('red_rgba_sink'), _sink('red_glow_sink')]
     root = E('vocal_health', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=kids)
@@ -160,8 +215,9 @@ def mult_desc():
     kids = [_fit('backing', 'WoR_HUD_v_backing', BACKING, 0.10),
             _fit('stripe', 'WoR_HUD_v_stripe', STRIPE, 0.12, rgba=FRAME_BLUE + (255,)),
             *[_fit(f'div{i}', 'WoR_HUD_v_div', (x - 2.5, 461, x + 2.5, 489), 0.11) for i, x in enumerate(DIVIDERS)],
-            _fit('combo', 'WoR_HUD_v_combo', COMBO, 0.13),
-            E('nixie', 'SpriteElement', pos=MULT_BOX[:2], dims=(MULT_BOX[2] - MULT_BOX[0], MULT_BOX[3] - MULT_BOX[1]),
+            # the box is baked into the "xN" images (MULT_STYLE): the combo art only under them
+            _fit('combo', 'WoR_HUD_v_combo', COMBO, 0.13, alpha=0.0),
+            E('nixie', 'SpriteElement', pos=COMBO[:2], dims=(COMBO[2] - COMBO[0], COMBO[3] - COMBO[1]),
               just=(-1, -1), z=0.2, texture=MULT_TEX[1]),
             _fit('phrase_tube', 'WoR_HUD_v_tube', PHRASE, 0.13),
             _sink('nixie_rgba_sink'), _sink('mult_bg_sink')]
@@ -180,7 +236,9 @@ def sp_desc():
     seg = (x1 - x0) / SP_SEGS
     kids = [_fit('cap', 'WoR_HUD_v_cap', SP_CAP, 0.12),
             E('mark', 'SpriteElement', pos=SP_MARK[:2], dims=(SP_MARK[2] - SP_MARK[0], SP_MARK[3] - SP_MARK[1]),
-              just=(-1, -1), z=0.16, rgba=(25, 25, 30, 255), texture='WoR_HUD_v_cap')]
+              just=(-1, -1), z=0.16, rgba=(20, 20, 24, 255), texture='WoR_HUD_v_cap'),
+            E('border', 'SpriteElement', pos=SP_BORDER[:2], dims=(SP_BORDER[2] - SP_BORDER[0], SP_BORDER[3] - SP_BORDER[1]),
+              just=(-1, -1), z=0.17, texture=SP_BORDER_TEX)]
     for i in range(SP_SEGS):
         # child (x, y) -> screen (y, -x): the sprite's height runs right along the strip, its width across it
         fill = E(f'glow{i}', 'SpriteElement', pos=(0.0, 0.0), dims=(y1 - y0, seg), just=(0, -1), scale=(1.0, 0.0),
@@ -199,32 +257,157 @@ def descs():
     return [health_desc(), mult_desc(), sp_desc()]
 
 
-def _mult_image(n, rgb):
+def _font(name):
+    """A WoR font converted to the PC format (cached under build/fonts_cache)."""
+    import wor_font
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'build', 'fonts_cache', name + '.fnt.xen')
+    if not os.path.exists(out):
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        wor_font.convert(paths.wor('ui_shared', name + '.fnt.xen'), out)
+    return out
+
+
+def _glyphs(font, s, h, rgb, kx=1.0):
     import mock_fail_popup as fonts
-    out = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
-    x = fonts.text(fonts.TEXT, 'x', 26, rgb)
-    x = x.crop(x.getbbox())
-    out.alpha_composite(x, (10, 60 - x.height))
-    d = fonts.text(fonts.TEXT, str(n), 56, rgb)
-    d = d.crop(d.getbbox())
-    for dx in (0, 1):                        # WoR's number reads bolder than one pass of text_a1
-        out.alpha_composite(d, (46 + dx, 60 - d.height))
+    t = fonts.text(font, s, 160, rgb)
+    t = t.crop(t.getbbox())
+    return t.resize((max(1, round(t.width * h / t.height * kx)), h), Image.LANCZOS)
+
+
+def _mult_image(n, style):
+    """The "xN" image with its box (MULT_STYLE), drawn at 6 texels per canvas unit over the COMBO box (38 x 24)."""
+    from PIL import ImageDraw, ImageFilter
+    xc, fill, glow, tint = MULT_STYLE[style]
+    S = 6
+    W, H = round((COMBO[2] - COMBO[0]) * S), round((COMBO[3] - COMBO[1]) * S)
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(out)
+    d.rounded_rectangle((0, 0, W - 1, H - 1), 4 * S, fill=tint + (255,))
+    d.rounded_rectangle((S, S, W - 1 - S, H // 2), 3 * S, fill=tuple(min(255, c + 14) for c in tint) + (255,))
+    text, num_b = _font('fontgrid_text_a1'), _font('fontgrid_numeral_A1_b')
+    x = _glyphs(text, 'x', 12 * S, xc)
+    dg = _glyphs(text, str(n), 20 * S, fill, kx=1.2)
+    over = _glyphs(num_b, str(n), 20 * S, (255, 255, 255), kx=1.2).resize(dg.size, Image.LANCZOS)
+    over.putalpha(over.getchannel('A').point(lambda v: int(v * 0.3)))
+    dg.alpha_composite(over)
+    dx, dy = W - dg.width - 3 * S, (H - dg.height) // 2
+    a = Image.new('L', (W, H), 0)
+    a.paste(dg.getchannel('A'), (dx, dy))
+    a = a.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.GaussianBlur(6.6))
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', (W, H), c) for c in glow] + [a.point(lambda v: min(255, v * 2))]))
+    out.alpha_composite(dg, (dx, dy))
+    out.alpha_composite(x, (2 * S, H - x.height - 3 * S))
+    return out.resize((256, 128), Image.LANCZOS)
+
+
+def _lightning(core, halo, seed):
+    """One frame of the now line: a jagged bolt with a soft halo (64 x 256 texels over NOW_BOX's 28 x 102 units)."""
+    import random
+    from PIL import ImageDraw, ImageFilter
+    W, H = 64, 256
+    kx = W / NOW_BOX[2]
+    rnd = random.Random(seed)
+    pts, y = [], 0.0
+    while y < H:
+        pts.append((W / 2 + rnd.uniform(-2.2, 2.2) * kx, y))
+        y += rnd.uniform(3, 7) * H / NOW_BOX[3]
+    pts.append((W / 2, H))
+
+    def layer(width, blur, rgb, k):
+        m = Image.new('L', (W, H), 0)
+        ImageDraw.Draw(m).line(pts, fill=255, width=max(1, round(width * kx)))
+        m = m.filter(ImageFilter.GaussianBlur(blur * kx)).point(lambda v: min(255, int(v * k)))
+        return Image.merge('RGBA', [Image.new('L', (W, H), c) for c in rgb] + [m])
+    out = layer(10, 7, halo, 1.4)
+    out.alpha_composite(layer(3, 1.2, halo, 2.0))
+    out.alpha_composite(layer(1, 0.4, core, 2.5))
     return out
 
 
-def _now_line():
-    """The extracted soft column tinted green as the glow, with a 4 px copy of it as the bright core (32 x 128)."""
-    col = Image.open(NOW_SRC).convert('RGBA').resize((32, 128), Image.LANCZOS)
+def _spike(direction):
+    """WoR's white arrowhead (vocal_health_meter_needle's shape), 40 x 52 texels, pointing down or up."""
+    from PIL import ImageDraw
+    w, h = 40, 52
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.polygon(((0, 0), (w, 0), (w / 2, h)), fill=(150, 150, 155, 255))
+    d.polygon(((8, 0), (w - 8, 0), (w / 2, h - 12)), fill=(255, 255, 255, 255))
+    return im if direction == 'down' else im.transpose(Image.FLIP_TOP_BOTTOM)
 
-    def tinted(im, rgb, a):
-        lum = im.convert('L')
-        return Image.merge('RGBA', [lum.point(lambda v, m=m: v * m // 255) for m in rgb] +
-                           [Image.eval(Image.composite(lum, Image.new('L', lum.size, 0), im.getchannel('A')),
-                                       lambda v: int(v * a))])
-    out = tinted(col, NOW_GLOW, 0.8)
-    core = tinted(col.resize((4, 128), Image.LANCZOS), NOW_CORE, 1.0)
-    out.alpha_composite(core, (14, 0))
+
+def _sp_glow():
+    """A soft horizontal cyan band (32 x 64): the star power glow on a line."""
+    from PIL import ImageDraw, ImageFilter
+    m = Image.new('L', (32, 64), 0)
+    ImageDraw.Draw(m).rectangle((0, 28, 31, 35), fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(7)).point(lambda v: min(255, int(v * 1.8)))
+    core = Image.new('L', (32, 64), 0)
+    ImageDraw.Draw(core).rectangle((0, 30, 31, 33), fill=255)
+    core = core.filter(ImageFilter.GaussianBlur(1))
+    out = Image.merge('RGBA', [Image.new('L', (32, 64), c) for c in NOW_SP_GLOW] + [m])
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', (32, 64), c) for c in (150, 250, 255)] + [core]))
     return out
+
+
+def _note(i):
+    """Note texture for length band i: the DE's 32-row profile (tube rows 7..24) as WoR's yellow outline with a warm
+    blur, end edges NOTE_EDGE units wide for a note of the band's middle length."""
+    from PIL import ImageDraw, ImageFilter
+    W, H = NOTE_W, 32
+    S = 4                                                    # drawn at 4x
+    mid = NOTE_BANDS[i] * 2 ** 0.25                          # geometric middle of the band
+    k = H / (NOTE_H_CANVAS * 32 / 17)                        # texels per canvas unit, vertically
+    edge_y = max(1, round(NOTE_EDGE * k * S))
+    edge_x = max(1, round(NOTE_EDGE * W / mid * S))
+    big = (W * S, H * S)
+    box = (edge_x // 2, 7 * S, W * S - 1 - edge_x // 2, 24 * S)
+
+    def outline(fill, ex, ey, inset=0):
+        m = Image.new('L', big, 0)
+        dr = ImageDraw.Draw(m)
+        x0, y0, x1, y1 = box[0] + inset, box[1] + inset, box[2] - inset, box[3] - inset
+        dr.rectangle((x0, y0, x1, y0 + ey), fill=fill)
+        dr.rectangle((x0, y1 - ey, x1, y1), fill=fill)
+        dr.rectangle((x0, y0, x0 + ex, y1), fill=fill)
+        dr.rectangle((x1 - ex, y0, x1, y1), fill=fill)
+        return m
+    glow = outline(255, edge_x + 2 * S, edge_y + S).filter(ImageFilter.GaussianBlur(2.8 * k * S))
+    out = Image.merge('RGBA', [Image.new('L', big, c) for c in NOTE_GLOW] + [glow.point(lambda v: min(255, int(v * 1.35)))])
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', big, c) for c in NOTE_RGB] + [outline(255, edge_x, edge_y)]))
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', big, c) for c in NOTE_CORE] +
+                                    [outline(255, max(1, edge_x // 3), max(1, edge_y // 3), inset=edge_y // 3)]))
+    return out.resize((W, H), Image.LANCZOS)
+
+
+def _shade(w, h, top, left, gloss, blur):
+    """An inner shadow for a w x h canvas box (8 texels per unit): dark at the top (and left) edges, blurred, with an
+    optional white gloss across the top half."""
+    from PIL import ImageDraw, ImageFilter
+    S = 8
+    W, H = round(w * S), round(h * S)
+    m = Image.new('L', (W + 16 * S, H + 16 * S), 255)
+    ImageDraw.Draw(m).rectangle((8 * S + left * S, 8 * S + top * S, 8 * S + W - S, 8 * S + H - S), fill=0)
+    m = m.filter(ImageFilter.GaussianBlur(blur * S)).crop((8 * S, 8 * S, 8 * S + W, 8 * S + H))
+    out = Image.merge('RGBA', [Image.new('L', (W, H), 0)] * 3 + [m.point(lambda v: int(v * 0.85))])
+    if gloss:
+        g = Image.new('L', (W, H), 0)
+        dr = ImageDraw.Draw(g)
+        for y in range(round(12 / 25 * H)):
+            dr.line((2 * S, S + y, W - 2 * S, S + y), fill=int(150 * (1 - y / (12 / 25 * H)) ** 1.3))
+        out.alpha_composite(Image.merge('RGBA', [Image.new('L', (W, H), 255)] * 3 + [g]))
+    return out
+
+
+def _sp_border():
+    """The star power strip's border (SP_BORDER, 8 texels per unit): a dark outer edge and a light top lip."""
+    from PIL import ImageDraw
+    S = 8
+    w, h = SP_BORDER[2] - SP_BORDER[0], SP_BORDER[3] - SP_BORDER[1]
+    im = Image.new('RGBA', (round(w * S), round(h * S)), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, im.width - 1, im.height - 1), 3 * S, outline=(20, 20, 24, 255), width=S)
+    d.line((2 * S, S + S // 2, im.width - 2 * S, S + S // 2), fill=(150, 150, 158, 255), width=S)
+    return im
 
 
 def textures():
@@ -233,32 +416,109 @@ def textures():
     r, g, b, a = cap.split()
     tinted = Image.merge('RGBA', [c.point(lambda v, m=m: v * m // 255) for c, m in zip((r, g, b), (255, 255, 255))] + [a])
     out[SP_FILL] = tinted.transpose(Image.ROTATE_90)
-    out[NOW_TEX] = _now_line()
-    out.update({MULT_TEX[n]: _mult_image(n, MULT_RGB[n]) for n in MULT_TEX})
-    out.update({MULT_SP_TEX[n]: _mult_image(n, MULT_SP_RGB) for n in MULT_SP_TEX})
+    for i in range(NOW_FRAMES):
+        out[NOW_TEX[i]] = _lightning(NOW_CORE, NOW_GLOW, 11 + i)
+        out[NOW_SP_TEX[i]] = _lightning(NOW_SP_CORE, NOW_SP_GLOW, 11 + i)
+    out.update({SPIKE_TEX[k]: _spike(k).resize((32, 64), Image.LANCZOS) for k in SPIKE_TEX})   # power-of-two sizes
+    out[SP_GLOW_TEX] = _sp_glow()
+    out.update({NOTE_TEX[i]: _note(i) for i in range(len(NOTE_TEX))})
+    out[METER_SHADE] = _shade(HEALTH[2] - HEALTH[0], HEALTH[3] - HEALTH[1], 1.0, 1.0, True, 1.2).resize((512, 128), Image.LANCZOS)
+    out[LAMP_SHADE] = _shade(GREEN[2] - GREEN[0], GREEN[3] - GREEN[1], 2.5, 1.0, False, 2.6).resize((128, 128), Image.LANCZOS)
+    out[SP_BORDER_TEX] = _sp_border().resize((1024, 64), Image.LANCZOS)
+    out.update({MULT_TEX[n]: _mult_image(n, n) for n in MULT_TEX})
+    out.update({MULT_SP_TEX[n]: _mult_image(n, 'sp') for n in MULT_SP_TEX})
     return out
 
 
 def sources():
     s = {name: {'src': os.path.join(d, n + '.png'), 'box': None, 'flip': False} for name, (d, n) in ART.items()}
     s[SP_FILL] = {'src': os.path.join(UI, 'vocals_meter_cap.png'), 'rotated': 90, 'box': None, 'flip': False}
-    s[NOW_TEX] = {'src': NOW_SRC, 'glow': list(NOW_GLOW), 'core': list(NOW_CORE), 'box': None, 'flip': False}
+    for name in NOW_TEX + NOW_SP_TEX + list(SPIKE_TEX.values()) + NOTE_TEX + [SP_GLOW_TEX, METER_SHADE, LAMP_SHADE,
+                                                                              SP_BORDER_TEX]:
+        s[name] = {'src': 'generated (tools/wor_vocals.py)', 'box': None, 'flip': False}
     for n in MULT_TEX:
-        s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1', 'text': f'x{n}', 'rgb': list(MULT_RGB[n]), 'box': None, 'flip': False}
+        s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': str(n), 'box': None, 'flip': False}
     for n in MULT_SP_TEX:
-        s[MULT_SP_TEX[n]] = {'src': 'fontgrid_text_a1', 'text': f'x{n}', 'rgb': list(MULT_SP_RGB), 'box': None, 'flip': False}
+        s[MULT_SP_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': 'sp', 'box': None, 'flip': False}
     return s
 
 
 def theme_extra():
-    """The vocalist's multiplier images (normal / star power) for semultipliernixie (the lyric font field is set by
-    build.py: the copied WT+ row may already have one)."""
+    """The vocalist's multiplier images (normal / star power) for semultipliernixie, and the note textures read by the
+    DE's per-theme vocal setup (0x74586fa3: sung c5e00a8d, connector f6faf84b). The lyric font field is set by
+    build.py: the copied WT+ row may already have one."""
     out = ''
     for key, names in (('112feba3', [MULT_TEX[n] for n in (1, 2, 3, 4)]),
                        ('bc95780d', [MULT_SP_TEX[n] for n in (2, 4, 6, 8)])):
         out += (f'\t\t\t\tStructArray {key}\n\t\t\t\t{{\n\t\t\t\t\tArrayQBKey\n\t\t\t\t\t[\n'
                 + ''.join(f'\t\t\t\t\t\t{t}\n' for t in names) + '\t\t\t\t\t]\n\t\t\t\t}\n')
+    out += f'\t\t\t\tStructQBKey c5e00a8d = {NOTE_TEX[len(NOTE_TEX) // 2]}\n'
+    out += '\t\t\t\tStructQBKey f6faf84b = WoR_HUD_blank\n'
     return out
+
+
+def _qb_rgba(c):
+    return ':a{' + ''.join(f'%i({v})' for v in c) + ':a}'
+
+
+def global_sections(fx_text):
+    """QB globals: the DE's comet particles as they are (restored with other themes) and ours with the "miss" sparks
+    invisible (mock v3: the purple ball when not singing); the note colours (the DE tints its teal note art with
+    vocal_gem_colors; ours are coloured in the texture); our star power flag for the plugin."""
+    import re
+    src = fx_text[fx_text.index('SectionStruct vocals_comet_particle_effects'):]
+    depth, end = 0, None
+    for k, ch in enumerate(src):
+        depth += {'{': 1, '}': -1}.get(ch, 0)
+        if ch == '}' and depth == 0:
+            end = k + 1
+            break
+    de = src[:end]
+    wor = de.replace('vocals_comet_particle_effects', 'WoR_HUD_vcomet_wor', 1)
+    # every "miss" struct: start colour alpha 0
+    wor = re.sub(r'(StructStruct miss\s*\{\s*StructHeader\s*\{\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*\d+\s+\d+\s+\d+\s+)\d+',
+                 r'\g<1>0', wor)
+    assert wor.count('StructStruct miss') == de.count('StructStruct miss') and ' 255 ]' not in wor[wor.find('StructStruct miss'):][:200]
+    de = de.replace('vocals_comet_particle_effects', 'WoR_HUD_vcomet_de', 1)
+
+    def gems(name, c):
+        return (f'SectionArray {name}\n{{\n\tArrayArray\n\t[\n'
+                + ''.join(f'\t\tArrayInteger\n\t\t[\n' + ''.join(f'\t\t\t{v}\n' for v in c) + '\t\t]\n' for _ in range(7))
+                + '\t]\n}\n')
+    return '\n'.join([de, wor, gems('WoR_HUD_vgem_de', (64, 255, 255, 255)), gems('WoR_HUD_vgem_wor', (255, 255, 255, 255)),
+                      'SectionInteger WoR_HUD_vocal_sp 0\n'])
+
+
+def _globals_body(ours):
+    scale = LYRIC_SCALE if ours else LYRIC_SCALE_DE
+    col = LYRIC_RGBA if ours else LYRIC_RGBA_DE
+    tag = 'wor' if ours else 'de'
+    return (f'\t\t:i $change$$vocal_lyric_font_scale$ = %vec2({scale[0]},{scale[1]})\n'
+            f'\t\t:i $change$$vocal_scrolling_lyric_rgba$ = {_qb_rgba(col["upcoming"])}\n'
+            f'\t\t:i $change$$vocal_scrolling_word_highlight$ = {_qb_rgba(col["current"])}\n'
+            f'\t\t:i $change$$vocal_scrolling_lyric_after$ = {_qb_rgba(col["sung"])}\n'
+            f'\t\t:i $change$$vocal_gem_colors$ = ~$WoR_HUD_vgem_{tag}$\n'
+            f'\t\t:i $change$$vocals_comet_particle_effects$ = ~$WoR_HUD_vcomet_{tag}$\n')
+
+
+# The DE's vocal globals switched with the theme: the DE's per-theme vocal setup 0x74586fa3 (notes, lyric font) is
+# wrapped (plugin 1.58 swap), and setup_hud runs the same at every song (tools/wor_battle.py's wrapper).
+SCRIPTS = (
+    'Script WoR_HUD_vocals_globals [\n'
+    '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+    + _globals_body(True) +
+    '\t:i else \n'
+    + _globals_body(False) +
+    '\t:i endif\n'
+    '\t:i $change$$WoR_HUD_vocal_sp$ = %i(0)\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_vocal_note_setup [\n'
+    '\t:i $WoR_HUD_vocal_note_setup_orig$ isNull\n'
+    '\t:i $WoR_HUD_vocals_globals$ isNull\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_vocal_note_setup_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: vocal note setup placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n')
 
 
 def _panel_in_v1(d, dy):
@@ -277,7 +537,8 @@ def _panel_in_v1(d, dy):
     except ValueError:
         pass
     d = d[:a] + blk + d[b:]
-    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=2.0, desc=name).render(0)
+    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=SP_Z if name == SP_NAME else 2.0,
+                desc=name).render(0)
               for child, name in (('BAND_top_meter', HEALTH_NAME), ('vocal_multiplier_star', SP_NAME))]
     return wor_mp._append_children(d, 'v1', blocks)
 
@@ -303,10 +564,66 @@ def vocal_highway_desc(de_text):
         d = _edit_first(d, lid, lambda blk: _band(blk))
     d = desc_edit.set_elem(d, 'lyrics', pos=(303.0, LYRICS_Y))
     d = desc_edit.set_elem(d, 'fireball_bg', scale=(COMET_SCALE, COMET_SCALE))
+    # the highway's background: WoR's dim dark; its bg_rgba prop (the DE's teal) lands on a hidden stand-in
+    d = _edit_first(d, 'bG', lambda blk: _rgba(blk, HIGHWAY_BG_RGBA, HIGHWAY_BG_ALPHA))
+    d = _retarget_to_new_root_child(d, 'bg_rgba', 'WoR_bg_sink')
+    d = wor_mp._append_children(d, 'root', [E('WoR_bg_sink', 'SpriteElement', dims=(4, 4), alpha=0.0,
+                                               texture='WoR_HUD_blank').render(0)])
+    # the now line (the plugin steps through the frames, green or cyan by WoR_HUD_vocal_sp) and the arrowheads
     xc, top, w, h = NOW_BOX
-    line = E('WoR_now_line', 'SpriteElement', pos=(xc, top), dims=(w, h), just=(0, -1), z=0.5, texture=NOW_TEX,
-             blend='Add').render(0)
-    return wor_mp._append_children(d, 'pitch_area', [line])
+    kids = [E('WoR_now_line', 'SpriteElement', pos=(xc, top), dims=(w, h), just=(0, -1), z=0.5, texture=NOW_TEX[0],
+              blend='Add').render(0),
+            E('WoR_spike_top', 'SpriteElement', pos=(xc, top - 1.0), dims=(SPIKE_W, SPIKE_H), just=(0, -1), z=0.6,
+              texture=SPIKE_TEX['down']).render(0),
+            E('WoR_spike_bottom', 'SpriteElement', pos=(xc, top + h + 1.0), dims=(SPIKE_W, SPIKE_H), just=(0, 1), z=0.6,
+              texture=SPIKE_TEX['up']).render(0)]
+    d = wor_mp._append_children(d, 'pitch_area', kids)
+    # star power glow bands (the plugin fades them in while WoR_HUD_vocal_sp is set)
+    glows = [E(f'WoR_sp_glow_{i}', 'SpriteElement', pos=(SP_GLOW_X[0], y), dims=(SP_GLOW_X[1] - SP_GLOW_X[0], SP_GLOW_H),
+               just=(-1, 0), z=2.5, alpha=0.0, texture=SP_GLOW_TEX, blend='Add').render(0)
+             for i, y in enumerate(SP_GLOW_Y)]
+    return wor_mp._append_children(d, 'root', glows)
+
+
+def _root_child_count(d):
+    """Number of children of the desc's root element (a prop path addresses a child by its index)."""
+    import wor_versus as V
+    a, b = V._element_bounds(d, 'root')
+    blk = d[a:b]
+    j = blk.index('[', blk.index('StructArray children'))
+    sq = br = n = 0
+    for k in range(j, len(blk)):
+        ch = blk[k]
+        sq += {'[': 1, ']': -1}.get(ch, 0)
+        br += {'{': 1, '}': -1}.get(ch, 0)
+        if sq == 0:
+            break
+        if sq == 1 and br == 0 and blk.startswith('StructHeader', k):
+            n += 1
+    return n
+
+
+def _retarget_to_new_root_child(d, prop, lid):
+    """Point prop's path at a child of root named lid that will be appended next (index = current child count)."""
+    i = d.index(f'StructQBKey name = {prop}\n')
+    a = d.rindex('StructArray path', 0, i)
+    j = d.index('[', a)
+    depth = 0
+    for e in range(j, i):
+        depth += {'[': 1, ']': -1}.get(d[e], 0)
+        if depth == 0:
+            break
+    path = ('[\n\tStructHeader\n\t{\n\t\tStructQBKey validatelocalid = root\n\t}\n'
+            f'\tStructHeader\n\t{{\n\t\tStructInt index = {_root_child_count(d)}\n\t\tStructQBKey validatelocalid = {lid}\n'
+            '\t\tStructQBKey includeparentowned = false\n\t}\n]')
+    return d[:j] + path + d[e + 1:]
+
+
+def _rgba(blk, rgba, alpha):
+    import re
+    blk = re.sub(r'StructFloat alpha = \S+', f'StructFloat alpha = {alpha:.2f}', blk, count=1)
+    return re.sub(r'(StructArray rgba\s*\{\s*ArrayInteger\s*\[)[^\]]*(\])',
+                  lambda mm: mm.group(1) + '\n' + ''.join(f'\t{v}\n' for v in rgba) + mm.group(2), blk, count=1)
 
 
 def _edit_first(d, lid, fn):
@@ -346,6 +663,7 @@ def edit_layout(config, d):
         d = desc_edit.set_elem(d, 'player_meter', just=(-1, -1))
     except ValueError:
         pass                                 # no float just array: the WT+ instance is left / top already
-    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=2.0, desc=name).render(0)
+    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=SP_Z if name == SP_NAME else 2.0,
+                desc=name).render(0)
               for child, name in (('BAND_top_meter', HEALTH_NAME), ('vocal_multiplier_star', SP_NAME))]
     return wor_mp._append_children(d, 'v1', blocks)

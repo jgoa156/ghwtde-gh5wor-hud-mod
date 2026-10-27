@@ -885,6 +885,10 @@ namespace
 		  "star power awarded: Band Hero's sound (= WoR's) by default with the WoR theme" },
 		{ 0x513316d1 /* Create_HandsOfGod */, 0xc1862c7b /* wor_hud_create_handsofgod */, 0xba256701 /* _orig */,
 		  "you rock: WoR's exploding text, lightning and explosion with the WoR You Rock theme" },
+		// 1.58: the DE's per-theme vocal setup (note textures, lyric font) also sets the DE's vocal globals for this theme
+		// (lyric size / colours, note colours, comet sparks: tools/wor_vocals.py WoR_HUD_vocals_globals)
+		{ 0x74586fa3 /* vocal note setup by HUD theme */, 0xc562eff5 /* wor_hud_vocal_note_setup */, 0x1a8c9562 /* _orig */,
+		  "vocals: per-theme note setup wrapped (WoR lyrics, notes and comet with the WoR theme)" },
 	};
 
 	uint8_t *find_symbol(uint32_t checksum)
@@ -1128,9 +1132,23 @@ namespace
 			f32(card, kElementZ) = z;
 	}
 
-	// 1.40: the band bulb's expand-out (WoR: the bulb grows out of the score group from x2 up)
-	struct Grow { void *e = nullptr; double t0 = 0.0; float sx = 1.0f, sy = 1.0f; };
+	// 1.40: the band bulb's popup; 1.58: WoR's (HUD_setup_band_mult_animation): it slides out from behind the score box
+	// (from its spot + kBulbFrom at kBulbFromScale) in kBulbPopupTime, the orange glow sprite next to it flashing
+	struct Grow { void *e = nullptr, *glow = nullptr; double t0 = 0.0; float sx = 1.0f, sy = 1.0f, x = 0.0f, y = 0.0f; };
 	Grow g_grow[4];
+
+	// the bulb's glow sibling (texture kBandBulbGlow, same parent)
+	void *bulb_glow_of(void *e)
+	{
+		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		if (!parent)
+			return nullptr;
+		for (void *c = *reinterpret_cast<void **>(field(parent, kElementFirstChild)); c;
+		     c = *reinterpret_cast<void **>(field(c, kElementNextSibling)))
+			if (texture_of(c) == kBandBulbGlow)
+				return c;
+		return nullptr;
+	}
 
 	void bulb_grow(void *e)
 	{
@@ -1145,6 +1163,9 @@ namespace
 		{
 			slot->sx = f32(e, kElementScale);
 			slot->sy = f32(e, kElementScale + 4);
+			slot->x = f32(e, kElementPos);
+			slot->y = f32(e, kElementPos + 4);
+			slot->glow = bulb_glow_of(e);
 		}
 		slot->e = e;
 		slot->t0 = now();
@@ -1156,16 +1177,26 @@ namespace
 		{
 			if (g.e != e || g.t0 <= 0.0)
 				continue;
-			const double u = (now() - g.t0) / 0.3;
-			float k = 1.0f;
+			const double u = (now() - g.t0) / kBulbPopupTime;
+			float k = 1.0f, flash = 0.0f;
 			if (u < 1.0)
 			{
-				const float x = static_cast<float>(u);            // ease-out with a little overshoot
-				k = 0.2f + 0.8f * (1.0f + 2.2f * (x - 1.0f) * (x - 1.0f) * (x - 1.0f) + 1.2f * (x - 1.0f) * (x - 1.0f));
+				const float x = static_cast<float>(u);
+				k = x * x * (3.0f - 2.0f * x);                    // smooth start and stop
+				flash = 1.0f - x;
 			}
 			else
 				g.t0 = 0.0;
-			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, g.sx * k, g.sy * k, 0, 0);
+			const float s = kBulbFromScale + (1.0f - kBulbFromScale) * k;
+			const float px = g.x + kBulbFrom[0] * (1.0f - k), py = g.y + kBulbFrom[1] * (1.0f - k);
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, g.sx * s, g.sy * s, 0, 0);
+			reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, px, py, 1);
+			if (g.glow)
+			{
+				reinterpret_cast<SetScaleFn>(kSetScale)(g.glow, nullptr, g.sx * s, g.sy * s, 0, 0);
+				reinterpret_cast<SetPosFn>(kSetPos)(g.glow, nullptr, px, py, 1);
+				set_alpha(g.glow, flash);
+			}
 		}
 	}
 
@@ -1212,6 +1243,89 @@ namespace
 			}
 	}
 
+	// ---- 1.58 vocals (tools/wor_vocals.py, mock docs/mocks/mock_vocals_v5.jpg)
+	// WoR_HUD_vocal_sp: a QB integer the star power wrappers set while the vocalist is in star power (symbol value +0xc)
+	bool vocal_sp()
+	{
+		const uint8_t *e = find_symbol(kVocalSpFlag);
+		return e && *reinterpret_cast<const int32_t *>(e + 0xc) != 0;
+	}
+
+	// a texture change sizes a sprite to the new texture: keep its dims
+	void set_texture_keep_dims(void *e, uint32_t t)
+	{
+		const float w = f32(e, kElementDims), h = f32(e, kElementDims + 4);
+		set_texture(e, t);
+		if (f32(e, kElementDims) != w || f32(e, kElementDims + 4) != h)
+			reinterpret_cast<SetDimsFn>(kSetDims)(e, nullptr, w, h, 0);
+	}
+
+	// width on screen: dims x the x scales of the element and its ancestors
+	float screen_width(void *e)
+	{
+		float w = f32(e, kElementDims);
+		int depth = 0;
+		for (void *p = e; p && depth < 16; ++depth, p = *reinterpret_cast<void **>(field(p, kElementParent)))
+			w *= f32(p, kElementScale);
+		return fabsf(w);
+	}
+
+	// notes: the DE stretches one texture along each note, so the ends are in the texture: one per length band
+	int g_vnote_logged = 0;
+
+	void vocal_note(void *e, uint32_t tex)
+	{
+		const float w = screen_width(e);
+		constexpr int n = sizeof(kVNote) / sizeof(kVNote[0]);
+		int band = 0;
+		while (band + 1 < n && w >= kVNoteBand[band + 1])
+			++band;
+		if (g_vnote_logged < 6)
+		{
+			++g_vnote_logged;
+			log("vocal note: dims %.1f x %.1f, on screen %.1f wide -> band %d", f32(e, kElementDims), f32(e, kElementDims + 4), w, band);
+		}
+		if (kVNote[band] != tex)
+			set_texture_keep_dims(e, kVNote[band]);
+	}
+
+	// the now line: green lightning, cyan in star power, a new bolt every 1/20 s
+	void vocal_now(void *e, uint32_t tex)
+	{
+		constexpr int frames = sizeof(kVNow[0]) / sizeof(kVNow[0][0]);
+		const uint32_t want = kVNow[vocal_sp() ? 1 : 0][static_cast<int>(now() * 20.0) % frames];
+		if (want != tex)
+			set_texture_keep_dims(e, want);
+	}
+
+	bool is_vocal_now(uint32_t tex)
+	{
+		for (const auto &family : kVNow)
+			for (uint32_t t : family)
+				if (t == tex)
+					return true;
+		return false;
+	}
+
+	bool is_vocal_note(uint32_t tex)
+	{
+		for (uint32_t t : kVNote)
+			if (t == tex)
+				return true;
+		return false;
+	}
+
+	// the star power glow bands: fade in / out with the flag
+	void vocal_sp_glow(void *e)
+	{
+		const float target = vocal_sp() ? 1.0f : 0.0f;
+		float a = f32(e, kElementAlpha);
+		a += (target - a) * 0.15f;
+		if (fabsf(a - target) < 0.01f)
+			a = target;
+		set_alpha(e, a);
+	}
+
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
 		if (element)
@@ -1225,6 +1339,12 @@ namespace
 				vs_needle(element);
 			if (tex == kStarBar || tex == kProgFill)
 				score_lead_from(element, tex);
+			if (is_vocal_note(tex))
+				vocal_note(element, tex);
+			else if (is_vocal_now(tex))
+				vocal_now(element, tex);
+			else if (tex == kVSpGlow)
+				vocal_sp_glow(element);
 			for (const Grow &g : g_grow)
 				if (g.e == element && g.t0 > 0.0)
 				{
@@ -1954,7 +2074,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.57 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.58 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

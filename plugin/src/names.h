@@ -162,4 +162,16 @@ static const uint32_t kStockLights[12][2] = { { 0xb2f82657, 0 }, { 0xc5ff16c1, 1
 // band score group (tools/wor_band.py): WoR's bulb textures (the expand-out starts when one replaces blank or another bulb)
 static const uint32_t kBandBulb[6] = { 0x599d17e2, 0xc0944658, 0xb79376ce, 0x29f7e36d, 0xc7f98241, 0x2041af46 };
 static const uint32_t kBlankTex = 0xf8b85bcb;
+// 1.58: the bulb popup (WoR HUD_setup_band_mult_animation): from behind the score box at half size, 0.3 s; the
+// orange glow (Add) flashes with it
+static const uint32_t kBandBulbGlow = 0xa2f49e35;
+static const float kBulbFrom[2] = { 67.7407f, 18.3704f };   // canvas units
+static const float kBulbFromScale = 0.5000f, kBulbPopupTime = 0.3000f;
+// 1.58 vocals (tools/wor_vocals.py): note textures by on-screen length band, the now line frames (green / star
+// power cyan), the star power glow bands, the vocalist star power flag (a QB global set by the SP wrappers)
+static const uint32_t kVNote[12] = { 0x9b1e3230, 0xec1902a6, 0x7510531c, 0x0217638a, 0x9c73f629, 0xeb74c6bf, 0x727d9705, 0x057aa793, 0x95c5ba02, 0xe2c28a94, 0x19802f73, 0x6e871fe5 };
+static const float kVNoteBand[12] = { 12.000f, 16.971f, 24.000f, 33.941f, 48.000f, 67.882f, 96.000f, 135.765f, 192.000f, 271.529f, 384.000f, 543.058f };
+static const uint32_t kVNow[2][4] = { { 0xb7c84163, 0xc0cf71f5, 0x59c6204f, 0x2ec110d9 }, { 0xd3a48467, 0xa4a3b4f1, 0x3daae54b, 0x4aadd5dd } };
+static const uint32_t kVSpGlow = 0x1bbc4b8d;
+static const uint32_t kVocalSpFlag = 0xa9aedfd3;
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

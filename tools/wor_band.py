@@ -24,10 +24,20 @@ DIGIT_SRC = {n: os.path.join(WOR_ZIG, f'band_HUD_multiplier_{w}.png')
              for n, w in ((1, 'one'), (2, 'two'), (3, 'three'), (4, 'four'), (6, 'six'), (8, 'eight'))}
 BULB_TEX = {n: f'WoR_HUD_bandbulb_{n}' for n in DIGIT_SRC}
 BULB_ID = 'band_bulb'
-# WoR's bulb: 128 px art; the digit (64 px, scale 0.8) and the "x" (32 px, scale 0.9) centred at these points of it
+# WoR's bulb (uidesc_star_meter band_multiplier): 128 px art; the digit (64 px, scale 0.8) and band_HUD_bulb_x (32 px,
+# scale 0.9) centred at these points of it, both at rot_angle -10 (user 2026-10-26, mock docs/mocks/mock_vocals_v4.jpg)
 DIGIT_C, DIGIT_S = (64 - 23.7687, 64 - 23.9484), 0.8
 X_C, X_S = (64 - 33.3245, 64 - 3.69682), 0.9
-X_RGB = (255, 170, 60)                   # the nixie's orange (WoR's bulb_x art is not in our extract: WoR's text font)
+X_SRC = os.path.join(WOR_ZIG, 'band_HUD_bulb_x.png')
+TILT = 10.0                              # degrees counter-clockwise on screen (WoR's rot_angle -10)
+# the popup's orange flash: band_HUD_multiplier_bulb_Glow01, Add, rgba 255,128,0 (alpha driven by the plugin)
+GLOW_TEX, GLOW_SRC = 'WoR_HUD_bandbulb_glow', os.path.join(WOR_ZIG, 'band_HUD_multiplier_bulb_Glow01.png')
+GLOW_ID = 'band_bulb_glow'
+# the popup (WoR HUD_setup_band_mult_animation): from its spot + (118, 32) in the score frame at scale 0.5, 0.3 s
+# (the score frame's units are wor_1g.K0 canvas units)
+POPUP_FROM = (118.0 * 0.775 / 1.35, 32.0 * 0.775 / 1.35)
+POPUP_SCALE, POPUP_TIME = 0.5, 0.3
+TEST_CYCLE = (1, 2, 3, 4, 2, 4, 6, 8)   # x1..x4, then star power x2..x8 (every 2 s, tests/capture_band.py --bulb-cycle)
 # placement on the 1-player canvas (the score group's own coordinates): the bulb left of the score box
 BULB_C = (-140.0, -6.0)                  # from wor_1g.SCORE_C
 BULB_D = 84.0                            # drawn size of the 128 px bulb
@@ -49,25 +59,33 @@ WTPLUS_PROPS = ['multiplier_text', 'band_mult_text'] + [
 
 def _bulb(n):
     from PIL import Image
-    import mock_fail_popup as fonts
     out = Image.open(BULB_SRC).convert('RGBA')
-    d = Image.open(DIGIT_SRC[n]).convert('RGBA')
-    s = round(64 * DIGIT_S)
-    d = d.resize((s, s), Image.LANCZOS)
-    out.alpha_composite(d, (round(DIGIT_C[0] - s / 2), round(DIGIT_C[1] - s / 2)))
-    x = fonts.text(fonts.TEXT, 'x', round(32 * X_S * 0.55), X_RGB)
-    x = x.crop(x.getbbox())
-    out.alpha_composite(x, (round(X_C[0] - x.width / 2), round(X_C[1] - x.height / 2)))
+    for src, c, s in ((DIGIT_SRC[n], DIGIT_C, 64 * DIGIT_S), (X_SRC, X_C, 32 * X_S)):
+        im = Image.open(src).convert('RGBA').resize((round(s), round(s)), Image.LANCZOS)
+        im = im.rotate(TILT, Image.BICUBIC, expand=True)
+        out.alpha_composite(im, (round(c[0] - im.width / 2), round(c[1] - im.height / 2)))
     return out
 
 
+def _glow():
+    from PIL import Image
+    im = Image.open(GLOW_SRC).convert('RGBA')
+    r, g, b, a = im.split()
+    lum = Image.merge('RGB', (r, g, b)).convert('L')
+    return Image.merge('RGBA', (lum, lum.point(lambda v: v // 2), lum.point(lambda v: 0), a))
+
+
 def textures():
-    return {BULB_TEX[n]: _bulb(n) for n in DIGIT_SRC}
+    out = {BULB_TEX[n]: _bulb(n) for n in DIGIT_SRC}
+    out[GLOW_TEX] = _glow()
+    return out
 
 
 def sources():
-    return {BULB_TEX[n]: {'src': BULB_SRC, 'digit': DIGIT_SRC[n], 'x_font': 'fontgrid_text_a1', 'box': None, 'flip': False}
-            for n in DIGIT_SRC}
+    out = {BULB_TEX[n]: {'src': BULB_SRC, 'digit': DIGIT_SRC[n], 'x': X_SRC, 'tilt': TILT, 'box': None, 'flip': False}
+           for n in DIGIT_SRC}
+    out[GLOW_TEX] = {'src': GLOW_SRC, 'rgb': [255, 128, 0], 'box': None, 'flip': False}
+    return out
 
 
 def _is_tube(lid):
@@ -97,6 +115,8 @@ def score_desc():
     sc = wor_1g.SCORE_C
     meter.children.append(E(BULB_ID, 'SpriteElement', pos=(sc[0] + BULB_C[0], sc[1] + BULB_C[1]), dims=(BULB_D, BULB_D),
                             just=(0, 0), z=8.0, texture='WoR_HUD_blank'))
+    meter.children.append(E(GLOW_ID, 'SpriteElement', pos=(sc[0] + BULB_C[0], sc[1] + BULB_C[1]), dims=(BULB_D, BULB_D),
+                            just=(0, 0), z=8.1, alpha=0.0, texture=GLOW_TEX, blend='Add'))
     root = E(ROOT_ID, 'ContainerElement', pos=(0, 0), dims=(1280, 720), just=(-1, -1), children=[meter])
     # the 1-player props, then the WT+ band meter's: any target we dropped (tube lights, segments) or never had (lanes,
     # icons, multiplier text) becomes a hidden stand-in
@@ -171,9 +191,30 @@ SCRIPTS = (
     f'\t\t\t\t\t\t:i $sp_textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in (2, 4, 6, 8))}:a}}\n'
     '\t\t\t\t\t:i :s}\n'
     '\t\t\t\t:i :s}\n'
+    # test harness (tests/capture_band.py --bulb-cycle): every bulb in turn, each with its popup
+    '\t\t\t\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestBulbCycle")$default$ = %i(0)\n'
+    '\t\t\t\t:i if (%GLOBAL%$value$ = %i(1))\n'
+    '\t\t\t\t\t:i $spawnscriptnow$$WoR_HUD_test_bulb_cycle$$params$ = :s{$id$ = %GLOBAL%$WoR_HUD_bm_id$:s}\n'
+    '\t\t\t\t:i endif\n'
     '\t\t\t:i endif\n'
     '\t\t:i endif\n'
     '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_test_bulb_cycle [\n'
+    f'\t:i $textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in TEST_CYCLE)}:a}}\n'
+    '\t:i $printf$%s("WoR_HUD: test bulb cycle on")\n'
+    '\t:i $wait$%f(5.0)$seconds$\n'
+    '\t:i while \n'
+    '\t\t:i $i$ = %i(0)\n'
+    '\t\t:i while \n'
+    '\t\t\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+    '\t\t\t\t:i return\n'
+    '\t\t\t:i endif\n'
+    '\t\t\t:i %GLOBAL%$id$.$se_setprops$$band_bulb_texture$ = (%GLOBAL%$textures$:a{%GLOBAL%$i$:a})\n'
+    '\t\t\t:i $wait$%f(2.0)$seconds$\n'
+    '\t\t\t:i %GLOBAL%$i$ = (%GLOBAL%$i$ + %i(1))\n'
+    f'\t\t:i loop_to %i({len(TEST_CYCLE)})\n'
+    '\t:i loop_to \n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_HUD_attach_widget_band_meter_orig [\n'
     '\t:i $printf$%s("WoR_HUD: band meter placeholder ran, plugin swap missing")\n'

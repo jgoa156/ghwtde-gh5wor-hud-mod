@@ -630,19 +630,23 @@ namespace
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
 	// window's top moves by the turn so its (screen-horizontal) cut passes through the level at the window's centre,
 	// where the cap glow sits, not at its wider left corner
+	// 1.59 (user 2026-10-27 recording, 3 highways: the fill a thin sliver along the glass, once a huge beam, empty in star
+	// power): the turn goes the other way. Every band tube logs ancestors' rotation +7.08 deg and 1.53 measured the fill
+	// 6.6 deg too steep (26.2 vs the glass's 19.6), so the fill, its offset and the window's cut turn by -rot.
 	void place_in_window(void *win, void *fill, float top, float h, bool grow_bottom)
 	{
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
-		const float m = g_sp.rot != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
-		const float c = cosf(g_sp.rot), s = sinf(g_sp.rot);
+		const float r = -g_sp.rot;
+		const float m = r != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
+		const float c = cosf(r), s = sinf(r);
 		const float t = top + (kClipX + 0.5f * kClipW - wx) * s / c;
 		const float hh = h > 0.0f ? h + (top - t) + (grow_bottom ? m : 0.0f) : 0.0f;
 		set_dims(win, nullptr, kClipW + 2.0f * m, hh > 0.0f ? hh : 0.0f, 0);
 		set_pos(win, nullptr, wx, t, 1);
 		const float dx = kFillX - wx, dy = kFillY - t;
 		if (m != 0.0f)
-			f32(fill, kElementRot) = g_sp.fill_rot0 + g_sp.rot;
+			f32(fill, kElementRot) = g_sp.fill_rot0 + r;
 		set_pos(fill, nullptr, dx * c - dy * s, dx * s + dy * c, 1);
 	}
 
@@ -2074,7 +2078,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.58 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.59 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

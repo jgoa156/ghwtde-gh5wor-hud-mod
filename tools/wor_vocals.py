@@ -78,10 +78,10 @@ MULT_BOX = (241, 465, 281, 485)              # the "xN" image (40 x 20 canvas = 
 PHRASE = (285, 465, 378, 487)
 # star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
 # mark 5 wide, drawn over the highway's top line
-SP_CAP = (145, 491.0, 383, 500.0)
-SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (493.0, 498.0)
-SP_MARK = (262.0, 491.0, 267.0, 500.0)       # the strip's 50 % mark
-SP_BORDER = (144, 490.0, 384, 501.0)
+SP_CAP = (145, 493.0, 383, 501.0)                 # user 2026-10-27: 1 smaller, 2 down
+SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (495.0, 499.0)
+SP_MARK = (262.0, 493.0, 267.0, 501.0)       # the strip's 50 % mark
+SP_BORDER = (144, 492.0, 384, 502.0)
 SP_BORDER_TEX = 'WoR_HUD_v_spborder'
 SP_Z = 4.0                                   # above the vocal highway's lines (its outline sprites: z 2)
 # health meter (mock v5): an inner shadow (top + left) and a white gloss over the meter, and a blurred inner shadow in
@@ -100,9 +100,13 @@ VH_NAME = 'vocals_highway_ghwor'
 VH_DY = 29.0
 # lyric band: WoR's dark band at canvas y 600..632 with the words centred at ~617 (the DE: a 0.4 alpha band 39 tall a
 # little lower, words centred ~11 units lower); desc y = canvas y - 430 (the DE's 1-player instance) - VH_DY
-LYRIC_BAND_Y, LYRIC_BAND_H, LYRIC_BAND_A = 141.0, 32.0, 0.9
-LYRICS_Y = 142.0
+# 2026-10-27, overlaid on a WoR frame (canvas): the words were centred ~598 (on the bottom line), WoR's ~617: 19 down,
+# the band (centred, just y 0) on WoR's 600..632; the now line 12 right (WoR x 405, ours 393)
+LYRIC_BAND_Y, LYRIC_BAND_H, LYRIC_BAND_A = 157.0, 32.0, 0.9
+LYRICS_Y = 161.0
+NOW_BAR_DX = 12.0
 COMET_SCALE = 0.35                           # WoR's fireball_bg (the DE's: 0.55)
+COMET_SPARK = (0.55, 0.2)                    # singing sparks' start / end scale (the DE: 1.6 / 1.5 -> 0.5)
 # the now line (mock v3, user 2026-10-26): WoR's green crackling lightning, cyan in star power; ours rides in
 # pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below the root;
 # the lines' centres at root y 35 / 137). NOW_FRAMES bolts per colour, the plugin (1.58) steps through them.
@@ -119,7 +123,7 @@ SPIKE_W, SPIKE_H = 13.0, 17.0
 # line spans root x -221..880; the lyric band's bottom edge is at root y 157)
 SP_GLOW_TEX = 'WoR_HUD_vsp_glow'
 SP_GLOW_X = (-221.0, 880.0)
-SP_GLOW_Y = (35.0, 157.0)
+SP_GLOW_Y = (35.0, 173.0)
 SP_GLOW_H = 26.0
 # the highway's background (the DE: white 0.3 tinted teal by its bg_rgba prop): WoR's dim dark
 HIGHWAY_BG_RGBA, HIGHWAY_BG_ALPHA = (0, 0, 0, 255), 0.45
@@ -478,6 +482,19 @@ def global_sections(fx_text):
     wor = re.sub(r'(StructStruct miss\s*\{\s*StructHeader\s*\{\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*\d+\s+\d+\s+\d+\s+)\d+',
                  r'\g<1>0', de)
     assert wor.count('StructStruct miss') == de.count('StructStruct miss') == 2 and wor != de
+    # the singing sparks (orange Spark01 at 1.6 / 1.5: a big fireball, user 2026-10-27): WoR draws only a small yellow
+    # flare along the sung note
+    n_base = 0
+
+    def base(m):
+        nonlocal n_base
+        n_base += 1
+        blk = re.sub(r'(ArrayInteger\s*\[\s*)255(\s+)128(\s+)0(\s+)255', r'\g<1>255\g<2>225\g<3>70\g<4>255', m.group(0), count=1)
+        blk = re.sub(r'(StructFloatX2 start_scale\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{COMET_SPARK[0]:.5f}, {COMET_SPARK[0]:.5f}\g<2>', blk, count=1)
+        return re.sub(r'(StructFloatX2 end_scale\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{COMET_SPARK[1]:.5f}, {COMET_SPARK[1]:.5f}\g<2>', blk, count=1)
+    wor = re.sub(r'StructQBKey material = sys_Particle_Spark01_sys_Particle_Spark01\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*255\s+128\s+0\s+255\s*\]\s*\}'
+                 r'(?:(?!StructQBKey material).)*?StructFloatX2 end_scale\s*\{[^}]*\}', base, wor, flags=re.S)
+    assert n_base == 2, n_base
     return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n'])
 
 def _globals_body(ours):
@@ -555,6 +572,7 @@ def vocal_highway_desc(de_text):
     for lid in ('bg_middle', 'bg_left', 'bg_right'):
         d = _edit_first(d, lid, lambda blk: _band(blk))
     d = desc_edit.set_elem(d, 'lyrics', pos=(303.0, LYRICS_Y))
+    d = desc_edit.set_elem(d, 'now_bar', pos=(121.0 + NOW_BAR_DX, 30.0))     # the DE's: (121, 30)
     d = desc_edit.set_elem(d, 'fireball_bg', scale=(COMET_SCALE, COMET_SCALE))
     # the highway's background: WoR's dim dark; its bg_rgba prop (the DE's teal) lands on a hidden stand-in
     d = _edit_first(d, 'bG', lambda blk: _rgba(blk, HIGHWAY_BG_RGBA, HIGHWAY_BG_ALPHA))
@@ -642,7 +660,7 @@ def edit_layout(config, d):
     import desc_edit
     import wor_band
     import wor_mp
-    if config == 'hud_1g1v':
+    if config in ('hud_1g1v', 'hud_2g1v', 'hud_3g1v'):          # the vocal highway at y 0 with more than one player
         return _panel_in_v1(d, dy=-430.0)
     if config != 'hud_1v':
         return d

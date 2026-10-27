@@ -3,7 +3,7 @@ icons: the "huge guitar") is replaced by the quickplay score group (wor_1g.band_
 right like WoR's band HUD (lower, under the vocal highway, when the layout has a vocalist), plus WoR's band
 multiplier bulb (uidesc_star_meter band_multiplier: band_HUD_multiplier_bulb with a nixie digit
 band_HUD_multiplier_<n> and an "x"), growing out of the score group (plugin 1.40) when it appears and (1.57) on
-every multiplier change. Shown at x1 too (user 2026-10-26: "turn on the lightbulb for 1x").
+every multiplier change. Hidden at x1 again (user 2026-10-27; it was shown at x1 for testing on 10-26).
 
 The DE's HUD_attach_widget_band_meter drives the band score, streak, star meter and band star power on this desc like
 on the 1-player one; every WT+ band meter prop we don't show (needle, lanes, instrument icons, multiplier text) lands
@@ -187,7 +187,7 @@ SCRIPTS = (
     '\t\t\t\t\t\t:i $desc_id$ = %GLOBAL%$WoR_HUD_bm_id$\n'
     '\t\t\t\t\t\t:i $property$ = $band_bulb_texture$\n'
     '\t\t\t\t\t\t:i $player$ = %i(1)\n'
-    f'\t\t\t\t\t\t:i $textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in (1, 2, 3, 4))}:a}}\n'
+    f'\t\t\t\t\t\t:i $textures$ = :a{{$WoR_HUD_blank${"".join(f"${BULB_TEX[n]}$" for n in (2, 3, 4))}:a}}\n'
     f'\t\t\t\t\t\t:i $sp_textures$ = :a{{{"".join(f"${BULB_TEX[n]}$" for n in (2, 4, 6, 8))}:a}}\n'
     '\t\t\t\t\t:i :s}\n'
     '\t\t\t\t:i :s}\n'

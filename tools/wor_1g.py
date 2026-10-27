@@ -114,8 +114,8 @@ RAIL_Z = {'rm_shadow': 3.01, 'sp_shadow': 3.01, 'rm_gap0': 3.012, 'rm_gap1': 3.0
           'needle_anchor': 3.09, 'side_meter_needle': 3.09, 'side_meter_red_ON': 3.06, 'nixie': 0.05}
 RAIL_Z.update({f'sp_seg{i}': 3.05 for i in range(6)})
 RAIL_Z['sp_clip'] = 3.05
-RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(8)})
-RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(8)})
+RAIL_Z.update({f'sp_feather{k}': 3.05 for k in range(32)})
+RAIL_Z.update({f'sp_feather_fill{k}': 3.05 for k in range(32)})
 RAIL_Z.update({'sp_glow_bottom': 3.055, 'sp_cap_w': 3.06, 'sp_cap_c': 3.06, 'sp_burst0': 3.07, 'sp_burst1': 3.07,
                'sp_burst2': 3.07})
 RAIL_Z.update({f'{t}_void{n}': 0.04 for t in ('rm', 'sp') for n in ('', '1', '2', '3')})
@@ -353,7 +353,7 @@ SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD
                'WoR_HUD_spneon_c')
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
-SP_FLAT_BOTTOM = True                        # the fill ends flat at the glass's last full-width row (no curve, no tail)
+SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
 SP_NEON_HALO = (2.6, 2.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
@@ -372,7 +372,9 @@ SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.0),   
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
                    ('sp_cap_c', None, None, (255, 255, 255, 255), 1.0))           #  needle uses the divider's rot/scale
 SP_FEATHER_H = 12.0                          # soft fill top: canvas units above the level faded in bands
-SP_FEATHER_ALPHA = (0.80, 0.68, 0.56, 0.44, 0.33, 0.22, 0.12, 0.05)   # band alphas, nearest the level first
+# band alphas, nearest the level first: 16 thin bands on the same curve as the 8 before (user 2026-10-27: the charged
+# fill's white top showed its 8 steps along the slanted glass, 'pixelated')
+SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k in range(16))
 # the windows are nested (window k spans from the level up through band k, so band j is covered by windows j..n-1 and
 # no two windows share an inner edge: no seam lines); with Add blending each window carries the alpha increment
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
@@ -386,24 +388,65 @@ def sp_tube_width(y):
     return 22.0 + 0.04 * (y - 20.0)
 
 
+# The glass's bottom end in SP_Base (texture px, before the mirror): a concave arch, its lighter rim low at the left
+# (where the hook-shaped tail hangs below), up to ~223 between columns 48 and 52, down again at the right edge (read
+# off the enlarged art, 2026-10-27: the fill used to end flat above it and the neon sat too high, user crops)
+SP_GLASS_END = ((28.0, 231.0), (34.0, 230.5), (39.0, 228.0), (44.0, 224.8), (48.0, 223.2), (52.0, 223.0),
+                (55.0, 224.6), (58.0, 228.5))
+SP_GLASS_X = (29, 57)            # glass interior columns (between the rims)
+
+
+def glass_end_row(x):
+    """Texture row of the glass end's rim at column x (piecewise linear through SP_GLASS_END)."""
+    pts = SP_GLASS_END
+    if x <= pts[0][0]:
+        return pts[0][1]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return pts[-1][1]
+
+
 def glass_mask(tube_png):
-    """SP_Base's glass interior (64x256 alpha, 0..255): the tube's alpha span on each row minus SP_RIM, softened like
-    the fill, down to the last full-width row (the base art's tail below it bends out of the glass)."""
+    """SP_Base's glass interior (64x256 alpha, 0..255): between the rims (SP_GLASS_X), from the fill's top row down to
+    just above the glass end's arch (SP_GLASS_END), inside the tube's own alpha; softened like the fill."""
     import numpy as np
     from PIL import Image, ImageFilter
     tube = np.asarray(Image.open(tube_png).convert('RGBA')).astype(float)
     h, w = tube.shape[:2]
-    spans = {y: np.where(tube[y, :, 3] > 128)[0] for y in range(h)}
-    rows = range(int(SP_FILL_ROWS[0]) - 4, int(SP_FILL_ROWS[1]))
-    widths = {y: spans[y][-1] - spans[y][0] for y in rows if len(spans[y]) >= 2}
-    full_w = max(widths.values())
-    last_full = max(y for y, wd in widths.items() if wd >= full_w - 1)
-    m = np.zeros((h, w))
-    for y in range(h):
-        xs = spans[y]
-        if y <= last_full and len(xs) >= 2:
-            m[y, int(xs[0] + SP_RIM):int(xs[-1] - SP_RIM) + 1] = 255
-    return Image.fromarray(m.astype('uint8'), 'L').filter(ImageFilter.GaussianBlur(1.0))
+    S = 4                                           # the arch drawn at 4x for a smooth edge
+    big = np.zeros((h * S, w * S))
+    for X in range(SP_GLASS_X[0] * S, (SP_GLASS_X[1] + 1) * S):
+        end = (glass_end_row(X / S) - 0.5) * S
+        big[int((SP_FILL_ROWS[0] - 2) * S):int(end), X] = 255
+    m = Image.fromarray(big.astype('uint8'), 'L').resize((w, h), Image.LANCZOS)
+    m = np.minimum(np.asarray(m).astype(float), np.where(tube[..., 3] > 128, 255.0, 0.0))
+    return Image.fromarray(m.astype('uint8'), 'L').filter(ImageFilter.GaussianBlur(0.6))
+
+
+def bake_bottom_arc(fill, tube_png, rgb=None, halo=None):
+    """The bottom neon (WoR's blue glow on the empty tube's end) drawn along the glass end's arch in the tube texture's
+    own frame, so it follows the rim through the sprite's mirror, scale and rotation; kept inside the tube's alpha.
+    Returns the composited fill (PIL RGBA)."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter, ImageChops
+    rgb = rgb or SP_NEON_RGB
+    blur, gain = halo or SP_NEON_HALO
+    S = 4
+    w, h = fill.size
+    pts = [(x * S, glass_end_row(x) * S) for x in np.linspace(SP_GLASS_X[0], SP_GLASS_X[1], 60)]
+
+    def line(width, b, k):
+        m = Image.new('L', (w * S, h * S), 0)
+        ImageDraw.Draw(m).line(pts, fill=255, width=max(1, round(width * S)), joint='curve')
+        m = m.filter(ImageFilter.GaussianBlur(b * S)).resize((w, h), Image.LANCZOS)
+        return m.point(lambda v: min(255, int(v * k)))
+    tube_a = Image.open(tube_png).convert('RGBA').getchannel('A')
+    out = fill.copy()
+    for col, m in ((rgb, line(2.0, blur * 0.6, gain)), ((235, 250, 255), line(0.9, 0.3, 1.6))):
+        m = ImageChops.darker(m, tube_a)
+        out.alpha_composite(Image.merge('RGBA', [Image.new('L', (w, h), c) for c in col] + [m]))
+    return out
 
 
 def clip_to(im, mask):

@@ -51,7 +51,7 @@ static const float kLevel100 = 471.1043f;
 static const float kPlasmaFps = 60.0f;
 static const float kSnap = 0.040f;
 static const float kFeatherH = 12.00f;
-static const int kFeathers = 8;
+static const int kFeathers = 16;
 static const float kBallFps = 20.0f;
 static const float kBurstHold = 0.400f, kBurstEnd = 0.800f;
 static const uint32_t kPlasma[120] = {

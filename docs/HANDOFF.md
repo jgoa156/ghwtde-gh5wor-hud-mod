@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-27): HANDOFF GUIDE: plugin 1.58, vocals v3-v5 (5l) on top of 1.57 (5k), see "Installed" and section 6 below
+## START HERE (2026-10-27 night): HANDOFF GUIDE: plugin 1.61, section 5m first (verified vs built-not-seen), then 5l / 5k
 
 Everything after this section is older history; read it only for a detail.
 
@@ -271,6 +271,31 @@ User test of 1v (2026-10-26, own recording) -> mocks docs/mocks/mock_vocals_v3.j
   the orange Glow01 flash (sprite band_bulb_glow, the plugin moves it with the bulb).
 - Tests: tests/capture_band.py --bulb-cycle sets [WoR_HUD] TestBulbCycle=1: the bulb steps x1 x2 x3 x4 then star
   power x2 x4 x6 x8 every 2 s (WoR_HUD_test_bulb_cycle in tools/wor_band.py), each with the popup.
+
+### 5m. 2026-10-27 evening: plugin 1.58 -> 1.61 (see git log for each), what is verified and what is not
+Verified in captures: no crash in 1g / 1v / 1g1v / 3g1v (the 1.58 crash at vocals_create_highway was copying
+vocal_gem_colors / vocals_comet_particle_effects with change ~$x$: those two are no longer changed; the comet table is
+now REDEFINED under its own name in our QB, every theme); lyric size / colours (sung words end WoR blue after a fade
+from the current word's yellow); band vocals panel; bulb hidden at x1.
+Built, NOT seen in game yet:
+- 1.60 band tube fill: a sprite's rotation tweens from +0xd0 to its target +0x114 (SetRot 0x5a1970), so writing +0xd0
+  alone never took (1.53-1.59 band fills kept the 1-player angle). set_rot writes both + flag 0x400; sign +rot.
+- band score group 50 lower with a vocalist (wor_band VOCAL_DY); 4-player band vocalist health meter shown + DE
+  health widget attached a second after setup (WoR_HUD_vocal_health, logs "vocal health meter p%p alpha %a").
+- star power fill (all modes): ends on the glass end's arch (wor_1g SP_GLASS_END, glass_mask), the bottom neon traced
+  on that arch in texture space (bake_bottom_arc; bake_screen_needle no longer used), 16 feather bands (was 8: the
+  charged top's steps looked pixelated).
+- 1.61 practice crash guard (build.py PRACTICE_GUARD_SCRIPT, swap of guitar_force_unload_anim_paks, every theme): skips
+  anim paks the band still holds (logged "anim pak %p still held"); the crash was mpm_flush_pak's scriptassert.
+- 1.61 note diagnostics: every distinct note width and colour (+0x118) logged ("vocal note: ..." / "vocal note
+  colour: ..."): needed for the star power phrase notes' cyan glow (their colour is unknown) and the note length bands
+  (1.58-1.60 saw only 50.4-wide notes).
+Separate mod: E:\Dev\ghwt\ghwtde-venue-filter (local git only): redefines download_LevelZoneArray without Serpent's
+Stronghold, The Monument, Rush 2112 Temple, Hypersphere (zone paks with no animations / sounds) + 2 dead keys.
+Ultrawide Fix 1.2 (its repo): HorPlusSites bitmask, default 7 (0x711bac added); 8 / 16 = the two other projections,
+off (the boot crashes blamed on it were the vocal globals).
+Waiting on the user: which single-player tube angle (fill top line vs the tube against the highway); ultrawide band
+close-ups on their screen; a GitHub repo for the venue filter.
 
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in

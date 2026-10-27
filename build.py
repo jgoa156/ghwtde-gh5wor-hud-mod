@@ -1,4 +1,4 @@
-﻿"""Builds the GH5 / WoR HUD mods from sources. Never launches the game.
+"""Builds the GH5 / WoR HUD mods from sources. Never launches the game.
 
 Inputs (read fresh every build, so the mod always matches the installed DE; locations in tools/paths.py):
   - DE theme table 0x8ef7f1be and HUD menu choices 0x1f644846 (tb.pak.xen)
@@ -344,19 +344,15 @@ def main():
                                    core_k=wor_1g.SP_PLASMA_CORE_K,
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
-    # bottom neon needle baked on the fill's bottom edge, charging and ready (exact alignment, clips with the fill)
-    needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
-    # Drawn in SCREEN space: the approved fill-top cap needle (divider rotation/scale) placed at the fill's bottom
-    # edge and mapped back through the fill sprite's transform (mirrored x scale + rail rotation). Texture-space arcs
-    # came out flipped/rotated on screen.
-    nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
-    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
-    neon = Image.open(nh).convert('RGBA')
-    neon.alpha_composite(Image.open(nc).convert('RGBA'))
-    # the needle and the plasma's glow kept inside the glass (user 2026-10-27: a corner leaked out at the bottom left)
-    glass = wor_1g.glass_mask(os.path.join(WOR_PNG, 'SP_Base.png'))
-    wor_1g.clip_to(wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon), glass).save(full)
-    frames = [wor_1g.clip_to(wor_1g.bake_screen_needle(f, neon), glass) for f in frames]
+    # the fill and the plasma kept inside the glass down to its end's arch (user 2026-10-27: a corner leaked out at the
+    # bottom left, then the fill ended flat above the arch), and the bottom neon traced along that arch in the glass's
+    # own texture frame (it sat too high, its ends past the rim). The needle art placed in screen space before
+    # (bake_screen_needle) had its own arch, which never matched the glass end; a texture-space copy of the art came out
+    # flipped, but a line traced on the glass's own geometry goes through the same mirror / rotation as the glass.
+    base_png = os.path.join(WOR_PNG, 'SP_Base.png')
+    glass = wor_1g.glass_mask(base_png)
+    wor_1g.bake_bottom_arc(wor_1g.clip_to(Image.open(full).convert('RGBA'), glass), base_png).save(full)
+    frames = [wor_1g.bake_bottom_arc(wor_1g.clip_to(f, glass), base_png) for f in frames]
 
     # the plasma frames ride in the always-loaded UI pak (no 4 MiB cap there): the plugin swaps them in by name, so
     # they need not be in the theme pak; the _b fill (picked by the DE itself) stays in the theme pak
@@ -472,7 +468,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, PRACTICE_GUARD_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), wor_vocals.global_sections(vocals_fx), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)
@@ -755,6 +751,42 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t\t:i endif\n'
                           '\t:i loop_to \n'
                           '\t:i endfunction\n]\n')
+
+
+# Practice from a band song (user 2026-10-27, debug.txt): ui_init_play_song's guitar_force_unload_anim_paks flushes the
+# band's animation paks while the band still holds L_DRUM_Loops_Standard_anims (handle band_anim_pak), and
+# mpm_flush_pak's scriptassert "There are active handles to %p!" stops the game. The plugin (1.61) swaps in this
+# copy, which flushes the same links but skips (and logs) a pak that still has handles; it stays loaded until the next
+# flush. Every theme: a crash guard, not a look.
+PRACTICE_GUARD_SCRIPT = (
+    'Script WoR_HUD_force_unload_anim_paks [\n'
+    '\t:i $WoR_HUD_flush_free_paks$$checksum$ = $Anim_Loop_DRUM_Pakman_Links$\n'
+    '\t:i $WoR_HUD_flush_free_paks$$checksum$ = $Anim_Loop_GUIT_SINGER_Pakman_Links$\n'
+    '\t:i if NOT $GotParam$$not_wli$\n'
+    '\t\t:i $WoR_HUD_flush_free_paks$$checksum$ = $Anim_Intro_Win_Pakman_Links$\n'
+    '\t\t:i $WoR_HUD_flush_free_paks$$checksum$ = $Anim_Lose_Pakman_Links$\n'
+    '\t\t:i $WoR_HUD_flush_free_paks$$checksum$ = $Anim_StarPower_Pakman_Links$\n'
+    '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    # the DE's mpm_flush_all_paks_eachlink, with mpm_has_no_handles checked before each flush
+    'Script WoR_HUD_flush_free_paks [\n'
+    '\t:i $maps_array$ = ((~$mpm_state$)->%GLOBAL%$checksum$->$maps$)\n'
+    '\t:i $i$ = %i(0)\n'
+    '\t:i $GetArraySize$%GLOBAL%$maps_array$\n'
+    '\t:i if (%GLOBAL%$array_size$ > %i(0))\n'
+    '\t\t:i while \n'
+    '\t\t\t:i $entry$ = (%GLOBAL%$maps_array$:a{%GLOBAL%$i$:a})\n'
+    '\t\t\t:i if NOT ((%GLOBAL%$entry$->$pak$) = $None$)\n'
+    '\t\t\t\t:i if $mpm_has_no_handles$$map_entry$ = %GLOBAL%$entry$\n'
+    '\t\t\t\t\t:i $mpm_flush_pak$$pak$ = (%GLOBAL%$entry$->$pak$)$links$ = %GLOBAL%$checksum$$async$ = %i(0)\n'
+    '\t\t\t\t:i else \n'
+    '\t\t\t\t\t:i $printf$%s("WoR_HUD: anim pak %p still held, not flushed, practice crash guard")$p$ = (%GLOBAL%$entry$->$pak$)\n'
+    '\t\t\t\t:i endif\n'
+    '\t\t\t:i endif\n'
+    '\t\t\t:i $i$ = (%GLOBAL%$i$ + %i(1))\n'
+    '\t\t:i loop_to %GLOBAL%$array_size$\n'
+    '\t:i endif\n'
+    '\t:i endfunction\n]\n')
 
 
 # Star-earned sparks with more than one player: the DE's HUD_animate_star_meter_flames_spawn runs d1be6858 instead of

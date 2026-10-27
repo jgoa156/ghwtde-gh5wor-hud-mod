@@ -905,6 +905,9 @@ namespace
 		// (lyric size / colours, note colours, comet sparks: tools/wor_vocals.py WoR_HUD_vocals_globals)
 		{ 0x74586fa3 /* vocal note setup by HUD theme */, 0xc562eff5 /* wor_hud_vocal_note_setup */, 0x1a8c9562 /* _orig */,
 		  "vocals: per-theme note setup wrapped (WoR lyrics, notes and comet with the WoR theme)" },
+		// 1.61: practice from a band song crashed (anim pak flushed while the band held it): build.py PRACTICE_GUARD_SCRIPT
+		{ 0x0a8529c3 /* guitar_force_unload_anim_paks */, 0x7000ff0c /* wor_hud_force_unload_anim_paks */, 0,
+		  "practice crash guard: guitar_force_unload_anim_paks skips anim paks the band still holds" },
 	};
 
 	uint8_t *find_symbol(uint32_t checksum)
@@ -1287,7 +1290,12 @@ namespace
 	}
 
 	// notes: the DE stretches one texture along each note, so the ends are in the texture: one per length band
-	int g_vnote_logged = 0;
+	// 1.61: every distinct width and colour (SetRGBA 0x5a1af0: target r,g,b,a bytes at +0x118) is logged, up to 24 of
+	// each: 1.58-1.60 logged only the first 6 notes (all 50.4 wide), and the star power phrase notes' colour is unknown
+	constexpr size_t kElementRgbaTarget = 0x118;
+	float g_vnote_w[24] = {};
+	uint32_t g_vnote_rgba[24] = {};
+	int g_vnote_nw = 0, g_vnote_nc = 0;
 
 	void vocal_note(void *e, uint32_t tex)
 	{
@@ -1296,10 +1304,23 @@ namespace
 		int band = 0;
 		while (band + 1 < n && w >= kVNoteBand[band + 1])
 			++band;
-		if (g_vnote_logged < 6)
+		const uint32_t rgba = *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget));
+		bool seen = false;
+		for (int i = 0; i < g_vnote_nw && !seen; ++i)
+			seen = fabsf(g_vnote_w[i] - w) < 0.5f;
+		if (!seen && g_vnote_nw < 24)
 		{
-			++g_vnote_logged;
-			log("vocal note: dims %.1f x %.1f, on screen %.1f wide -> band %d", f32(e, kElementDims), f32(e, kElementDims + 4), w, band);
+			g_vnote_w[g_vnote_nw++] = w;
+			log("vocal note: dims %.1f x %.1f, scale %.3f, on screen %.1f wide -> band %d", f32(e, kElementDims),
+			    f32(e, kElementDims + 4), f32(e, kElementScale), w, band);
+		}
+		seen = false;
+		for (int i = 0; i < g_vnote_nc && !seen; ++i)
+			seen = g_vnote_rgba[i] == rgba;
+		if (!seen && g_vnote_nc < 24)
+		{
+			g_vnote_rgba[g_vnote_nc++] = rgba;
+			log("vocal note colour: %d %d %d %d (texture %08x)", rgba & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, rgba >> 24, tex);
 		}
 		if (kVNote[band] != tex)
 			set_texture_keep_dims(e, kVNote[band]);
@@ -2090,7 +2111,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.60 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.61 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

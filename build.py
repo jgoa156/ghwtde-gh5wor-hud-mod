@@ -353,8 +353,10 @@ def main():
     wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
     neon = Image.open(nh).convert('RGBA')
     neon.alpha_composite(Image.open(nc).convert('RGBA'))
-    wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon).save(full)
-    frames = [wor_1g.bake_screen_needle(f, neon) for f in frames]
+    # the needle and the plasma's glow kept inside the glass (user 2026-10-27: a corner leaked out at the bottom left)
+    glass = wor_1g.glass_mask(os.path.join(WOR_PNG, 'SP_Base.png'))
+    wor_1g.clip_to(wor_1g.bake_screen_needle(Image.open(full).convert('RGBA'), neon), glass).save(full)
+    frames = [wor_1g.clip_to(wor_1g.bake_screen_needle(f, neon), glass) for f in frames]
 
     # the plasma frames ride in the always-loaded UI pak (no 4 MiB cap there): the plugin swaps them in by name, so
     # they need not be in the theme pak; the _b fill (picked by the DE itself) stays in the theme pak

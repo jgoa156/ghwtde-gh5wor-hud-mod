@@ -44,7 +44,9 @@ def tube_fill(tube_png, fill_png, band_rows, fill_cols, rows, rim, tint, out_png
     for y in range(int(rows[0]), int(rows[1])):
         xs = spans[y]
         if flat_bottom and y > last_full:
-            xs = spans[last_full]     # keep the glass's full width down to the last row: a flat bottom, no curve
+            # a flat bottom at the glass's last full-width row (2026-10-27: painting the full width further down, into
+            # the base art's bent tail, stuck out of the glass at its bottom-left corner)
+            continue
         if len(xs) < 2 * rim + 2:
             continue
         x0, x1 = xs[0] + rim, xs[-1] - rim

@@ -353,7 +353,7 @@ SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD
                'WoR_HUD_spneon_c')
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
-SP_FLAT_BOTTOM = True                        # the fill keeps the glass's full width down to its last row (no curve)
+SP_FLAT_BOTTOM = True                        # the fill ends flat at the glass's last full-width row (no curve, no tail)
 SP_NEON_HALO = (2.6, 2.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
@@ -384,6 +384,34 @@ SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on 
 def sp_tube_width(y):
     """Width of SP_Base's tube at texture row y (alpha span: 22 px at row 20, 30 px at row 220)."""
     return 22.0 + 0.04 * (y - 20.0)
+
+
+def glass_mask(tube_png):
+    """SP_Base's glass interior (64x256 alpha, 0..255): the tube's alpha span on each row minus SP_RIM, softened like
+    the fill, down to the last full-width row (the base art's tail below it bends out of the glass)."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    tube = np.asarray(Image.open(tube_png).convert('RGBA')).astype(float)
+    h, w = tube.shape[:2]
+    spans = {y: np.where(tube[y, :, 3] > 128)[0] for y in range(h)}
+    rows = range(int(SP_FILL_ROWS[0]) - 4, int(SP_FILL_ROWS[1]))
+    widths = {y: spans[y][-1] - spans[y][0] for y in rows if len(spans[y]) >= 2}
+    full_w = max(widths.values())
+    last_full = max(y for y, wd in widths.items() if wd >= full_w - 1)
+    m = np.zeros((h, w))
+    for y in range(h):
+        xs = spans[y]
+        if y <= last_full and len(xs) >= 2:
+            m[y, int(xs[0] + SP_RIM):int(xs[-1] - SP_RIM) + 1] = 255
+    return Image.fromarray(m.astype('uint8'), 'L').filter(ImageFilter.GaussianBlur(1.0))
+
+
+def clip_to(im, mask):
+    """im (RGBA) with its alpha limited to mask (L, same size)."""
+    from PIL import ImageChops
+    im = im.copy()
+    im.putalpha(ImageChops.darker(im.getchannel('A'), mask))
+    return im
 
 
 def sp_divider_row():

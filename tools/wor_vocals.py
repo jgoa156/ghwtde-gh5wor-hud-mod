@@ -490,6 +490,8 @@ def global_sections(fx_text):
 
 
 def _globals_body(ours):
+    if os.environ.get('WOR_NO_VGLOBALS'):          # bisect switch (2026-10-27 crash at vocals_create_highway)
+        return ''
     scale = LYRIC_SCALE if ours else LYRIC_SCALE_DE
     col = LYRIC_RGBA if ours else LYRIC_RGBA_DE
     tag = 'wor' if ours else 'de'
@@ -497,8 +499,7 @@ def _globals_body(ours):
             f'\t\t:i $change$$vocal_scrolling_lyric_rgba$ = {_qb_rgba(col["upcoming"])}\n'
             f'\t\t:i $change$$vocal_scrolling_word_highlight$ = {_qb_rgba(col["current"])}\n'
             f'\t\t:i $change$$vocal_scrolling_lyric_after$ = {_qb_rgba(col["sung"])}\n'
-            f'\t\t:i $change$$vocal_gem_colors$ = ~$WoR_HUD_vgem_{tag}$\n'
-            f'\t\t:i $change$$vocals_comet_particle_effects$ = ~$WoR_HUD_vcomet_{tag}$\n')
+            )   # NOT changed: vocal_gem_colors / vocals_comet_particle_effects (copying them with ~ crashed vocals_create_highway, 2026-10-27)
 
 
 # The DE's vocal globals switched with the theme: the DE's per-theme vocal setup 0x74586fa3 (notes, lyric font) is

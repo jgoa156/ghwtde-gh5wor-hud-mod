@@ -114,7 +114,7 @@ NOW_SP_GLOW, NOW_SP_CORE = (0, 190, 255), (210, 255, 255)
 NOW_BOX = (10.0, 35.0 - 48.0, 28.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
 # white arrowheads on both lines at the now line (mock v4: 10 x 13, on the lines, over the lightning)
 SPIKE_TEX = {'down': 'WoR_HUD_vspike_down', 'up': 'WoR_HUD_vspike_up'}
-SPIKE_W, SPIKE_H = 10.0, 13.0
+SPIKE_W, SPIKE_H = 13.0, 17.0
 # star power (mock v3): a cyan glow band on the top line and along the lyric band's bottom edge, in the root (the top
 # line spans root x -221..880; the lyric band's bottom edge is at root y 157)
 SP_GLOW_TEX = 'WoR_HUD_vsp_glow'
@@ -318,7 +318,7 @@ def _lightning(core, halo, seed):
         ImageDraw.Draw(m).line(pts, fill=255, width=max(1, round(width * kx)))
         m = m.filter(ImageFilter.GaussianBlur(blur * kx)).point(lambda v: min(255, int(v * k)))
         return Image.merge('RGBA', [Image.new('L', (W, H), c) for c in rgb] + [m])
-    out = layer(10, 7, halo, 1.4)
+    out = layer(6, 3.5, halo, 1.4)                         # the halo fades out inside the texture
     out.alpha_composite(layer(3, 1.2, halo, 2.0))
     out.alpha_composite(layer(1, 0.4, core, 2.5))
     return out
@@ -462,9 +462,9 @@ def _qb_rgba(c):
 
 
 def global_sections(fx_text):
-    """QB globals: the DE's comet particles as they are (restored with other themes) and ours with the "miss" sparks
-    invisible (mock v3: the purple ball when not singing); the note colours (the DE tints its teal note art with
-    vocal_gem_colors; ours are coloured in the texture); our star power flag for the plugin."""
+    """QB globals: the DE's comet particle table redefined under its own name with the "miss" sparks invisible (mock
+    v3: the purple ball when not singing; every HUD theme: copying a replacement in by script with change ~ crashed
+    vocals_create_highway, 2026-10-27), and our star power flag for the plugin."""
     import re
     src = fx_text[fx_text.index('SectionStruct vocals_comet_particle_effects'):]
     depth, end = 0, None
@@ -474,20 +474,11 @@ def global_sections(fx_text):
             end = k + 1
             break
     de = src[:end]
-    wor = de.replace('vocals_comet_particle_effects', 'WoR_HUD_vcomet_wor', 1)
     # every "miss" struct: start colour alpha 0
     wor = re.sub(r'(StructStruct miss\s*\{\s*StructHeader\s*\{\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*\d+\s+\d+\s+\d+\s+)\d+',
-                 r'\g<1>0', wor)
-    assert wor.count('StructStruct miss') == de.count('StructStruct miss') and ' 255 ]' not in wor[wor.find('StructStruct miss'):][:200]
-    de = de.replace('vocals_comet_particle_effects', 'WoR_HUD_vcomet_de', 1)
-
-    def gems(name, c):
-        return (f'SectionArray {name}\n{{\n\tArrayArray\n\t[\n'
-                + ''.join(f'\t\tArrayInteger\n\t\t[\n' + ''.join(f'\t\t\t{v}\n' for v in c) + '\t\t]\n' for _ in range(7))
-                + '\t]\n}\n')
-    return '\n'.join([de, wor, gems('WoR_HUD_vgem_de', (64, 255, 255, 255)), gems('WoR_HUD_vgem_wor', (255, 255, 255, 255)),
-                      'SectionInteger WoR_HUD_vocal_sp 0\n'])
-
+                 r'\g<1>0', de)
+    assert wor.count('StructStruct miss') == de.count('StructStruct miss') == 2 and wor != de
+    return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n'])
 
 def _globals_body(ours):
     if os.environ.get('WOR_NO_VGLOBALS'):          # bisect switch (2026-10-27 crash at vocals_create_highway)

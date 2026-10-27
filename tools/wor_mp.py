@@ -447,6 +447,23 @@ SCRIPTS = (
     '\t\t\t\t:i :s}\n'
     '\t\t\t:i :s}\n'
     '\t\t:i endif\n'
+    # one player: only a vocalist (our panel's strip, tools/wor_vocals.py sp_desc: glow0..2); a single guitar / bass /
+    # drum player's tube is the 1-player layout's own (plugin), as before (2026-10-27: the 1v strip never filled)
+    '\t:i elseif $playerinfoequals$%GLOBAL%$player$$part$ = $Vocals$\n'
+    '\t\t:i $AttachHudWidget$:s{\n'
+    '\t\t\t:i $Input$ = :s{\n'
+    '\t\t\t\t:i $object$ = %GLOBAL%$checksum$\n'
+    '\t\t\t\t:i $value$ = $starpower_amount$\n'
+    '\t\t\t:i :s}\n'
+    '\t\t\t:i $output$ = :s{\n'
+    '\t\t\t\t:i $type$ = $setubes$\n'
+    '\t\t\t\t:i $desc_id$ = %GLOBAL%$id$\n'
+    '\t\t\t\t:i $player$ = %GLOBAL%$player$\n'
+    '\t\t\t\t:i $value_range$ = :a{%f(0.0)%f(100.0):a}\n'
+    '\t\t\t\t:i $textures$ = :a{$glow0_texture$$glow1_texture$$glow2_texture$:a}\n'
+    '\t\t\t\t:i $scales$ = :a{$glow0_scale$$glow1_scale$$glow2_scale$:a}\n'
+    '\t\t\t:i :s}\n'
+    '\t\t:i :s}\n'
     '\t:i endif\n'
     '\t:i endfunction\n]\n\n'
     # the per-player rock tube starts hidden; shown where the DE attaches per-player health (not face-off types)

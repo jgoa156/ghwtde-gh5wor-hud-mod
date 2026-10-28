@@ -176,7 +176,7 @@ def run(name, parts, a, out):
                 ImageGrab.grab().save(dst)
                 got.append(dst)
                 print(f'[{name}] frame {dst}', flush=True)
-                next_shot += SHOT_EVERY
+                next_shot += (a.every or SHOT_EVERY)
         print(f'[{name}] foreground held {held}/{tries} checks', flush=True)
         if proc.poll() is not None:
             print(f'[{name}] game closed (code {proc.returncode}) after {int(time.time() - t0)} s (it quits by itself after the song)', flush=True)
@@ -207,6 +207,7 @@ def main():
     ap.add_argument('--wait', type=int, default=150)
     ap.add_argument('--frames', type=int, default=5)
     ap.add_argument('--until', type=int, default=0)     # seconds after the launch to close the game (0 = SHOT_UNTIL)
+    ap.add_argument('--every', type=int, default=0)      # seconds between frames (0 = SHOT_EVERY)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')

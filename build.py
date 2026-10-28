@@ -405,7 +405,6 @@ def main():
     bottom.alpha_composite(Image.open(caps[0]).convert('RGBA'))
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
     bottom.save(caps[0])
-    wor_art.fill_arc(caps[2], os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), wor_1g.SP_FILL_ARC_RGB)   # fits the fill's top corners to the arc
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}

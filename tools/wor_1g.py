@@ -382,6 +382,9 @@ SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k 
 # the windows are nested (window k spans from the level up through band k, so band j is covered by windows j..n-1 and
 # no two windows share an inner edge: no seam lines); with Add blending each window carries the alpha increment
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
+# 2026-10-28 (plugin 1.68, user: the fill's top still a straight cut under a floating arc, charged and charging): the
+# feather windows are now the fill's domed top: non-overlapping slices, each as opaque as the fill itself
+SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0, 3)
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step
@@ -561,8 +564,8 @@ def sp_segments():
                       rgba=SP_SPRITE_RGBA, texture=SP_FILL_MARKER, blend='Add'))
     feathers = [E(f'sp_feather{k}', 'windowelement', pos=(cx, cy), dims=(cw, 0), just=(-1, -1), z=3.5, children=[
         E(f'sp_feather_fill{k}', 'SpriteElement', pos=(RIGHT.pos[0] - cx, RIGHT.pos[1] - cy), dims=(64, 256), just=(0, 1),
-          scale=(RIGHT.sx, RAIL_SY), rot=RIGHT.rot, z=3.5, alpha=a, texture=SP_FULL_NAMES[0], blend='Add')])
-        for k, a in enumerate(SP_FEATHER_INC)]
+          scale=(RIGHT.sx, RAIL_SY), rot=RIGHT.rot, z=3.5, alpha=SP_DOME_ALPHA, texture=SP_FULL_NAMES[0], blend='Add')])
+        for k in range(len(SP_FEATHER_ALPHA))]
     return [E('sp_clip', 'windowelement', pos=(cx, cy), dims=(cw, ch), just=(-1, -1), z=3.5, children=segs)] + feathers
 
 

@@ -626,7 +626,9 @@ namespace
 	// fill gets that rotation added, its offset in the window is turned by it, and the window grows by kRotMargin so the
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
-	constexpr float kCutRot = 0.0f;   // 1.74: slope off (1.73's column windows drew a dotted line; WoR's slope is ~6.5 deg, ~3 px)
+	constexpr float kCutRot = 6.5f * 3.14159265f / 180.0f;   // 1.75: WoR's fill top slope (footage), drawn by the soft columns
+	constexpr int kSoftCols = 4, kSoftBands = 4;   // 1.75: 16 windows = 4 columns (8 px wide) x 4 nested bands
+	constexpr float kSoftEdge = 2.5f;   // 1.75: the top edge's fade (canvas units, ~4 px at 1080p; WoR ~3 px)
 
 	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
@@ -729,18 +731,24 @@ namespace
 		// slope's lowest point (cut_drop() below the level) and the windows are narrow columns across the tube, each from
 		// the sloped line down to that cut, as opaque as the fill (the desc's SP_DOME_ALPHA); kCutCols columns over
 		// 2 x kTubeHW make steps far under a pixel. The level stays the slope's height at the tube axis.
-		const float top = hidden ? 0.0f : level_y(g_sp.level), base = top + cut_drop();
+		// 1.75 (user 2026-10-28: "the trapezoid is the top edge"; WoR's charging top is a soft ~3 px gradient on a
+		// slight slope, ours a hard level line): the 16 windows are kSoftCols columns x kSoftBands nested bands. Each
+		// column's edge sits on the sloped line; its bands start kSoftEdge / kSoftBands apart across the edge and all end
+		// at the solid cut, each adding 1/kSoftBands of the fill (the desc's SP_DOME_ALPHA), so the edge fades in.
+		const float tn = tanf(kCutRot), half = 0.5f * kSoftEdge;
+		const float top = hidden ? 0.0f : level_y(g_sp.level), base = top + cut_drop() + half;
 		float lx = 0.0f, ly = 0.0f;
 		if (!hidden)
 			level_point(g_sp.level, lx, ly);
-		const int cols = g_sp.feathers;
-		const float w = 2.0f * kTubeHW / (cols > 0 ? cols : 1), tn = tanf(kCutRot);
-		for (int k = 0; k < cols; ++k)
+		const float w = 2.0f * kTubeHW / kSoftCols;
+		for (int k = 0; k < g_sp.feathers; ++k)
 		{
 			void *win = g_sp.feather[k];
 			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
-			const float xm = lx - kTubeHW + (k + 0.5f) * w, yt = top + (xm - lx) * tn;
-			if (hidden || !fill || base - yt <= 0.01f || yt < kClipY)
+			const int c = k / kSoftBands, b = k % kSoftBands;
+			const float xm = lx - kTubeHW + (c + 0.5f) * w;
+			const float yt = top + (xm - lx) * tn - half + b * (kSoftEdge / kSoftBands);
+			if (hidden || !fill || c >= kSoftCols || base - yt <= 0.01f || yt < kClipY)
 			{
 				set_dims(win, nullptr, kClipW, 0.0f, 0);
 				continue;
@@ -755,7 +763,7 @@ namespace
 	void place_fill()
 	{
 		const float level = g_sp.level, bottom = kClipY + kClipH;
-		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + cut_drop();   // 1.72: the slope columns draw the fill above this
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + cut_drop() + 0.5f * kSoftEdge;   // 1.75: the soft columns draw the fill above this
 		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top, true);
 	}
 
@@ -2214,7 +2222,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.74 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.75 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

@@ -354,7 +354,7 @@ def main():
     tube_a = Image.open(base_png).convert('RGBA').getchannel('A')
     needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
     nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
-    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO, *wor_1g.SP_NEON_CORE_BLUR)
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_BOTTOM_RGB, *wor_1g.SP_NEON_BOTTOM_HALO, *wor_1g.SP_NEON_BOTTOM_CORE_BLUR)
     wor_art.recolour(nc, wor_1g.SP_NEON_BOTTOM_CORE)     # compare_wor 2026-10-28: WoR's bottom glow is cyan, not white
     neon = Image.open(nh).convert('RGBA')
     neon.alpha_composite(Image.open(nc).convert('RGBA'))
@@ -402,9 +402,10 @@ def main():
     # halo (two sprites), the bottom one as both in one texture (one sprite, shown charging and ready)
     caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
     wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO, *wor_1g.SP_NEON_CORE_BLUR)
-    bottom = Image.open(caps[1]).convert('RGBA')
-    core = Image.open(caps[0]).convert('RGBA')
-    bottom.alpha_composite(Image.merge('RGBA', (*Image.new('RGB', core.size, wor_1g.SP_NEON_BOTTOM_CORE).split(), core.getchannel('A'))))
+    # the bottom glow has its own colour and spread (user 2026-10-28: "fix the color and blur spread of the cyan arc
+    # in the bottom"; WoR's is a broad saturated cyan band): the sprite reuses the baked bottom neon built above
+    bottom = Image.open(nh).convert('RGBA')
+    bottom.alpha_composite(Image.open(nc).convert('RGBA'))
     wor_art.recolour(caps[0], wor_1g.SP_NEON_TOP_CORE)   # the charged top glow's core: WoR's is barely tinted
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
     bottom.save(caps[0])

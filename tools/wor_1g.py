@@ -364,7 +364,10 @@ SP_NEON_HALO = (2.8, 1.6)                    # neon halo blur / gain (user 2026-
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
 SP_NEON_CORE_BLUR = (1.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
-SP_NEON_BOTTOM_CORE = (110, 255, 240)        # bottom glow (192..202,255,255) vs WoR (100..144,255,245): cyan core, not white
+SP_NEON_BOTTOM_RGB = (25, 255, 225)          # user 2026-10-28: the bottom glow's own colour and spread (WoR: broad saturated cyan band)
+SP_NEON_BOTTOM_HALO = (3.5, 2.2)
+SP_NEON_BOTTOM_CORE_BLUR = (1.8, 1.6)
+SP_NEON_BOTTOM_CORE = (70, 255, 235)        # bottom glow (192..202,255,255) vs WoR (100..144,255,245): cyan core, not white
 SP_NEON_RGB = (40, 230, 210)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
@@ -393,7 +396,7 @@ SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k 
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
 # 2026-10-28 (plugin 1.68, user: the fill's top still a straight cut under a floating arc, charged and charging): the
 # feather windows are now the fill's domed top: non-overlapping slices, each as opaque as the fill itself
-SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0, 3)   # 1.72: the slope columns, as opaque as the fill
+SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0 / 4, 3)   # 1.75: each of a column's 4 nested bands adds a quarter of the fill
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step

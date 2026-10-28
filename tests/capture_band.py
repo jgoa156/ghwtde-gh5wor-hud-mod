@@ -165,8 +165,22 @@ def run(name, parts, a, out):
         t0 = time.time()
         next_shot = t0 + SHOT_FROM
         deadline = t0 + (a.until or SHOT_UNTIL)   # --until: close the game earlier (user 2026-10-27: ~1 min of song)
+        # --play N (user 2026-10-28: "your runs are going way past 30s ... force kill after that time"): the plugin
+        # (1.72) writes wor_hud_gameplay.flag on the song's first star power update; frames run from there and the
+        # game is killed N s later. --until stays the hard limit from the launch.
+        flag = os.path.join(H.GAME, 'wor_hud_gameplay.flag')
+        if os.path.exists(flag):
+            os.remove(flag)
+        play_from = None
+        if a.play:
+            next_shot = deadline + 1
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
+            if play and play_from is None and os.path.exists(flag):
+                play_from = time.time()
+                next_shot = play_from + 1
+                deadline = min(deadline, play_from + a.play)
+                print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {a.play} s', flush=True)
             if int(time.time() - t0) % 5 == 0:
                 tries += 1
                 held += bool(keep_in_front(proc.pid))
@@ -210,6 +224,7 @@ def main():
     ap.add_argument('--frames', type=int, default=5)
     ap.add_argument('--until', type=int, default=0)     # seconds after the launch to close the game (0 = SHOT_UNTIL)
     ap.add_argument('--every', type=int, default=0)      # seconds between frames (0 = SHOT_EVERY)
+    ap.add_argument('--play', type=int, default=0)       # seconds of gameplay from the plugin's marker, then kill
     ap.add_argument('--sp-states', action='store_true')  # 25/45/70/100 % then deploy, every 28 s (compare_wor.py)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()

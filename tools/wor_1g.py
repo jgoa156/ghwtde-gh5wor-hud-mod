@@ -374,7 +374,8 @@ SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo
 SP_GLOW_BOTTOM_LEVEL = 0.011                 # bottom needle masks the fill's bottom end (user 2026-10-09: 0.035 sat ~5 px too high)
-SP_NEON_X_K = 1.0                            # the neon needles exactly like the half divider (user 2026-10-27: 'angled EXACTLY
+SP_NEON_X_K = 1.35   # compare 2026-10-28: WoR's top glow spans the fill (was 1.0)
+#                           # the neon needles exactly like the half divider (user 2026-10-27: 'angled EXACTLY
                                              # like the middle needle'; 0.75 since 2026-10-09)
 SP_NEON_BOTTOM_SHIFT = (1.0, 2.0)            # user 2026-10-27: bottom ring 1px right, 1-2px down (canvas units)
 SP_NEON_BOTTOM_DOWN = 4.0                    # user 2026-10-27/28: 2 + 2 more down the tube, along its axis

@@ -626,6 +626,7 @@ namespace
 	// fill gets that rotation added, its offset in the window is turned by it, and the window grows by kRotMargin so the
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
+	constexpr float kCutRot = 6.5f * 3.14159265f / 180.0f;   // 1.72: the fill top's slope (WoR footage)
 
 	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
@@ -649,7 +650,11 @@ namespace
 	{
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
-		const float r = g_sp.rot;
+		// 1.72 (user 2026-10-28: "the fill looks like a trapezoid"): WoR's fill top slopes ~6.5 deg down to the right
+		// on screen (measured on the user's WoR footage), ours was level: the window itself turns by kCutRot and the
+		// fill turns back by the same amount, so only the cut slopes
+		set_rot(win, kCutRot);
+		const float r = g_sp.rot + kCutRot;
 		const float m = r != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
 		const float c = cosf(r), s = sinf(r);
 		const float t = top + (kClipX + 0.5f * kClipW - wx) * s / c;
@@ -672,6 +677,7 @@ namespace
 	// slice is the full fill), height and slice count (the rest of the feather windows stay empty)
 	constexpr float kTopBand = 2.5f;   // 1.70: the lighter band under the fill's top (canvas units)
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
+	constexpr float kCapDX = 5.0f;   // 1.72: the top glow sat left of the fill's middle (was +1)
 	constexpr float kCapUp = 0.1f;   // 1.70: the charged fill's soft top glow centred ~1 unit inside the fill top
 	// (was 0.21:   // 1.69 (04-08 video): the arc's lower edge sits ~3.4 units under its anchor, its centre ~2.3: centre on the fill edge
 
@@ -836,7 +842,7 @@ namespace
 		for (int k = 1; k < 3; ++k)
 		{
 			if (shown)
-				set_pos(g_sp.glow[k], nullptr, cap_x + 1.0f, cap_y, 1);   // 1.64: 1px right (user 2026-10-27)
+				set_pos(g_sp.glow[k], nullptr, cap_x + kCapDX, cap_y, 1);   // 1.64: 1px right (user 2026-10-27)
 			set_alpha(g_sp.glow[k], shown ? kGlowAlpha[k] * (g_sp.ready ? 1.0f : kCapChargeK) : 0.0f);
 		}
 		if (g_sp.burst_t0 >= 0.0)
@@ -1698,6 +1704,10 @@ namespace
 		if (!g_tube_logged)
 		{
 			g_tube_logged = true;
+			// 1.72: gameplay has started (the first star power update of a song); tests/capture_band.py times its
+			// 30 s window from this marker (user 2026-10-28: "your runs are going way past 30s")
+			if (FILE *f = fopen("wor_hud_gameplay.flag", "w"))
+				fclose(f);
 			log("star power fill: smooth fill active (level %.2f, %s)", level, charged ? "charged" : "charging");
 		}
 	}
@@ -2190,7 +2200,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.71 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.72 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

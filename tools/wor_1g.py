@@ -284,6 +284,7 @@ STAR_K = 1.14                   # gold star size
 STAR_SHIFT = (4.2, -1.0)        # relative to the (stretched) panel
 STAR_ART_C = (63.69, 70.73)     # centre of mass of the filled gold star in its 128 px texture
 STAR_OVERLAY_PX = 3.0           # gold outline (overlay/shine/glow) grows by this many px
+STAR_NUM_RGBA = (246, 183, 16, 255)   # calibration 2026-10-28: WoR's saturated gold numeral (was 249,193,34: pale cream on screen)
 STAR_BG_RGBA = (130, 126, 128, 255)   # dims the silver frame's grey centre to GH5's
 STAR_NUM_K = 0.77               # star count size
 STAR_NUM_NUDGE = (-0.8, -2.0 + 2 / 1.5)   # centred on the gold star's shape, 2 px (1080p) lower like GH5
@@ -337,7 +338,7 @@ SP_MARKER_K = 1.25              # GH5's divider spans the whole tube
 # ready (>= 50% or active): WoR's Mat_Sp_Ready_Fire look (SP_Fill_Glow02 under moving noise) as a seamless 60 fps
 # loop, plus the white-hot cap at the fill top (WoR needle_white 1.0 + needle_color 0.5, SB_Tubeglow01);
 # crossing 50%: a ball-lightning burst at the fill top (Ball_lightning01, 16 frames at 20 fps, WoR material rate).
-SP_CHARGING_RGBA = (30, 150, 135, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
+SP_CHARGING_RGBA = (23, 165, 127, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
 SP_PLASMA_FPS = 60                             # back to 60 (2026-10-22): the frames moved to the UI pak, no budget cap
 SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
@@ -351,8 +352,9 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
-SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
-SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
+SP_PLASMA_COLOURS = dict(base=(76, 194, 204), hot=(139, 221, 204), dark=(38, 144, 184))   # calibration 2026-10-28: WoR's teal (was light blue)
+#   # lighter blue, less white wash:
+SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
 SP_NEON_HALO = (8.0, 3.4)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
@@ -603,7 +605,7 @@ PROG_LEAD_NAME = 'WoR_HUD_prog_lead'
 PROG_ROW = 30.0                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
 PROG_H = 4.5                               # line height (score box texture rows)
 PROG_BACK_H = 16.0                         # dark track sprite height (rows); its art is the middle of a 256 x 16 texture
-PROG_RGBA = (104, 138, 180, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
+PROG_RGBA = (103, 144, 176, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
 STAR_FIRE_K = 1.28                         # glow size: WoR's halo bleeds well past the outline
 STAR_SHINE_A = (0.45, 0.0)  # user 2026-10-07: back to the v0.40 star (was (0.7, 0.4) + fire glow)               # additive copies of the gold outline (WoR's solid, hot edge): alpha, 2nd copy
 STAR_FIRE_FRAMES = 24                      # WoR FC_GLOW: band_HUD_gold_star_glow under Fire_2D noise, looped
@@ -723,7 +725,7 @@ def band_meter():
           texture='WoR_HUD_star_glow', blend='Add'),
         E('star_meter_num', 'TextBlockElement',
           pos=add(overlay, scale((STAR_ART_C[0] - 64, STAR_ART_C[1] - 64), star_k), STAR_NUM_NUDGE),
-          dims=(40, 50), just=(0, 0), scale=(K0 * STAR_NUM_K, K0 * STAR_NUM_K), z=12.0, rgba=(249, 193, 34, 255),
+          dims=(40, 50), just=(0, 0), scale=(K0 * STAR_NUM_K, K0 * STAR_NUM_K), z=12.0, rgba=STAR_NUM_RGBA,
           font=SCORE_FONT, text='0x4a4d8830', shadow=False),
         streak,
         E('slot_bg', 'SpriteElement', pos=sx(add(sc, scale((-13.02, -8.03), K0))),
@@ -917,6 +919,7 @@ TEXTURES = {
 SCORE_INSIDE_K = 0.45           # the housing's dark inside (33, 36, 33) times this
 SCORE_RIM_GROW = 2              # rim texels added on each side
 SCORE_RIM_LIFT = (1.6, 40)      # rim colour = old * a + b
+SCORE_GLASS_DARK = 70.0         # glass texels darker than this (mean rgb) lose alpha in proportion (calibration 2026-10-28)
 
 
 def _score_box_edit(p):
@@ -946,6 +949,11 @@ def _score_front_edit(p):
     a[grown & ~rim, 3] = 255
     k, b = SCORE_RIM_LIFT
     a[grown, :3] = a[grown, :3] * k + b
+    # 2026-10-28 colour calibration (WoR video vs DE): the glass's near-black inside (alpha 12-28%) dimmed the score
+    # digits and the star bar under it by ~17%; WoR's glass shows only its highlights, so dark texels fade out
+    inner = ~grown
+    lum = a[..., :3].mean(-1)
+    a[inner, 3] *= np.clip(lum[inner] / SCORE_GLASS_DARK, 0.0, 1.0)
     Image.fromarray(a.clip(0, 255).astype('uint8'), 'RGBA').save(p)
 
 

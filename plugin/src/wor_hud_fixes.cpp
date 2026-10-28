@@ -1661,6 +1661,10 @@ namespace
 		g_spp = tube_for(clip);
 		if (clip != g_sp.clip || fill != g_sp.fill)
 			discover(clip, fill);
+		// 1.70 (compare_wor 2026-10-28: active fill (50,111,120) vs WoR's (79,144,138)): the DE drops the _b texture once a
+		// deployment drains below 50%, WoR keeps the charged plasma to the end. A charged meter only goes down by being
+		// deployed, so the charged look stays until the tube is empty.
+		charged = charged || (g_sp.ready && level > 0.01f);
 		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
 		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
 			g_sp.burst_t0 = now();
@@ -2186,7 +2190,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.70 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.71 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

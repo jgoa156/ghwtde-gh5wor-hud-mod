@@ -284,7 +284,8 @@ STAR_K = 1.14                   # gold star size
 STAR_SHIFT = (4.2, -1.0)        # relative to the (stretched) panel
 STAR_ART_C = (63.69, 70.73)     # centre of mass of the filled gold star in its 128 px texture
 STAR_OVERLAY_PX = 3.0           # gold outline (overlay/shine/glow) grows by this many px
-STAR_BAR_RGBA = (215, 182, 105, 255)  # calibration 2026-10-28: WoR's star bar (201,175,112) on screen
+STAR_BAR_RGBA = (255, 221, 137, 255)   # compare_wor 2026-10-28: (215,182,105) showed (170,150,81); WoR (202,175,108)
+# # calibration 2026-10-28: WoR's star bar (201,175,112) on screen
 STAR_NUM_RGBA = (235, 192, 50, 255)   # calibration 2026-10-28: WoR's saturated gold numeral (was 249,193,34: pale cream on screen)
 STAR_BG_RGBA = (130, 126, 128, 255)   # dims the silver frame's grey centre to GH5's
 STAR_NUM_K = 0.77               # star count size
@@ -339,7 +340,8 @@ SP_MARKER_K = 1.25              # GH5's divider spans the whole tube
 # ready (>= 50% or active): WoR's Mat_Sp_Ready_Fire look (SP_Fill_Glow02 under moving noise) as a seamless 60 fps
 # loop, plus the white-hot cap at the fill top (WoR needle_white 1.0 + needle_color 0.5, SB_Tubeglow01);
 # crossing 50%: a ball-lightning burst at the fill top (Ball_lightning01, 16 frames at 20 fps, WoR material rate).
-SP_CHARGING_RGBA = (23, 165, 127, 235)       # GH5 charging fill ~(30,117,105) on the dark tube
+SP_CHARGING_RGBA = (3, 228, 208, 235)   # compare_wor 2026-10-28: texture (8,58,44) showed (57,104,92); WoR (50,126,120)
+#      # GH5 charging fill ~(30,117,105) on the dark tube
 SP_PLASMA_FPS = 60                             # back to 60 (2026-10-22): the frames moved to the UI pak, no budget cap
 SP_PLASMA_FRAMES = 120                        # 2 s loop
 SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
@@ -607,7 +609,8 @@ PROG_LEAD_NAME = 'WoR_HUD_prog_lead'
 PROG_ROW = 30.0                            # score box texture row of the line's centre (clip: 0.22 x the bar-to-box-top distance above the box top)
 PROG_H = 4.5                               # line height (score box texture rows)
 PROG_BACK_H = 16.0                         # dark track sprite height (rows); its art is the middle of a 256 x 16 texture
-PROG_RGBA = (103, 144, 176, 255)           # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
+PROG_RGBA = (77, 105, 147, 255)   # compare_wor 2026-10-28: (103,144,176) showed (118,159,188); WoR (92,120,159)
+#          # the song line's steel blue (clip (99,120,159) .. (122,167,198) next to the dot)
 STAR_FIRE_K = 1.28                         # glow size: WoR's halo bleeds well past the outline
 STAR_SHINE_A = (0.45, 0.0)  # user 2026-10-07: back to the v0.40 star (was (0.7, 0.4) + fire glow)               # additive copies of the gold outline (WoR's solid, hot edge): alpha, 2nd copy
 STAR_FIRE_FRAMES = 24                      # WoR FC_GLOW: band_HUD_gold_star_glow under Fire_2D noise, looped

@@ -119,8 +119,8 @@ def sp_state(img, tube_xy):
     None when the tube is empty."""
     a = np.asarray(img).astype(float)
     x, y = tube_xy
-    rail = a[y + 60:y + 200, x - 30:x + 10].reshape(-1, 3)
-    if np.median(rail[:, 1]) > 140 and np.median(rail[:, 2]) > 140 and np.median(rail[:, 0]) < 130:
+    side = np.median(a[y + 40:y + 180, x + 110:x + 200].reshape(-1, 3), 0)   # right of the tube: black, cyan glow while active
+    if side[1] > 40 and side[1] > side[0] + 15:
         return 'active'
     c, n = sample(a[y:y + 220, x:x + 110], 'fill', 0)
     if c is None or n < 150:

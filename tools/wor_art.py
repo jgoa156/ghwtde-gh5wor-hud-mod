@@ -450,7 +450,7 @@ def neon_bottom(img, needle_png, rgb, halo_blur=1.6, mirror=False):
     return out
 
 
-def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.8):
+def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.8, core_blur=1.5, core_gain=1.8):
     """The tube needle in its own 64x64 frame (same placement as SB_TubeNeedle01, so the half divider's rotation and
     scale apply) as a white core and an `rgb` blurred halo: the neon cap at the fill top. Only the needle's bright
     edge line glows (alpha x brightness): its darker lower band, taken as a silhouette, read as a second arc."""
@@ -461,10 +461,16 @@ def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.
     peak = max(1, a.getextrema()[1])          # the needle art is semi-transparent: its line peaks at full alpha
     a = a.point(lambda v: 0 if v < 48 else min(255, int(v * 255 / peak)))
     core = Image.new('RGBA', nd.size, (255, 255, 255, 255))
-    core.putalpha(a.filter(ImageFilter.GaussianBlur(1.5)).point(lambda v: min(255, int(v * 1.8))))   # soft core (user 2026-10-27)
+    def soft(r, g):   # blurred in float, then back to full strength at its peak (a wide blur of a thin line fades it)
+        import cv2
+        import numpy as np
+        f = cv2.GaussianBlur(np.asarray(a).astype(np.float32), (0, 0), r)
+        f = np.clip(f / max(1e-3, f.max()) * 255.0 * g, 0, 255)
+        return Image.fromarray((f + 0.5).astype('uint8'), 'L')
+    core.putalpha(soft(core_blur, core_gain / 1.8))   # soft core (user 2026-10-27)
     core.save(out_core)
     halo = Image.new('RGBA', nd.size, tuple(rgb) + (255,))
-    halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * halo_gain))))
+    halo.putalpha(soft(halo_blur, halo_gain / 1.8))
     halo.save(out_halo)
 
 

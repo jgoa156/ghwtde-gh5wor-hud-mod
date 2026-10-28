@@ -141,6 +141,8 @@ def run(name, parts, a, out):
             sets += [('AutoLaunch', 'Part' + sfx, p), ('AutoLaunch', 'Bot' + sfx, '1')]
         if a.bulb_cycle:          # the band bulb steps through x1..x4 and star power x2..x8 (tools/wor_band.py)
             sets.append(('WoR_HUD', 'TestBulbCycle', '1'))
+        if getattr(a, 'sp_states', False):   # fixed star power states (build.py WoR_HUD_test_sp_states)
+            sets.append(('WoR_HUD', 'TestSPStates', '1'))
         for sec, k, v in sets:
             t = H.set_ini(t, sec, k, v)
         open(H.INI, 'w', encoding='utf-8', errors='surrogateescape', newline='').write(t)
@@ -208,6 +210,7 @@ def main():
     ap.add_argument('--frames', type=int, default=5)
     ap.add_argument('--until', type=int, default=0)     # seconds after the launch to close the game (0 = SHOT_UNTIL)
     ap.add_argument('--every', type=int, default=0)      # seconds between frames (0 = SHOT_EVERY)
+    ap.add_argument('--sp-states', action='store_true')  # 25/45/70/100 % then deploy, every 28 s (compare_wor.py)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')

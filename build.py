@@ -354,7 +354,7 @@ def main():
     tube_a = Image.open(base_png).convert('RGBA').getchannel('A')
     needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
     nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
-    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO, *wor_1g.SP_NEON_CORE_BLUR)
     neon = Image.open(nh).convert('RGBA')
     neon.alpha_composite(Image.open(nc).convert('RGBA'))
 
@@ -400,7 +400,7 @@ def main():
     # neon needles (SB_TubeNeedle01's own frame, drawn like the half divider): the fill-top cap as white core + blue
     # halo (two sprites), the bottom one as both in one texture (one sprite, shown charging and ready)
     caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
-    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
+    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO, *wor_1g.SP_NEON_CORE_BLUR)
     bottom = Image.open(caps[1]).convert('RGBA')
     bottom.alpha_composite(Image.open(caps[0]).convert('RGBA'))
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
@@ -696,8 +696,57 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestAutoLaunch")$default$ = %i(0)\n'
                           '\t:i if (%GLOBAL%$value$ = %i(1))\n'
                           '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_test_sp$\n'
-                          '\t\t:i $spawnscriptnow$$WoR_HUD_test_sp$$id$ = $WoR_HUD_test_sp$\n'
+                          '\t\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestSPStates")$default$ = %i(0)\n'
+                          '\t\t:i if (%GLOBAL%$value$ = %i(1))\n'
+                          '\t\t\t:i $spawnscriptnow$$WoR_HUD_test_sp_states$$id$ = $WoR_HUD_test_sp$\n'
+                          '\t\t:i else\n'
+                          '\t\t\t:i $spawnscriptnow$$WoR_HUD_test_sp$$id$ = $WoR_HUD_test_sp$\n'
+                          '\t\t:i endif\n'
                           '\t:i endif\n'
+                          '\t:i endfunction\n]\n\n'
+                          # 2026-10-28 (comparison against WoR footage): [WoR_HUD] TestSPStates=1 replaces the bot watcher
+                          # with fixed star power states, so every capture shows the same ones: 25, 45 (charging), 70,
+                          # 100 (ready) for 4 s each, then deploy and drain (the DE's star_power_activate_and_drain, like
+                          # the band tutorial), repeated. The amounts go to every player and the band pool.
+                          'Script WoR_HUD_test_sp_set [\n'
+                          '\t:i $GameMode_GetNumPlayersShown$\n'
+                          '\t:i $p$ = %i(1)\n'
+                          '\t:i while \n'
+                          '\t\t:i $getplayerinfo$%GLOBAL%$p$$checksum$\n'
+                          '\t\t:i $change$$structurename$ = %GLOBAL%$checksum$$star_power_amount$ = %GLOBAL%$level$\n'
+                          '\t\t:i $change$$structurename$ = %GLOBAL%$checksum$$star_power_display_amount$ = %GLOBAL%$level$\n'
+                          '\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
+                          '\t:i loop_to %GLOBAL%$num_players_shown$\n'
+                          '\t:i $change$$structurename$ = $band1_status$$star_power_amount$ = %GLOBAL%$level$\n'
+                          '\t:i $change$$structurename$ = $band1_status$$star_power_display_amount$ = %GLOBAL%$level$\n'
+                          '\t:i $printf$%s("WoR_HUD: test star power level %l")$l$ = %GLOBAL%$level$\n'
+                          '\t:i endfunction\n]\n\n'
+                          'Script WoR_HUD_test_sp_states [\n'
+                          '\t:i if (~$game_mode$ = $p2_battle$)\n'
+                          '\t\t:i return\n'
+                          '\t:i endif\n'
+                          '\t:i $wait$%f(3.0)$seconds$\n'
+                          '\t:i while \n'
+                          '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(25.0)\n'
+                          '\t\t:i $wait$%f(4.0)$seconds$\n'
+                          '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(45.0)\n'
+                          '\t\t:i $wait$%f(4.0)$seconds$\n'
+                          '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(70.0)\n'
+                          '\t\t:i $wait$%f(4.0)$seconds$\n'
+                          '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(100.0)\n'
+                          '\t\t:i $wait$%f(4.0)$seconds$\n'
+                          '\t\t:i $GameMode_GetNumPlayersShown$\n'
+                          '\t\t:i $p$ = %i(1)\n'
+                          '\t\t:i while \n'
+                          '\t\t\t:i $getplayerinfo$%GLOBAL%$p$$checksum$\n'
+                          '\t\t\t:i $getplayerinfo$%GLOBAL%$p$$player$\n'
+                          '\t\t\t:i $getplayerinfo$%GLOBAL%$p$$text$\n'
+                          '\t\t\t:i $spawnscriptnow$$star_power_activate_and_drain$$params$ = :s{$player_status$ = %GLOBAL%$checksum$$player$ = %GLOBAL%$player$$player_text$ = %GLOBAL%$text$:s}\n'
+                          '\t\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
+                          '\t\t:i loop_to %GLOBAL%$num_players_shown$\n'
+                          '\t\t:i $printf$%s("WoR_HUD: test star power deployed")\n'
+                          '\t\t:i $wait$%f(12.0)$seconds$\n'
+                          '\t:i loop_to %i(100)\n'
                           '\t:i endfunction\n]\n\n'
                           'Script WoR_HUD_test_sp [\n'
                           '\t:i if (~$game_mode$ = $p2_battle$)\n'

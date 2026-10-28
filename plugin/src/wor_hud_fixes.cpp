@@ -670,10 +670,10 @@ namespace
 	// 1.67: the fill's half width across the tube (~20 px at 1080p = 13.4 units) and its top corners' radius
 	// 1.68: the dome over the level: half width (the fill's ~30 px at 1080p / 1.5 / 2, a bit over so the lowest
 	// slice is the full fill), height and slice count (the rest of the feather windows stay empty)
-	constexpr float kTubeHW = 10.5f, kDomeS = 2.5f;
-	constexpr int kDomeBands = 6;
+	constexpr float kTopBand = 2.5f;   // 1.70: the lighter band under the fill's top (canvas units)
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
-	constexpr float kCapUp = 0.21f;   // 1.69 (04-08 video): the arc's lower edge sits ~3.4 units under its anchor, its centre ~2.3: centre on the fill edge
+	constexpr float kCapUp = 0.1f;   // 1.70: the charged fill's soft top glow centred ~1 unit inside the fill top
+	// (was 0.21:   // 1.69 (04-08 video): the arc's lower edge sits ~3.4 units under its anchor, its centre ~2.3: centre on the fill edge
 
 	// the tube axis' x shift per canvas unit of y (from the level points around `level`)
 	float axis_slope(float level)
@@ -713,24 +713,21 @@ namespace
 		// the first kDomeBands windows are the fill's domed top, kDomeS high above the level: non-overlapping slices
 		// (each as opaque as the fill: the desc's SP_DOME_ALPHA), each as wide as the ellipse at its middle and centred
 		// on the tube axis; the cap's arc (kCapUp) has its ends on the level, so it lies on the dome's edge
-		const float top = hidden ? 0.0f : level_y(g_sp.level), slice = kDomeS / kDomeBands;
-		float lx = 0.0f, ly = 0.0f;
-		if (!hidden)
-			level_point(g_sp.level, lx, ly);
-		const float slope = hidden ? 0.0f : axis_slope(g_sp.level);
+		// 1.70 (2026-10-28, WoR footage at native pixels: the charging fill's top is a plain cut with a faint lighter
+		// band just under it, no arc, no dome): window 0 is that band, kTopBand tall below the level, showing the fill
+		// once more additively (the desc's SP_TOP_BAND_ALPHA); the other windows stay empty
+		const float top = hidden ? 0.0f : level_y(g_sp.level);
 		for (int k = 0; k < g_sp.feathers; ++k)
 		{
 			void *win = g_sp.feather[k];
 			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
-			const float lo = top - k * slice, hi = lo - slice;
-			if (hidden || !fill || k >= kDomeBands || hi < kClipY)
+			if (hidden || !fill || k > 0)
 			{
 				set_dims(win, nullptr, kClipW, 0.0f, 0);
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			const float h = (k + 0.5f) / kDomeBands;
-			place_dome_band(win, fill, hi, slice, lx + (hi - ly) * slope, kTubeHW * sqrtf(1.0f - h * h));
+			place_in_window(win, fill, top, kTopBand, false);
 		}
 	}
 
@@ -835,7 +832,7 @@ namespace
 		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
 		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
 		// cut never shows as the level; full strength once ready, as before
-		constexpr float kCapChargeK = 0.6f;
+		constexpr float kCapChargeK = 0.0f;   // 1.70: WoR shows no top cap while charging (footage, 2026-10-28)
 		for (int k = 1; k < 3; ++k)
 		{
 			if (shown)
@@ -2189,7 +2186,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.69 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.70 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

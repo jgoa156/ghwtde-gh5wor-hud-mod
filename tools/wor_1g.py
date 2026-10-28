@@ -357,10 +357,11 @@ SP_PLASMA_COLOURS = dict(base=(2, 104, 86), hot=(4, 118, 86), dark=(1, 77, 77)) 
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
-SP_NEON_HALO = (8.0, 3.4)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+SP_NEON_HALO = (5.0, 1.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
-SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
+SP_NEON_CORE_BLUR = (2.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_NEON_RGB = (40, 230, 210)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]
 SP_BALL_FPS = 20
@@ -387,7 +388,7 @@ SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k 
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
 # 2026-10-28 (plugin 1.68, user: the fill's top still a straight cut under a floating arc, charged and charging): the
 # feather windows are now the fill's domed top: non-overlapping slices, each as opaque as the fill itself
-SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0, 3)
+SP_DOME_ALPHA = 0.35   # 1.70: the one band under the fill's top (WoR's faint lighter edge), added once more
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step

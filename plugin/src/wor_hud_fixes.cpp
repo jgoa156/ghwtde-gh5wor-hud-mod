@@ -789,7 +789,7 @@ namespace
 		for (int k = 1; k < 3; ++k)
 		{
 			if (shown)
-				set_pos(g_sp.glow[k], nullptr, x, y, 1);
+				set_pos(g_sp.glow[k], nullptr, x + 1.0f, y, 1);   // 1.64: 1px right (user 2026-10-27)
 			set_alpha(g_sp.glow[k], shown ? kGlowAlpha[k] * (g_sp.ready ? 1.0f : kCapChargeK) : 0.0f);
 		}
 		if (g_sp.burst_t0 >= 0.0)
@@ -2139,7 +2139,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.63 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.64 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

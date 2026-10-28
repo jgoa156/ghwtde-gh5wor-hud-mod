@@ -1,4 +1,4 @@
-"""The GH5 / Warriors of Rock single-guitar HUD (descs for the DE's nxgui HUD), laid out like WoR's 1-player screen:
+﻿"""The GH5 / Warriors of Rock single-guitar HUD (descs for the DE's nxgui HUD), laid out like WoR's 1-player screen:
 
   * rock meter: WoR's rock tube (RM_Base + red/yellow/green LEDs) on the LEFT highway border, with a needle that
     slides up it. The DE drives the slide (BAND_side_meter -> side_meter_needle_pos, theme flag d38da2b2); the LEDs
@@ -354,7 +354,7 @@ SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
-SP_NEON_HALO = (2.6, 2.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+SP_NEON_HALO = (3.6, 2.8)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
@@ -978,7 +978,7 @@ BORDER_OFFSET = 17.4
 BORDER_DY = 4.0
 
 
-def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3):
+def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3, shift=(0.0, 0.0)):
     """The fill-top cap needle (drawn like the half divider: rotation SP_MARKER_ROT, scale (k*SP_NEON_X_K, k)) as it
     appears ON SCREEN at the fill's bottom edge, baked into the star power fill texture (64x256, drawn through RIGHT:
     mirrored x scale and the rail rotation). Each fill texel is mapped to the canvas, then through the inverse of the
@@ -1026,6 +1026,7 @@ def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3):
             break
         p1, p0 = RIGHT.tex((cx, yb)), RIGHT.tex((cx, yb - d))
         C = (C[0] + p1[0] - p0[0], C[1] + p1[1] - p0[1])
+    C = (C[0] + shift[0], C[1] + shift[1])            # user 2026-10-27: 1px right, ~2px down on screen
     arc = Image.fromarray(np.clip(render(C) + 0.5, 0, 255).astype('uint8'), 'RGBA')
     out = fill.copy()
     out.alpha_composite(arc)

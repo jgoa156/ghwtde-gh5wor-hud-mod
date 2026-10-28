@@ -1,4 +1,4 @@
-"""Builds the GH5 / WoR HUD mods from sources. Never launches the game.
+﻿"""Builds the GH5 / WoR HUD mods from sources. Never launches the game.
 
 Inputs (read fresh every build, so the mod always matches the installed DE; locations in tools/paths.py):
   - DE theme table 0x8ef7f1be and HUD menu choices 0x1f644846 (tb.pak.xen)
@@ -360,7 +360,7 @@ def main():
 
     def finish(fill):
         return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT
-                                                        + wor_1g.SP_NEON_BOTTOM_ROT), tube_a)
+                                                        + wor_1g.SP_NEON_BOTTOM_ROT, shift=(1.0, 2.0)), tube_a)
     finish(Image.open(full).convert('RGBA')).save(full)
     frames = [finish(f) for f in frames]
 
@@ -405,6 +405,7 @@ def main():
     bottom.alpha_composite(Image.open(caps[0]).convert('RGBA'))
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
     bottom.save(caps[0])
+    wor_art.dome_fill(caps[2], wor_1g.SP_NEON_RGB)      # cap halo also fills under its arc: hides the window's straight cut
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}

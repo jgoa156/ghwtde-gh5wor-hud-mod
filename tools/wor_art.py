@@ -1,4 +1,4 @@
-"""Helpers that prepare extracted WoR / GH3:WoR textures for the theme pak (cropping only: no generated art)."""
+﻿"""Helpers that prepare extracted WoR / GH3:WoR textures for the theme pak (cropping only: no generated art)."""
 from PIL import Image
 
 
@@ -494,3 +494,24 @@ def neon_edge(img, rgb, core_px=1.6, halo_blur=1.6, halo_gain=2.2, inset=0.6):
     cl.putalpha(core)
     out.alpha_composite(cl)
     return out
+
+
+def dome_fill(halo_png, rgb, alpha=215):
+    """Fill the region between the cap needle's arc and its chord (per column, from the arc down to the row of its
+    ends) in `rgb`, softly, so the fill window's straight top cut is covered by a curved top (user 2026-10-27)."""
+    import numpy as np
+    from PIL import ImageFilter
+    im = Image.open(halo_png).convert('RGBA')
+    a = np.asarray(im.split()[3]).astype(float)
+    cols = np.where(a.max(0) > 96)[0]
+    if len(cols) == 0:
+        return
+    pts = [(int(x), float(np.average(np.arange(a.shape[0]), weights=a[:, x]))) for x in cols]   # arc centre line
+    from PIL import ImageDraw
+    mk = Image.new('L', im.size, 0)
+    ImageDraw.Draw(mk).polygon(pts, fill=alpha)        # arc closed by its chord: rotation-invariant dome
+    m = np.asarray(mk).astype(float)
+    dome = Image.new('RGBA', im.size, tuple(rgb) + (255,))
+    dome.putalpha(Image.fromarray(m.astype('uint8')).filter(ImageFilter.GaussianBlur(0.8)))
+    dome.alpha_composite(im)
+    dome.save(halo_png)

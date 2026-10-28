@@ -443,7 +443,8 @@ def bake_bottom_arc(fill, tube_png, rgb=None, halo=None):
         return m.point(lambda v: min(255, int(v * k)))
     tube_a = Image.open(tube_png).convert('RGBA').getchannel('A')
     out = fill.copy()
-    for col, m in ((rgb, line(2.0, blur * 0.6, gain)), ((235, 250, 255), line(0.9, 0.3, 1.6))):
+    # a wide soft halo and a softened core (user 2026-10-27: WoR's bottom ring is blurrier)
+    for col, m in ((rgb, line(3.0, blur * 1.2, gain)), ((235, 250, 255), line(1.0, 0.8, 1.3))):
         m = ImageChops.darker(m, tube_a)
         out.alpha_composite(Image.merge('RGBA', [Image.new('L', (w, h), c) for c in col] + [m]))
     return out

@@ -782,11 +782,15 @@ namespace
 		float x, y;
 		level_point(g_sp.level, x, y);
 		set_alpha(g_sp.glow[0], shown ? kGlowAlpha[0] : 0.0f);
+		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
+		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
+		// cut never shows as the level; full strength once ready, as before
+		constexpr float kCapChargeK = 0.6f;
 		for (int k = 1; k < 3; ++k)
 		{
-			if (g_sp.ready && shown)
+			if (shown)
 				set_pos(g_sp.glow[k], nullptr, x, y, 1);
-			set_alpha(g_sp.glow[k], g_sp.ready && shown ? kGlowAlpha[k] : 0.0f);
+			set_alpha(g_sp.glow[k], shown ? kGlowAlpha[k] * (g_sp.ready ? 1.0f : kCapChargeK) : 0.0f);
 		}
 		if (g_sp.burst_t0 >= 0.0)
 		{
@@ -2111,7 +2115,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.61 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.62 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

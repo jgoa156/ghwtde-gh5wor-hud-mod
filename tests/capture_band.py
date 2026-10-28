@@ -162,7 +162,7 @@ def run(name, parts, a, out):
         held = tries = 0
         t0 = time.time()
         next_shot = t0 + SHOT_FROM
-        deadline = t0 + SHOT_UNTIL
+        deadline = t0 + (a.until or SHOT_UNTIL)   # --until: close the game earlier (user 2026-10-27: ~1 min of song)
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
             if int(time.time() - t0) % 5 == 0:
@@ -193,6 +193,10 @@ def run(name, parts, a, out):
         src = os.path.join(H.GAME, f)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(out, f'{name}_{f}'))
+    # the DE's own log (our printf lines land there): the next launch overwrites it
+    dbg = os.path.join(os.path.dirname(H.INI), 'Logs', 'debug.txt')
+    if os.path.exists(dbg):
+        shutil.copy2(dbg, os.path.join(out, f'{name}_debug.txt'))
     return got
 
 
@@ -202,6 +206,7 @@ def main():
     ap.add_argument('--song', default='ontheroadagain')   # on-disc, short (user 2026-10-22); MODS songs load no notes via AutoLaunch
     ap.add_argument('--wait', type=int, default=150)
     ap.add_argument('--frames', type=int, default=5)
+    ap.add_argument('--until', type=int, default=0)     # seconds after the launch to close the game (0 = SHOT_UNTIL)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')

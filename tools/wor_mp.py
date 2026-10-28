@@ -339,7 +339,10 @@ def placements(config, d=None):
         # the instance's z makes its chain of draw priorities sum to the 1-player one (Z_TUBES_1P / Z_MULT_1P), so
         # every element layers against the highway exactly as in quickplay (user 2026-10-23: the band tubes, at
         # quickplay's exact spot, looked like floating over the highway)
-        zt = Z_TUBES_1P - gz
+        # 2026-10-27 (user, 3 highways: "the 3rd highway elements are behind the highway"): the third container's z is 2
+        # (the others' 1), so the chain rule gave its tubes -1 and they drew under the highway, like the multiplier
+        # note below: the instance's own z decides. Every container gets the tubes' z that is right on g1 / g2.
+        zt = Z_TUBES_1P - 1.0
         # 2026-10-23 (user tests of 1.50 / 1.51): the multiplier gets the 1-player player_meter's own z instead. What
         # layers it against the highway is the instance's own z, not the chain's sum: up to 1.48 it was 2 and the
         # badge's arm went behind the border (user frame, guitar + vocals, 02:45 with 1.48); 1.49's chain total made it

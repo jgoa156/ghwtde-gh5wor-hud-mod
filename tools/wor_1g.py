@@ -365,8 +365,9 @@ SP_BURST_RGBA = (200, 255, 255, 255)
 SP_BURST_TIME = (0.4, 0.8)                    # full until 0.4 s, faded out by 0.8 s
 SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c')   # neon needles: bottom (core+halo), cap core, cap halo
 SP_GLOW_BOTTOM_LEVEL = 0.011                 # bottom needle masks the fill's bottom end (user 2026-10-09: 0.035 sat ~5 px too high)
-SP_NEON_X_K = 0.75                           # neon needles narrower than the half divider: fit the glass (user 2026-10-09)
-SP_NEON_BOTTOM_ROT = -5.0                    # the bottom needle turned a bit more than the divider (user 2026-10-09; the top one is right)
+SP_NEON_X_K = 1.0                            # the neon needles exactly like the half divider (user 2026-10-27: 'angled EXACTLY
+                                             # like the middle needle'; 0.75 since 2026-10-09)
+SP_NEON_BOTTOM_ROT = 0.0                     # the bottom needle at the divider's angle too (2026-10-27; -5 since 2026-10-09)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
 SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.0),   # bottom neon now baked in the fill;    # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
@@ -422,32 +423,6 @@ def glass_mask(tube_png):
     m = Image.fromarray(big.astype('uint8'), 'L').resize((w, h), Image.LANCZOS)
     m = np.minimum(np.asarray(m).astype(float), np.where(tube[..., 3] > 128, 255.0, 0.0))
     return Image.fromarray(m.astype('uint8'), 'L').filter(ImageFilter.GaussianBlur(0.6))
-
-
-def bake_bottom_arc(fill, tube_png, rgb=None, halo=None):
-    """The bottom neon (WoR's blue glow on the empty tube's end) drawn along the glass end's arch in the tube texture's
-    own frame, so it follows the rim through the sprite's mirror, scale and rotation; kept inside the tube's alpha.
-    Returns the composited fill (PIL RGBA)."""
-    import numpy as np
-    from PIL import Image, ImageDraw, ImageFilter, ImageChops
-    rgb = rgb or SP_NEON_RGB
-    blur, gain = halo or SP_NEON_HALO
-    S = 4
-    w, h = fill.size
-    pts = [(x * S, glass_end_row(x) * S) for x in np.linspace(SP_GLASS_X[0], SP_GLASS_X[1], 60)]
-
-    def line(width, b, k):
-        m = Image.new('L', (w * S, h * S), 0)
-        ImageDraw.Draw(m).line(pts, fill=255, width=max(1, round(width * S)), joint='curve')
-        m = m.filter(ImageFilter.GaussianBlur(b * S)).resize((w, h), Image.LANCZOS)
-        return m.point(lambda v: min(255, int(v * k)))
-    tube_a = Image.open(tube_png).convert('RGBA').getchannel('A')
-    out = fill.copy()
-    # a wide soft halo and a softened core (user 2026-10-27: WoR's bottom ring is blurrier)
-    for col, m in ((rgb, line(3.0, blur * 1.2, gain)), ((235, 250, 255), line(1.0, 0.8, 1.3))):
-        m = ImageChops.darker(m, tube_a)
-        out.alpha_composite(Image.merge('RGBA', [Image.new('L', (w, h), c) for c in col] + [m]))
-    return out
 
 
 def clip_to(im, mask):

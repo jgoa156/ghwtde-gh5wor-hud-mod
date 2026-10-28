@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-27 night): HANDOFF GUIDE: plugin 1.61, section 5m first (verified vs built-not-seen), then 5l / 5k
+## START HERE (2026-10-27 night): HANDOFF GUIDE: plugin 1.63, section 5n first (end of day: open items), then 5m / 5l
 
 Everything after this section is older history; read it only for a detail.
 
@@ -296,6 +296,24 @@ Ultrawide Fix 1.2 (its repo): HorPlusSites bitmask, default 7 (0x711bac added); 
 off (the boot crashes blamed on it were the vocal globals).
 Waiting on the user: which single-player tube angle (fill top line vs the tube against the highway); ultrawide band
 close-ups on their screen; a GitHub repo for the venue filter.
+
+### 5n. 2026-10-27 night, end of the day (plugin 1.63; tests stopped for today by the user)
+Seen in captures and right: band tubes' fill inside the glass (1.60 set_rot); third highway's tubes in front of the
+highway (wor_mp zt); band score group under the vocal highway; band vocals health lamps (z above player_meter); 1v
+comet / now line / arrowheads; note length bands (widths 19..265 -> bands 1..8); single-player tube end and curved cap
+while charging (1.62).
+Built after the last capture, not seen: the cap and bottom neon are now exactly the half divider's needle (SP_NEON_X_K
+1, SP_NEON_BOTTOM_ROT 0; the bottom one baked with bake_screen_needle at SP_MARKER_ROT on the glass end, clipped to
+the tube's alpha; the traced arc bake_bottom_arc is gone).
+Open, next session:
+1. Vocalist's star power strip NEVER fills (1v and band, even in star power). 1.62 made band read band1_starpower,
+   but the strip stays empty in single player too, so the widget's writes don't show. Plugin 1.63 logs every
+   distinct segment scale / alpha / dims / rotation ("vocal sp segment ..."): run a short 1v and read it.
+2. Star power phrase notes' blue blur: every note logs colour 255,255,255,255 and the DE scripts don't mark them;
+   asked the user whether the DE's own theme shows them differently (else: map them from the song's star power data).
+3. Charged plasma top looked slightly blocky in a 1g frame (low-res plasma frames / feathers).
+4. Unanswered: venue filter GitHub repo; ultrawide 1.2 band close-ups on the user's screen; practice crash guard
+   (1.61) not exercised yet.
 
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in

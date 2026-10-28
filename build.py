@@ -345,14 +345,24 @@ def main():
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
                                             every=round(wor_1g.SP_PLASMA_FPS / 20)))
     # the fill and the plasma kept inside the glass down to its end's arch (user 2026-10-27: a corner leaked out at the
-    # bottom left, then the fill ended flat above the arch), and the bottom neon traced along that arch in the glass's
-    # own texture frame (it sat too high, its ends past the rim). The needle art placed in screen space before
-    # (bake_screen_needle) had its own arch, which never matched the glass end; a texture-space copy of the art came out
-    # flipped, but a line traced on the glass's own geometry goes through the same mirror / rotation as the glass.
+    # bottom left, then the fill ended flat above the arch)
+    # 2026-10-27 (user: the top and bottom arcs "angled EXACTLY like the middle needle"): the bottom ring is the half
+    # divider's needle art again, at its rotation and scale (bake_screen_needle, SP_NEON_X_K 1, no extra turn), placed
+    # on the fill's last row (now the glass end), then kept inside the tube's own outline so its ends can't stick out
     base_png = os.path.join(WOR_PNG, 'SP_Base.png')
     glass = wor_1g.glass_mask(base_png)
-    wor_1g.bake_bottom_arc(wor_1g.clip_to(Image.open(full).convert('RGBA'), glass), base_png).save(full)
-    frames = [wor_1g.bake_bottom_arc(wor_1g.clip_to(f, glass), base_png) for f in frames]
+    tube_a = Image.open(base_png).convert('RGBA').getchannel('A')
+    needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
+    nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO)
+    neon = Image.open(nh).convert('RGBA')
+    neon.alpha_composite(Image.open(nc).convert('RGBA'))
+
+    def finish(fill):
+        return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT
+                                                        + wor_1g.SP_NEON_BOTTOM_ROT), tube_a)
+    finish(Image.open(full).convert('RGBA')).save(full)
+    frames = [finish(f) for f in frames]
 
     # the plasma frames ride in the always-loaded UI pak (no 4 MiB cap there): the plugin swaps them in by name, so
     # they need not be in the theme pak; the _b fill (picked by the DE itself) stays in the theme pak

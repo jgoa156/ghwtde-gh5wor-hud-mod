@@ -667,7 +667,8 @@ namespace
 	// 1.65 (user 2026-10-27: "the blue fill being a rectangle while the arc is over it"): each feather band is also
 	// narrower the higher it reaches (an ellipse's half width around the tube axis), so the soft top is a dome under
 	// the cap's arc instead of a flat-topped band. kDomeHW: half the fill's horizontal span (~20 px at 1080p) + a bit
-	constexpr float kDomeHW = 8.5f;
+	// 1.67: the fill's half width across the tube (~20 px at 1080p = 13.4 units) and its top corners' radius
+	constexpr float kTubeHW = 7.0f, kCornerR = 3.5f;
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
 	constexpr float kCapUp = 0.45f;
 
@@ -699,7 +700,13 @@ namespace
 	{
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		const bool hidden = g_sp.level <= 0.001f || g_sp.level >= 0.999f;
-		const float top = hidden ? 0.0f : level_y(g_sp.level), band = kFeatherH / kFeathers;
+		// 1.67 (user 2026-10-28: the fill's top is still "slightly square"): the main window's top drops kCornerR below
+		// the level and the bands start there, their tops spread over kCornerR + kFeatherH; a band whose top lies in the
+		// corner zone is as wide as a rounded corner of radius kCornerR at that height (full width below it, the tube
+		// minus the radius above), so only the two top corners are cut round and the middle stays full. Each band is
+		// centred on the tube axis at its own top (the nearest band decides the width at any height, so the slant of
+		// the tube between a band's top and the base never shows).
+		const float top = hidden ? 0.0f : level_y(g_sp.level) + kCornerR, band = (kCornerR + kFeatherH) / kFeathers;
 		float lx = 0.0f, ly = 0.0f;
 		if (!hidden)
 			level_point(g_sp.level, lx, ly);
@@ -708,7 +715,7 @@ namespace
 		{
 			void *win = g_sp.feather[k];
 			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
-			const float hi = top - (k + 1) * band, lo = top;   // nested: every window ends at the level
+			const float hi = top - (k + 1) * band, lo = top;   // nested: every window ends at the base
 			const float t = hi < kClipY ? kClipY : hi;
 			if (hidden || !fill || lo - t <= 0.0f)
 			{
@@ -716,10 +723,9 @@ namespace
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			// 1.66 (user 2026-10-27: the dome cut the fill off): full width again; the cap texture's fill-coloured arc
-			// shapes the corners instead
-			(void)lx; (void)ly; (void)slope;
-			place_in_window(win, fill, t, lo - t, false);
+			const float hgt = (k + 1) * band, q = hgt < kCornerR ? hgt : kCornerR;
+			const float hw = kTubeHW - kCornerR + sqrtf(kCornerR * kCornerR - q * q);
+			place_dome_band(win, fill, t, lo - t, lx + (t - ly) * slope, hw);
 		}
 	}
 
@@ -727,7 +733,7 @@ namespace
 	void place_fill()
 	{
 		const float level = g_sp.level, bottom = kClipY + kClipH;
-		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + kCornerR;   // 1.67: the bands draw the top
 		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top, true);
 	}
 
@@ -2178,7 +2184,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.66 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.67 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

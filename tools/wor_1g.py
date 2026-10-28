@@ -369,7 +369,7 @@ SP_GLOW_BOTTOM_LEVEL = 0.011                 # bottom needle masks the fill's bo
 SP_NEON_X_K = 1.0                            # the neon needles exactly like the half divider (user 2026-10-27: 'angled EXACTLY
                                              # like the middle needle'; 0.75 since 2026-10-09)
 SP_NEON_BOTTOM_SHIFT = (1.0, 2.0)            # user 2026-10-27: bottom ring 1px right, 1-2px down (canvas units)
-SP_NEON_BOTTOM_DOWN = 2.0                    # user 2026-10-27 (2nd pass): 2 more down the tube, along its axis
+SP_NEON_BOTTOM_DOWN = 4.0                    # user 2026-10-27/28: 2 + 2 more down the tube, along its axis
 SP_NEON_BOTTOM_ROT = 0.0                    # the bottom needle at the divider's angle too (2026-10-27; -5 since 2026-10-09)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
 SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.0),   # bottom neon now baked in the fill;    # (id, scale, rot vs tube, rgba,

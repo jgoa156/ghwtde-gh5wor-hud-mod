@@ -532,3 +532,20 @@ def glow_tint(src_png, out_png, rgb, gain=1.0):
     out[..., :3] = rgb
     out[..., 3] = np.clip(lum * gain, 0, 255).astype(np.uint8)
     Image.fromarray(out, 'RGBA').save(out_png)
+
+
+def glow_ellipse(out_png, size, rgb, blur, frame=64):
+    """A soft filled ellipse of `size` (w, h texels) in `rgb`, centred in a `frame` px square, blurred by `blur` and
+    back to full strength at its peak (2026-10-28: the star power tube's charged top glow, WoR's compact band)."""
+    import cv2
+    import numpy as np
+    m = np.zeros((frame, frame), np.float32)
+    cv2.ellipse(m, (frame // 2, frame // 2), (max(1, int(size[0] / 2)), max(1, int(size[1] / 2))), 0, 0, 360, 1.0, -1,
+                cv2.LINE_AA)
+    if blur > 0:
+        m = cv2.GaussianBlur(m, (0, 0), blur)
+    m = np.clip(m / max(1e-3, m.max()), 0, 1)
+    out = np.zeros((frame, frame, 4), np.uint8)
+    out[..., :3] = rgb
+    out[..., 3] = (m * 255 + 0.5).astype(np.uint8)
+    Image.fromarray(out, 'RGBA').save(out_png)

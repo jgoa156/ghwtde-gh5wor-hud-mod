@@ -364,6 +364,9 @@ SP_NEON_HALO = (2.8, 2.3)   # 2026-10-28: top glow (118..138,196..201,183..189) 
                                              # was the defaults 1.4 / 1.8)
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
 SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_CAP_ROT = 6.5                              # 2026-10-28: the top glow lies along WoR's fill-top slope (was the needle's 37)
+SP_CAP_CORE_SIZE = (12, 4)                    # top glow ellipses (texels; the sprite's x scale is k * SP_NEON_X_K)
+SP_CAP_HALO_SIZE = (15, 8)
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
 SP_BOTTOM_ARC_SHIFT = (1.0 + 2 / 1.5, 2.0 + 4 / 1.5)   # user 2026-10-28: 2 px right, 4 px down more (1080p px; canvas units)
 SP_BAKE_BOTTOM_ARC = True                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
@@ -539,7 +542,7 @@ def sp_effect_sprites():
             n = math.hypot(ax, ay)
             pos = add(p0, SP_NEON_BOTTOM_SHIFT, (ax / n * SP_NEON_BOTTOM_DOWN, ay / n * SP_NEON_BOTTOM_DOWN))
         if k is None:   # neon needle cap: drawn like the half divider (same texture frame, rotation and scale)
-            k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT + (SP_NEON_BOTTOM_ROT if lid == 'sp_glow_bottom' else 0.0)
+            k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT + SP_NEON_BOTTOM_ROT if lid == 'sp_glow_bottom' else SP_CAP_ROT
             sc = (k * SP_NEON_X_K, k)
         else:
             rot, sc = RIGHT.angle + rot_off, (k, k)

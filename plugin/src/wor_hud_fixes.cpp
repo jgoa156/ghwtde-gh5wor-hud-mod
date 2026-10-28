@@ -681,8 +681,9 @@ namespace
 		return kTubeHW * tanf(kCutRot);
 	}
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
-	constexpr float kCapDX = 5.0f;   // 1.72: the top glow sat left of the fill's middle (was +1)
-	constexpr float kCapUp = 0.1f;   // 1.70: the charged fill's soft top glow centred ~1 unit inside the fill top
+	constexpr float kCapDX = 0.0f;   // 1.79: the ellipse glow is centred in its frame (the needle art was not: +5)
+	constexpr float kCapUp = -0.08f;   // 1.79: the glow's centre ~1 unit inside the fill top, like WoR's band
+	// (1.70: 0.1;   // 1.70: the charged fill's soft top glow centred ~1 unit inside the fill top
 	// (was 0.21:   // 1.69 (04-08 video): the arc's lower edge sits ~3.4 units under its anchor, its centre ~2.3: centre on the fill edge
 
 	// the tube axis' x shift per canvas unit of y (from the level points around `level`)
@@ -2222,7 +2223,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.78 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.79 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

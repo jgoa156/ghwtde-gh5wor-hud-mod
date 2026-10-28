@@ -410,12 +410,14 @@ def main():
     # neon needles (SB_TubeNeedle01's own frame, drawn like the half divider): the fill-top cap as white core + blue
     # halo (two sprites), the bottom one as both in one texture (one sprite, shown charging and ready)
     caps = [os.path.join(work, n + '.png') for n in wor_1g.SP_GLOW_NAMES[1:]]
-    wor_art.neon_sprite(os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), *caps, wor_1g.SP_NEON_RGB, *wor_1g.SP_NEON_HALO, *wor_1g.SP_NEON_CORE_BLUR)
+    # the charged top glow (2026-10-28: the needle-shaped cap hooked left of the fill; WoR's is a compact level band
+    # across the fill top): soft ellipses, core and halo, drawn level and turned to WoR's slope by the sprites (SP_CAP_ROT)
+    wor_art.glow_ellipse(caps[0], wor_1g.SP_CAP_CORE_SIZE, wor_1g.SP_NEON_TOP_CORE, wor_1g.SP_NEON_CORE_BLUR[0])
+    wor_art.glow_ellipse(caps[1], wor_1g.SP_CAP_HALO_SIZE, wor_1g.SP_NEON_RGB, wor_1g.SP_NEON_HALO[0])
     # the bottom glow has its own colour and spread (user 2026-10-28: "fix the color and blur spread of the cyan arc
     # in the bottom"; WoR's is a broad saturated cyan band): the sprite reuses the baked bottom neon built above
     bottom = Image.open(nh).convert('RGBA')
     bottom.alpha_composite(Image.open(nc).convert('RGBA'))
-    wor_art.recolour(caps[0], wor_1g.SP_NEON_TOP_CORE)   # the charged top glow's core: WoR's is barely tinted
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
     bottom.save(caps[0])
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):

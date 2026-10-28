@@ -626,7 +626,7 @@ namespace
 	// fill gets that rotation added, its offset in the window is turned by it, and the window grows by kRotMargin so the
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
-	constexpr float kCutRot = 6.5f * 3.14159265f / 180.0f;   // 1.72: the fill top's slope (WoR footage)
+	constexpr float kCutRot = 0.0f;   // 1.74: slope off (1.73's column windows drew a dotted line; WoR's slope is ~6.5 deg, ~3 px)
 
 	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
@@ -2214,7 +2214,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.73 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.74 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

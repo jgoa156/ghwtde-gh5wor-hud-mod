@@ -367,7 +367,7 @@ SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom 
 SP_TOP_EDGE = True                            # 2026-10-28: sp_glow_bottom (never visible) becomes the charging fill's soft top edge
 SP_EDGE_PROFILE = [[-9.5, 67, 114, 110], [-9.0, 76, 146, 140], [-8.5, 88, 157, 148], [-8.0, 97, 188, 177], [-7.5, 96, 190, 180], [-7.0, 95, 192, 182], [-6.5, 81, 178, 167], [-6.0, 66, 154, 147], [-5.5, 58, 142, 136], [-5.0, 52, 132, 127], [-4.5, 48, 124, 118], [-4.0, 48, 119, 114], [-3.5, 46, 118, 111], [-3.0, 44, 116, 108], [-2.5, 42, 110, 106], [-2.0, 41, 107, 103], [-1.5, 41, 105, 100], [-1.0, 38, 104, 96], [-0.5, 37, 103, 95], [0.0, 36, 103, 94], [0.5, 36, 101, 95], [1.0, 35, 101, 94], [1.5, 38, 103, 99], [2.0, 42, 107, 104], [2.5, 42, 110, 103], [3.0, 45, 115, 108], [3.5, 47, 119, 111], [4.0, 50, 120, 113], [4.5, 50, 123, 117], [5.0, 51, 125, 118], [5.5, 53, 125, 120], [6.0, 51, 124, 119], [6.5, 52, 125, 121], [7.0, 54, 128, 123], [7.5, 57, 128, 124], [8.0, 94, 167, 163], [8.5, 70, 139, 136], [9.0, 84, 151, 148], [9.5, 128, 175, 175]]   # (canvas units across the tube from its axis, r, g, b): the charging fill's on-screen colour, 1.81 run (user 2026-10-28: the edge's flat colour read as another arc)
 SP_EDGE_RGB = (53, 128, 120)                  # the charging fill's on-screen colour (compare_wor, 1.79 run)
-SP_EDGE_GEOM = dict(width=19.0, wall_soft=0.8, fade_in=2.5, solid=2.8, fade_out=2.5, slope_deg=2.0, dome=1.8)   # dome: the ends sit this much lower (user 2026-10-28: 'too straight'; WoR's top is rounded)   # canvas units
+SP_EDGE_GEOM = dict(width=17.0, wall_soft=0.8, fade_in=2.5, solid=2.8, fade_out=2.5, slope_deg=2.0, dome=1.8)   # dome: the ends sit this much lower (user 2026-10-28: 'too straight'; WoR's top is rounded)   # canvas units
 SP_CAP_ROT = 6.5                              # 2026-10-28: the top glow lies along WoR's fill-top slope (was the needle's 37)
 SP_CAP_CORE_SIZE = (12, 3)   # user 2026-10-28: top arc ~2 px thinner (was 4 / 8)
 #                   # top glow ellipses (texels; the sprite's x scale is k * SP_NEON_X_K)
@@ -424,9 +424,9 @@ def sp_tube_width(y):
 # The glass's bottom end in SP_Base (texture px, before the mirror): a concave arch, its lighter rim low at the left
 # (where the hook-shaped tail hangs below), up to ~223 between columns 48 and 52, down again at the right edge (read
 # off the enlarged art, 2026-10-27: the fill used to end flat above it and the neon sat too high, user crops)
-SP_GLASS_END = ((28.0, 235.0), (31.0, 233.4), (34.0, 231.6), (39.0, 228.2),   # user 2026-10-28: the arc's (screen) right side curved too
+SP_GLASS_END = ((28.0, 231.0), (34.0, 230.5), (39.0, 228.0),   # user 2026-10-28: the arc's screen-right end (texture right) curved down too
                 (44.0, 224.8), (48.0, 223.2), (52.0, 223.0),
-                (55.0, 224.6), (58.0, 228.5))
+                (55.0, 226.2), (58.0, 230.5))
 SP_GLASS_X = (29, 57)            # glass interior columns (between the rims)
 
 
@@ -1106,6 +1106,7 @@ def edge_texture(out_png):
     out = np.zeros((64, 64, 4), np.uint8)
     pk = np.array([p[0] for p in SP_EDGE_PROFILE])
     for ch in range(3):   # the fill's own colour at each point across the tube
-        out[..., ch] = np.interp(dx - dy * axis, pk, [p[ch + 1] for p in SP_EDGE_PROFILE]).astype(np.uint8)
+        # interior colours only (user 2026-10-28: the wall highlight left a bright fleck where the sprite meets the wall)
+        out[..., ch] = np.interp(np.clip(dx - dy * axis, -6.5, 6.5), pk, [p[ch + 1] for p in SP_EDGE_PROFILE]).astype(np.uint8)
     out[..., 3] = (alpha * 255 + 0.5).astype(np.uint8)
     Image.fromarray(out, 'RGBA').save(out_png)

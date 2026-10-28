@@ -418,8 +418,13 @@ def main():
     # in the bottom"; WoR's is a broad saturated cyan band): the sprite reuses the baked bottom neon built above
     bottom = Image.open(nh).convert('RGBA')
     bottom.alpha_composite(Image.open(nc).convert('RGBA'))
+    if wor_1g.SP_TOP_EDGE:   # 2026-10-28: the sprite is the charging fill's soft top edge instead
+        bottom = None
     caps.insert(0, os.path.join(work, wor_1g.SP_GLOW_NAMES[0] + '.png'))
-    bottom.save(caps[0])
+    if bottom is None:
+        wor_1g.edge_texture(caps[0])
+    else:
+        bottom.save(caps[0])
     for n, c in zip(wor_1g.SP_GLOW_NAMES, caps):
         pngs.append(c)
         sources[n] = {'src': os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png'), 'neon': list(wor_1g.SP_NEON_RGB), 'box': None, 'flip': False}

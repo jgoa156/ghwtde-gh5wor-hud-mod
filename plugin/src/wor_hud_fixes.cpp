@@ -673,6 +673,7 @@ namespace
 	// 1.67: the fill's half width across the tube (~20 px at 1080p = 13.4 units) and its top corners' radius
 	// 1.68: the dome over the level: half width (the fill's ~30 px at 1080p / 1.5 / 2, a bit over so the lowest
 	// slice is the full fill), height and slice count (the rest of the feather windows stay empty)
+	constexpr float kEdgeCutDrop = 0.9f;   // 1.80: the hard cut sits this far under the level, inside the top-edge sprite's opaque band
 	constexpr float kTubeHW = 11.0f;   // 1.72: half the span the slope columns cover (the fill's ~15 units, a bit over)
 
 	// how far below the level the solid fill's cut sits: the sloped top's drop from the axis to the tube's right side
@@ -764,7 +765,7 @@ namespace
 	void place_fill()
 	{
 		const float level = g_sp.level, bottom = kClipY + kClipH;
-		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + cut_drop() + 0.5f * kSoftEdge;   // 1.75: the soft columns draw the fill above this
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + cut_drop() + 0.5f * kSoftEdge + kEdgeCutDrop;   // 1.80: inside the edge sprite's opaque band
 		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top, true);
 	}
 
@@ -857,7 +858,13 @@ namespace
 		float x, y;
 		level_point(g_sp.level, x, y);
 		const float cap_dy = -kCapUp * kFeatherH, cap_x = x + cap_dy * axis_slope(g_sp.level), cap_y = y + cap_dy;
-		set_alpha(g_sp.glow[0], shown ? kGlowAlpha[0] : 0.0f);
+		// 1.80 (user 2026-10-28: "the trapezoid is the top edge"): glow[0] is the charging fill's soft, sloped top edge
+		// (tools/wor_1g.py edge_texture, normal blend over the fill): centred on the tube axis at the level, charging only
+		// (the charged plasma moves, the top glow covers that edge)
+		const bool edge = shown && !g_sp.ready && g_sp.level < 0.999f;
+		if (edge)
+			set_pos(g_sp.glow[0], nullptr, x, y, 1);
+		set_alpha(g_sp.glow[0], edge ? 1.0f : 0.0f);
 		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
 		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
 		// cut never shows as the level; full strength once ready, as before
@@ -2223,7 +2230,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.79 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.80 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

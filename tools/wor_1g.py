@@ -364,6 +364,9 @@ SP_NEON_HALO = (2.8, 2.3)   # 2026-10-28: top glow (118..138,196..201,183..189) 
                                              # was the defaults 1.4 / 1.8)
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
 SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_TOP_EDGE = True                            # 2026-10-28: sp_glow_bottom (never visible) becomes the charging fill's soft top edge
+SP_EDGE_RGB = (53, 128, 120)                  # the charging fill's on-screen colour (compare_wor, 1.79 run)
+SP_EDGE_GEOM = dict(width=19.0, wall_soft=0.8, fade_in=2.5, solid=1.8, fade_out=2.5, slope_deg=6.5)   # canvas units
 SP_CAP_ROT = 6.5                              # 2026-10-28: the top glow lies along WoR's fill-top slope (was the needle's 37)
 SP_CAP_CORE_SIZE = (12, 4)                    # top glow ellipses (texels; the sprite's x scale is k * SP_NEON_X_K)
 SP_CAP_HALO_SIZE = (15, 8)
@@ -546,8 +549,9 @@ def sp_effect_sprites():
             sc = (k * SP_NEON_X_K, k)
         else:
             rot, sc = RIGHT.angle + rot_off, (k, k)
-        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=sc, rot=rot, z=3.06,
-                     alpha=0.0, rgba=rgba, texture=tex, blend='Add'))
+        edge = lid == 'sp_glow_bottom' and SP_TOP_EDGE   # 2026-10-28: this sprite is the charging fill's soft top edge
+        out.append(E(lid, 'SpriteElement', pos=pos, dims=(64, 64), scale=sc, rot=0.0 if edge else rot, z=3.6 if edge else 3.06,
+                     alpha=0.0, rgba=rgba, texture=tex, blend='Blend' if edge else 'Add'))
     for i, (off, k) in enumerate(SP_BURST):
         out.append(E(f'sp_burst{i}', 'SpriteElement', pos=add(sp_level_point(0.5), off), dims=(32, 32), scale=(k, k),
                      z=3.07, alpha=0.0, rgba=SP_BURST_RGBA, texture=SP_BALL_NAMES[0], blend='Add'))
@@ -1070,3 +1074,32 @@ def bake_screen_needle(fill, needle_rgba, rot_deg=None, scale=None, iters=3, shi
     out = fill.copy()
     out.alpha_composite(arc)
     return out
+
+
+def edge_texture(out_png):
+    """The charging fill's soft top edge (2026-10-28, user: "the trapezoid is the top edge"): drawn by the
+    sp_glow_bottom sprite (normal blend, no rotation, scale (k * SP_NEON_X_K, k)) centred on the tube axis at the level.
+    In the fill's on-screen colour: transparent above WoR's sloped edge line, fading in over fade_in, opaque for solid
+    (the plugin's hard cut lies in there, so it vanishes), fading out over fade_out into the fill; clipped to the glass
+    interior between the tube's slanted walls (width across, horizontally)."""
+    import numpy as np
+    from PIL import Image
+    g = SP_EDGE_GEOM
+    k = RAIL_SX * 1.1 * SP_MARKER_K
+    sx, sy = k * SP_NEON_X_K, k
+    a0, a1 = sp_level_point(0.4), sp_level_point(0.6)
+    axis = (a1[0] - a0[0]) / (a1[1] - a0[1])          # x shift per unit y along the tube
+    tn = math.tan(math.radians(g['slope_deg']))
+    ys, xs = np.mgrid[0:64, 0:64].astype(float)
+    dx, dy = (xs + 0.5 - 32) * sx, (ys + 0.5 - 32) * sy
+    across = np.abs(dx - dy * axis)
+    wall = np.clip((g['width'] / 2 - across) / g['wall_soft'], 0, 1)
+    v = dy - dx * tn                                  # below the sloped edge line: > 0
+    sm = lambda t: t * t * (3 - 2 * t)
+    up = sm(np.clip((v + g['fade_in']) / g['fade_in'], 0, 1))
+    down = sm(np.clip(1 - (v - g['solid']) / g['fade_out'], 0, 1))
+    alpha = np.minimum(up, down) * wall
+    out = np.zeros((64, 64, 4), np.uint8)
+    out[..., :3] = SP_EDGE_RGB
+    out[..., 3] = (alpha * 255 + 0.5).astype(np.uint8)
+    Image.fromarray(out, 'RGBA').save(out_png)

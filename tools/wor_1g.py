@@ -353,7 +353,7 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
-SP_PLASMA_COLOURS = dict(base=(9, 117, 102), hot=(16, 133, 102), dark=(4, 87, 92))   # calibration 2026-10-28: WoR's teal (was light blue)
+SP_PLASMA_COLOURS = dict(base=(2, 104, 86), hot=(4, 118, 86), dark=(1, 77, 77))   # calibration 2026-10-28: WoR's teal (was light blue)
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat

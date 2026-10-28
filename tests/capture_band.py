@@ -172,15 +172,16 @@ def run(name, parts, a, out):
         if os.path.exists(flag):
             os.remove(flag)
         play_from = None
-        if a.play:
+        play = getattr(a, 'play', 0)   # tests/ultrawide_ab.py passes its own namespace
+        if play:
             next_shot = deadline + 1
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
             if play and play_from is None and os.path.exists(flag):
                 play_from = time.time()
                 next_shot = play_from + 1
-                deadline = min(deadline, play_from + a.play)
-                print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {a.play} s', flush=True)
+                deadline = min(deadline, play_from + play)
+                print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {play} s', flush=True)
             if int(time.time() - t0) % 5 == 0:
                 tries += 1
                 held += bool(keep_in_front(proc.pid))

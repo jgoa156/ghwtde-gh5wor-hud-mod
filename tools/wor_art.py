@@ -520,3 +520,15 @@ def recolour(png, rgb):
     """Every texel of `png` takes `rgb`, its alpha kept (a white glow core tinted, compare_wor 2026-10-28)."""
     im = Image.open(png).convert('RGBA')
     Image.merge('RGBA', (*Image.new('RGB', im.size, tuple(rgb)).split(), im.getchannel('A'))).save(png)
+
+
+def glow_tint(src_png, out_png, rgb, gain=1.0):
+    """A glow drawn on black for additive blending (WoR's SB_Tubeglow01) as an alpha sprite: every texel `rgb`, alpha
+    its brightness x `gain` (2026-10-28: the star power tube's bottom arc)."""
+    import numpy as np
+    a = np.asarray(Image.open(src_png).convert('RGBA')).astype(float)
+    lum = a[..., :3].max(-1) * (a[..., 3] / 255.0)
+    out = np.zeros(a.shape, np.uint8)
+    out[..., :3] = rgb
+    out[..., 3] = np.clip(lum * gain, 0, 255).astype(np.uint8)
+    Image.fromarray(out, 'RGBA').save(out_png)

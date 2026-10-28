@@ -354,10 +354,12 @@ def main():
     tube_a = Image.open(base_png).convert('RGBA').getchannel('A')
     needle = os.path.join(WOR_PNG, wor_1g.SP_NEON_NEEDLE + '.png')
     nc, nh = os.path.join(work, '_neon_core.png'), os.path.join(work, '_neon_halo.png')
-    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_BOTTOM_RGB, *wor_1g.SP_NEON_BOTTOM_HALO, *wor_1g.SP_NEON_BOTTOM_CORE_BLUR)
-    wor_art.recolour(nc, wor_1g.SP_NEON_BOTTOM_CORE)     # compare_wor 2026-10-28: WoR's bottom glow is cyan, not white
+    # the bottom arc (user 2026-10-28: "the same as the needle in the rock meter except it is glowing blue"): WoR's own
+    # SB_Tubeglow01 (the needle's glowing version, the rock meter's needle glow: crisp arc + its soft halo on black, the
+    # needle's frame) tinted SP_NEON_BOTTOM_TINT, its brightness as alpha; nh holds it, nc stays empty
+    wor_art.glow_tint(os.path.join(WOR_PNG, 'SB_Tubeglow01.png'), nh, wor_1g.SP_NEON_BOTTOM_TINT, wor_1g.SP_NEON_BOTTOM_GAIN)
+    Image.new('RGBA', (64, 64), (0, 0, 0, 0)).save(nc)
     neon = Image.open(nh).convert('RGBA')
-    neon.alpha_composite(Image.open(nc).convert('RGBA'))
 
     def finish(fill):
         return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT

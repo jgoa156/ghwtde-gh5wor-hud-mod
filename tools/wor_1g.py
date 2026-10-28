@@ -364,12 +364,12 @@ SP_NEON_HALO = (2.8, 1.6)                    # neon halo blur / gain (user 2026-
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
 SP_NEON_CORE_BLUR = (1.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
-SP_BAKE_BOTTOM_ARC = False                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
+SP_BAKE_BOTTOM_ARC = True                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
 SP_NEON_BOTTOM_TINT = (70, 255, 235)        # 2026-10-28: the bottom arc = WoR's SB_Tubeglow01 in this colour (WoR's bottom ~(100..144,255,245))
 SP_NEON_BOTTOM_GAIN = 0.7   # 2026-10-28: ours (170..201,255,255) vs WoR (100..144,255,245)
 SP_NEON_BOTTOM_RGB = (25, 255, 225)          # user 2026-10-28: the bottom glow's own colour and spread (WoR: broad saturated cyan band)
-SP_NEON_BOTTOM_HALO = (3.5, 2.2)
-SP_NEON_BOTTOM_CORE_BLUR = (1.8, 1.6)
+SP_NEON_BOTTOM_HALO = (2.2, 1.6)   # 2026-10-28: (3.5) 'TOO blurry'
+SP_NEON_BOTTOM_CORE_BLUR = (0.9, 1.6)
 SP_NEON_BOTTOM_CORE = (70, 255, 235)        # bottom glow (192..202,255,255) vs WoR (100..144,255,245): cyan core, not white
 SP_NEON_RGB = (40, 230, 210)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)

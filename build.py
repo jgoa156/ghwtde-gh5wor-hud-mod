@@ -357,9 +357,12 @@ def main():
     # the bottom arc (user 2026-10-28: "the same as the needle in the rock meter except it is glowing blue"): WoR's own
     # SB_Tubeglow01 (the needle's glowing version, the rock meter's needle glow: crisp arc + its soft halo on black, the
     # needle's frame) tinted SP_NEON_BOTTOM_TINT, its brightness as alpha; nh holds it, nc stays empty
-    wor_art.glow_tint(os.path.join(WOR_PNG, 'SB_Tubeglow01.png'), nh, wor_1g.SP_NEON_BOTTOM_TINT, wor_1g.SP_NEON_BOTTOM_GAIN)
-    Image.new('RGBA', (64, 64), (0, 0, 0, 0)).save(nc)
+    # (2026-10-28: SB_Tubeglow01's longer, rounder arc crossed the fill diagonally once baked; the needle's own line,
+    # glowing cyan with a light blur, as the user describes it)
+    wor_art.neon_sprite(needle, nc, nh, wor_1g.SP_NEON_BOTTOM_RGB, *wor_1g.SP_NEON_BOTTOM_HALO, *wor_1g.SP_NEON_BOTTOM_CORE_BLUR)
+    wor_art.recolour(nc, wor_1g.SP_NEON_BOTTOM_CORE)
     neon = Image.open(nh).convert('RGBA')
+    neon.alpha_composite(Image.open(nc).convert('RGBA'))
 
     def finish(fill):
         # 2026-10-28: no baked bottom arc any more (with WoR's SB_Tubeglow01 it crossed the fill diagonally ~8 px over

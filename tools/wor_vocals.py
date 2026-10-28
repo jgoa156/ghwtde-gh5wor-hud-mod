@@ -583,8 +583,14 @@ def _panel_in_v1(d, dy):
     except ValueError:
         pass
     d = d[:a] + blk + d[b:]
-    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=SP_Z if name == SP_NAME else 2.0,
-                desc=name).render(0)
+    # 2026-10-27 (4-player band: the health lamps never showed, the meter logged alpha 1): the panel's backing is on
+    # player_meter, whose z is the layout's (2 in hud_1g1v, 11 in hud_3g1v): the health meter and the strip go just above
+    # it, or the backing covers them
+    import re
+    pa, pb = desc_edit._block_bounds(blk, re.search(r'StructQBKey local_id = player_meter\s*\n', blk).start())
+    pm_z = float(re.search(r'z_priority = ([-\d.]+)', blk[pa:pb]).group(1))
+    zs = {HEALTH_NAME: pm_z + 0.1, SP_NAME: max(SP_Z, pm_z + 0.2)}
+    blocks = [E(child, 'descinterface', pos=pos, dims=(1280, 720), just=(-1, -1), z=zs[name], desc=name).render(0)
               for child, name in (('BAND_top_meter', HEALTH_NAME), ('vocal_multiplier_star', SP_NAME))]
     return wor_mp._append_children(d, 'v1', blocks)
 

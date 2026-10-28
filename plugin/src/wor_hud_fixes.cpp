@@ -673,7 +673,7 @@ namespace
 	constexpr float kTubeHW = 10.5f, kDomeS = 2.5f;
 	constexpr int kDomeBands = 6;
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
-	constexpr float kCapUp = 0.6f;   // 1.68: from the 1.67 video, the arc's ends sat ~6.9 units under its anchor
+	constexpr float kCapUp = 0.21f;   // 1.69 (04-08 video): the arc's lower edge sits ~3.4 units under its anchor, its centre ~2.3: centre on the fill edge
 
 	// the tube axis' x shift per canvas unit of y (from the level points around `level`)
 	float axis_slope(float level)
@@ -2189,7 +2189,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.68 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.69 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

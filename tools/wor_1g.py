@@ -284,7 +284,8 @@ STAR_K = 1.14                   # gold star size
 STAR_SHIFT = (4.2, -1.0)        # relative to the (stretched) panel
 STAR_ART_C = (63.69, 70.73)     # centre of mass of the filled gold star in its 128 px texture
 STAR_OVERLAY_PX = 3.0           # gold outline (overlay/shine/glow) grows by this many px
-STAR_NUM_RGBA = (246, 183, 16, 255)   # calibration 2026-10-28: WoR's saturated gold numeral (was 249,193,34: pale cream on screen)
+STAR_BAR_RGBA = (215, 182, 105, 255)  # calibration 2026-10-28: WoR's star bar (201,175,112) on screen
+STAR_NUM_RGBA = (235, 192, 50, 255)   # calibration 2026-10-28: WoR's saturated gold numeral (was 249,193,34: pale cream on screen)
 STAR_BG_RGBA = (130, 126, 128, 255)   # dims the silver frame's grey centre to GH5's
 STAR_NUM_K = 0.77               # star count size
 STAR_NUM_NUDGE = (-0.8, -2.0 + 2 / 1.5)   # centred on the gold star's shape, 2 px (1080p) lower like GH5
@@ -352,7 +353,7 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
-SP_PLASMA_COLOURS = dict(base=(76, 194, 204), hot=(139, 221, 204), dark=(38, 144, 184))   # calibration 2026-10-28: WoR's teal (was light blue)
+SP_PLASMA_COLOURS = dict(base=(9, 117, 102), hot=(16, 133, 102), dark=(4, 87, 92))   # calibration 2026-10-28: WoR's teal (was light blue)
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
@@ -686,7 +687,7 @@ def band_meter():
         # score box: star-progress fill behind the box art, black slot behind both, glass front over the score
         # GH5's wedge-shaped bar: an anti-aliased wedge texture fitted to the slot hole, stretched by the DE's scale
         E('star_filler', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(306 * K0 / 0.7 * SCORE_X_K,
-          star_slot_height() * STAR_BAR_H), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=(249, 193, 34, 255),
+          star_slot_height() * STAR_BAR_H), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=STAR_BAR_RGBA,
           texture=STAR_BAR_NAME),
         E('star_lead', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(64, 16),
           scale=(STAR_LEAD_S, STAR_LEAD_S), z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
@@ -761,7 +762,8 @@ def band_meter():
         graveyard('grave', [
             dummy('Needle'), dummy('glow'),
             dummy('HUD_meter_green_bg'), dummy('HUD_meter_yellow_bg'), dummy('HUD_meter_red_bg'),
-            dummy('secondary_bulbs', 'ContainerElement'), dummy('streak_anim_sink', 'ContainerElement')]),
+            dummy('secondary_bulbs', 'ContainerElement'), dummy('streak_anim_sink', 'ContainerElement'),
+            dummy('star_num_rgba_sink', 'TextBlockElement'), dummy('star_filler_rgba_sink')]),
     ])
     props = [('score_text', 'Score', 'text'), ('needle_rot_angle', 'Needle', 'rot_angle'),
              ('Needle_pos', 'Needle', 'Pos'),
@@ -774,8 +776,8 @@ def band_meter():
               ('hud_meter_red_bg_alpha', 'HUD_meter_red_bg', 'alpha'),
               ('star_meter_num_text', 'star_meter_num', 'text'),
               ('band_hud_star_frame_rgba', 'band_hud_star_frame', 'rgba'),
-              ('star_filler_scale', 'star_filler', 'Scale'), ('star_filler_rgba', 'star_filler', 'rgba'),
-              ('star_meter_num_rgba', 'star_meter_num', 'rgba'),
+              ('star_filler_scale', 'star_filler', 'Scale'), ('star_filler_rgba', 'star_filler_rgba_sink', 'rgba'),
+              ('star_meter_num_rgba', 'star_num_rgba_sink', 'rgba'),   # calibration 2026-10-28: the DE's pale colours go to sinks
               ('band_hud_star_overlay_rgba', 'band_hud_star_overlay', 'rgba'),
               ('band_hud_gold_star_glow_alpha', 'band_HUD_gold_star_glow', 'alpha')]
     aliases = [('alias_glow', 'glow'), ('alias_streak', 'streak_anim_sink'), ('0x80a7370b', 'songtime_bg'),

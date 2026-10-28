@@ -716,8 +716,10 @@ namespace
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			const float f = (k + 1.0f) / kFeathers;
-			place_dome_band(win, fill, t, lo - t, lx + (t - ly) * slope, kDomeHW * sqrtf(1.0f - f * f * 0.97f));
+			// 1.66 (user 2026-10-27: the dome cut the fill off): full width again; the cap texture's fill-coloured arc
+			// shapes the corners instead
+			(void)lx; (void)ly; (void)slope;
+			place_in_window(win, fill, t, lo - t, false);
 		}
 	}
 
@@ -2176,7 +2178,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.65 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.66 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

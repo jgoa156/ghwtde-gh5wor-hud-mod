@@ -50,6 +50,8 @@ OVERLAP_1P = {'left': 9.7, 'right': 7.5}
 # the 1-player layout's draw-priority chains (hud_1g_ghwor): the tubes sit in band_meter (hud_container 0 + 1), the
 # multiplier in g1 / player_meter (0 + 2 + 2)
 Z_TUBES_1P, Z_MULT_1P = 1.0, 4.0
+# user 2026-10-27 (2 and 3 highways): rock tube 1 unit further left, star power tube 1 further right (multiplier stays)
+MP_OUTWARD = 1.0
 Z_MULT_INSTANCE = 2.0         # hud_1g_ghwor's player_meter z (wor_1g.layout): the multiplier instances' own z
 LAYOUTS = {'hud_1g1v': (1, ('g1',)), 'hud_2g': (2, ('g1', 'g2')), 'hud_2g1v': (2, ('g1', 'g2')),
            'hud_3g1v': (3, ('g1', 'g2', 'g3'))}
@@ -349,14 +351,15 @@ def placements(config, d=None):
         # 4 - g1's z = 3 on 2 highways, and the arm has drawn over the border's bevel since (the DE's z 3 sidebar
         # sprite: 2.05 under it, 3.05 over it). The tubes keep the chain value (user: perfect in band quickplay).
         zm = Z_MULT_INSTANCE
+        outw = MP_OUTWARD if n >= 2 else 0.0
 
-        def inward(inst, side, k):
+        def inward(inst, side, k, out=0.0):
             (px, py), sc, rot = inst
-            d = (1.0 - k) * OVERLAP_1P[side] * (1.0 if side == 'left' else -1.0)
+            d = ((1.0 - k) * OVERLAP_1P[side] - out) * (1.0 if side == 'left' else -1.0)
             return (px + d, py), sc, rot
         out += [(g, 'player_meter', MULT_NAME, inward(instance(right, o, g1), 'right', right[0]), zm, 1.0),
-                (g, 'Star_Power', SP_NAME, inward(instance(right, o, ROOT_CAL), 'right', right[0]), zt, 0.0),
-                (g, 'BAND_side_meter', SIDE_NAMES[n], inward(instance(left, o, ROOT_CAL), 'left', left[0]), zt, 0.0)]
+                (g, 'Star_Power', SP_NAME, inward(instance(right, o, ROOT_CAL), 'right', right[0], outw), zt, 0.0),
+                (g, 'BAND_side_meter', SIDE_NAMES[n], inward(instance(left, o, ROOT_CAL), 'left', left[0], outw), zt, 0.0)]
     return out
 
 

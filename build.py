@@ -728,7 +728,7 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i if (~$game_mode$ = $p2_battle$)\n'
                           '\t\t:i return\n'
                           '\t:i endif\n'
-                          '\t:i $wait$%f(3.0)$seconds$\n'
+                          '\t:i $wait$%f(12.0)$seconds$\n'   # past the song's title card (2026-10-28 run)
                           '\t:i while \n'
                           '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(25.0)\n'
                           '\t\t:i $wait$%f(4.0)$seconds$\n'

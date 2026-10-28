@@ -32,6 +32,7 @@ LINEUPS = {
 MODES = {'faceoff': 'p2_faceoff', 'profaceoff': 'p2_pro_faceoff', 'battle': 'p2_battle'}
 
 
+PLAY_DELAY = 10   # s from the plugin's gameplay marker (title card) to the first notes (2026-10-28 run)
 SHOT_FROM, SHOT_EVERY, SHOT_WINDOW = 90, 15, 180   # seconds after the launch: shots start at T+90 and run for 3 minutes
 SHOT_UNTIL = SHOT_FROM + SHOT_WINDOW                 # (user 2026-10-22; ontheroadagain plays ~T+100..250 s); the game
 # then sits on the results screen (user 2026-10-22: it does not proceed), so it is closed at SHOT_UNTIL
@@ -178,7 +179,7 @@ def run(name, parts, a, out):
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
             if play and play_from is None and os.path.exists(flag):
-                play_from = time.time()
+                play_from = time.time() + PLAY_DELAY   # the marker comes with the song's title card
                 next_shot = play_from + 1
                 deadline = min(deadline, play_from + play)
                 print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {play} s', flush=True)

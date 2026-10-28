@@ -393,7 +393,7 @@ SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k 
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
 # 2026-10-28 (plugin 1.68, user: the fill's top still a straight cut under a floating arc, charged and charging): the
 # feather windows are now the fill's domed top: non-overlapping slices, each as opaque as the fill itself
-SP_DOME_ALPHA = 0.35   # 1.70: the one band under the fill's top (WoR's faint lighter edge), added once more
+SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0, 3)   # 1.72: the slope columns, as opaque as the fill
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step

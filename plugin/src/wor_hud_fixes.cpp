@@ -650,11 +650,7 @@ namespace
 	{
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
-		// 1.72 (user 2026-10-28: "the fill looks like a trapezoid"): WoR's fill top slopes ~6.5 deg down to the right
-		// on screen (measured on the user's WoR footage), ours was level: the window itself turns by kCutRot and the
-		// fill turns back by the same amount, so only the cut slopes
-		set_rot(win, kCutRot);
-		const float r = g_sp.rot + kCutRot;
+		const float r = g_sp.rot;
 		const float m = r != 0.0f ? kRotMargin : 0.0f, wx = kClipX - m;
 		const float c = cosf(r), s = sinf(r);
 		const float t = top + (kClipX + 0.5f * kClipW - wx) * s / c;
@@ -675,7 +671,13 @@ namespace
 	// 1.67: the fill's half width across the tube (~20 px at 1080p = 13.4 units) and its top corners' radius
 	// 1.68: the dome over the level: half width (the fill's ~30 px at 1080p / 1.5 / 2, a bit over so the lowest
 	// slice is the full fill), height and slice count (the rest of the feather windows stay empty)
-	constexpr float kTopBand = 2.5f;   // 1.70: the lighter band under the fill's top (canvas units)
+	constexpr float kTubeHW = 11.0f;   // 1.72: half the span the slope columns cover (the fill's ~15 units, a bit over)
+
+	// how far below the level the solid fill's cut sits: the sloped top's drop from the axis to the tube's right side
+	float cut_drop()
+	{
+		return kTubeHW * tanf(kCutRot);
+	}
 	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
 	constexpr float kCapDX = 5.0f;   // 1.72: the top glow sat left of the fill's middle (was +1)
 	constexpr float kCapUp = 0.1f;   // 1.70: the charged fill's soft top glow centred ~1 unit inside the fill top
@@ -722,26 +724,38 @@ namespace
 		// 1.70 (2026-10-28, WoR footage at native pixels: the charging fill's top is a plain cut with a faint lighter
 		// band just under it, no arc, no dome): window 0 is that band, kTopBand tall below the level, showing the fill
 		// once more additively (the desc's SP_TOP_BAND_ALPHA); the other windows stay empty
-		const float top = hidden ? 0.0f : level_y(g_sp.level);
-		for (int k = 0; k < g_sp.feathers; ++k)
+		// 1.72 (user 2026-10-28: "the fill looks like a trapezoid"; WoR's fill top slopes ~6.5 deg down to the right on
+		// screen, ours was level, and a window's own rotation does not turn its clipping): the solid fill ends at the
+		// slope's lowest point (cut_drop() below the level) and the windows are narrow columns across the tube, each from
+		// the sloped line down to that cut, as opaque as the fill (the desc's SP_DOME_ALPHA); kCutCols columns over
+		// 2 x kTubeHW make steps far under a pixel. The level stays the slope's height at the tube axis.
+		const float top = hidden ? 0.0f : level_y(g_sp.level), base = top + cut_drop();
+		float lx = 0.0f, ly = 0.0f;
+		if (!hidden)
+			level_point(g_sp.level, lx, ly);
+		const int cols = g_sp.feathers;
+		const float w = 2.0f * kTubeHW / (cols > 0 ? cols : 1), tn = tanf(kCutRot);
+		for (int k = 0; k < cols; ++k)
 		{
 			void *win = g_sp.feather[k];
 			void *fill = *reinterpret_cast<void **>(field(win, kElementFirstChild));
-			if (hidden || !fill || k > 0)
+			const float xm = lx - kTubeHW + (k + 0.5f) * w, yt = top + (xm - lx) * tn;
+			if (hidden || !fill || base - yt <= 0.01f || yt < kClipY)
 			{
 				set_dims(win, nullptr, kClipW, 0.0f, 0);
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			place_in_window(win, fill, top, kTopBand, false);
+			place_dome_band(win, fill, yt, base - yt, xm, 0.5f * w);
 		}
 	}
+
 
 	// the clip window's top edge is the displayed level (none at 0, unclipped at 100%); it keeps its bottom
 	void place_fill()
 	{
 		const float level = g_sp.level, bottom = kClipY + kClipH;
-		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level);   // 1.68: the solid fill ends at the level again (the dome slices sit above it)
+		const float top = level >= 0.999f ? kClipY : level <= 0.001f ? bottom : level_y(level) + cut_drop();   // 1.72: the slope columns draw the fill above this
 		place_in_window(g_sp.clip, g_sp.fill, top, bottom - top, true);
 	}
 
@@ -2200,7 +2214,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.72 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.73 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

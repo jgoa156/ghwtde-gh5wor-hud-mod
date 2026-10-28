@@ -626,9 +626,9 @@ namespace
 	// fill gets that rotation added, its offset in the window is turned by it, and the window grows by kRotMargin so the
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
-	constexpr float kCutRot = 6.5f * 3.14159265f / 180.0f;   // 1.75: WoR's fill top slope (footage), drawn by the soft columns
-	constexpr int kSoftCols = 4, kSoftBands = 4;   // 1.75: 16 windows = 4 columns (8 px wide) x 4 nested bands
-	constexpr float kSoftEdge = 2.5f;   // 1.75: the top edge's fade (canvas units, ~4 px at 1080p; WoR ~3 px)
+	constexpr float kCutRot = 0.0f;   // 1.76: off again (1.75's soft columns left seams across the fill top)
+	constexpr int kSoftCols = 0, kSoftBands = 4;   // 1.76: 0 = no columns   // 1.75: 16 windows = 4 columns (8 px wide) x 4 nested bands
+	constexpr float kSoftEdge = 0.0f;   // 1.76: 0 = the solid cut at the level   // 1.75: the top edge's fade (canvas units, ~4 px at 1080p; WoR ~3 px)
 
 	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
@@ -740,7 +740,7 @@ namespace
 		float lx = 0.0f, ly = 0.0f;
 		if (!hidden)
 			level_point(g_sp.level, lx, ly);
-		const float w = 2.0f * kTubeHW / kSoftCols;
+		const float w = 2.0f * kTubeHW / (kSoftCols > 0 ? kSoftCols : 1);
 		for (int k = 0; k < g_sp.feathers; ++k)
 		{
 			void *win = g_sp.feather[k];
@@ -2222,7 +2222,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.75 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.76 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

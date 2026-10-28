@@ -355,14 +355,15 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
-SP_PLASMA_COLOURS = dict(base=(2, 104, 86), hot=(4, 118, 86), dark=(1, 77, 77))   # calibration 2026-10-28: WoR's teal (was light blue)
+SP_PLASMA_COLOURS = dict(base=(2, 113, 94), hot=(4, 129, 94), dark=(1, 84, 84))   # x1.09: charged fill (88,165,157) vs WoR (96,180,171)   # calibration 2026-10-28: WoR's teal (was light blue)
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
-SP_NEON_HALO = (2.8, 1.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+SP_NEON_HALO = (2.8, 2.3)   # 2026-10-28: top glow (118..138,196..201,183..189) vs WoR (163,255,245)
+#                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
-SP_NEON_CORE_BLUR = (1.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
 SP_BAKE_BOTTOM_ARC = True                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
 SP_NEON_BOTTOM_TINT = (70, 255, 235)        # 2026-10-28: the bottom arc = WoR's SB_Tubeglow01 in this colour (WoR's bottom ~(100..144,255,245))
@@ -399,7 +400,7 @@ SP_FEATHER_ALPHA = tuple(round(0.80 * (1.0 - k / 16.0) ** 1.25 + 0.01, 3) for k 
 SP_FEATHER_INC = tuple(a - b for a, b in zip(SP_FEATHER_ALPHA, SP_FEATHER_ALPHA[1:] + (0.0,)))
 # 2026-10-28 (plugin 1.68, user: the fill's top still a straight cut under a floating arc, charged and charging): the
 # feather windows are now the fill's domed top: non-overlapping slices, each as opaque as the fill itself
-SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0 / 4, 3)   # 1.75: each of a column's 4 nested bands adds a quarter of the fill
+SP_DOME_ALPHA = round(SP_FILL_RGBA[3] / 255.0 / 16, 4)   # 1.77: each of the 16 nested bands adds 1/16 of the fill
 SP_SNAP = 0.04                               # level jumps bigger than this snap (GH5: phrase gains jump); smaller
                                              # changes (whammy, drain: the DE updates ~10 times a second) glide
 SP_LEVEL_STEPS = 64                           # plugin table: fill-top point on the tube centre line per level step

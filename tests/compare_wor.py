@@ -130,6 +130,27 @@ def sp_state(img, tube_xy):
     return 'ready' if c.max() > 135 else 'charging'
 
 
+BOTTOM_GLOW = (83, 138, 110, 160)   # WoR's bottom glow inside the tube crop (TUBE_BOX coordinates)
+
+
+def glows(tube, state):
+    """(top glow, bottom glow) colours in a tube crop (array): the brightest third of the teal pixels in the 12 rows
+    from the fill's top (charged / active only: WoR's soft top glow) and in BOTTOM_GLOW."""
+    out = [None, None]
+    t = tube.astype(float)
+    m = (t.max(2) > 120) & (t[..., 1] > t[..., 0] + 25) & (t[..., 2] > t[..., 0] + 15)
+    if state in ('ready', 'active') and m.any():
+        top = int(np.nonzero(m.any(1))[0].min())
+        p = t[top:top + 12][m[top:top + 12]]
+        if len(p) >= 12:
+            out[0] = np.median(p[p.sum(1) >= np.quantile(p.sum(1), 2 / 3)], 0)
+    x0, y0, x1, y1 = BOTTOM_GLOW
+    p = t[y0:y1, x0:x1][m[y0:y1, x0:x1]]
+    if len(p) >= 12:
+        out[1] = np.median(p[p.sum(1) >= np.quantile(p.sum(1), 2 / 3)], 0)
+    return out
+
+
 def crop(img, box, d=(0, 0)):
     return img.crop((box[0] + d[0], box[1] + d[1], box[2] + d[0], box[3] + d[1]))
 
@@ -156,7 +177,11 @@ def main():
     for st in ('charging', 'ready', 'active'):
         for p in refs[st]:
             im = np.asarray(Image.open(p).convert('RGB'))
-            add(f'SP fill ({st})', 'wor', sample(im[TUBE_BOX[1]:TUBE_BOX[3], TUBE_BOX[0]:TUBE_BOX[2]], 'fill' if st == 'charging' else 'plasma', 0)[0])
+            tube = im[TUBE_BOX[1]:TUBE_BOX[3], TUBE_BOX[0]:TUBE_BOX[2]]
+            add(f'SP fill ({st})', 'wor', sample(tube, 'fill' if st == 'charging' else 'plasma', 0)[0])
+            tg, bg = glows(tube, st)
+            add(f'SP top glow ({st})', 'wor', tg)
+            add(f'SP bottom glow ({st})', 'wor', bg)
     for p in refs['score']:
         im = np.asarray(Image.open(p).convert('RGB'))
         for n, (b, m, k) in SCORE_ELEMENTS.items():
@@ -175,7 +200,11 @@ def main():
             add(n, 'ours', sample(im[b[1] + ds[1]:b[3] + ds[1], b[0] + ds[0]:b[2] + ds[0]], m, k)[0])
         st = sp_state(img, (tx, ty))
         if st:
-            add(f'SP fill ({st})', 'ours', sample(im[ty:ty + 220, tx:tx + 110], 'fill' if st == 'charging' else 'plasma', 0)[0])
+            tube = im[ty:ty + 220, tx:tx + 110]
+            add(f'SP fill ({st})', 'ours', sample(tube, 'fill' if st == 'charging' else 'plasma', 0)[0])
+            tg, bg = glows(tube, st)
+            add(f'SP top glow ({st})', 'ours', tg)
+            add(f'SP bottom glow ({st})', 'ours', bg)
         sheet.append((os.path.basename(p), st, crop(img, SCORE_BOX, ds), crop(img, TUBE_BOX, dt)))
 
     lines, out = [], {}

@@ -515,3 +515,8 @@ def fill_arc(halo_png, needle_png, rgb, alpha=190, grow=5):
     arc.putalpha(a)
     arc.alpha_composite(Image.open(halo_png).convert('RGBA'))
     arc.save(halo_png)
+
+def recolour(png, rgb):
+    """Every texel of `png` takes `rgb`, its alpha kept (a white glow core tinted, compare_wor 2026-10-28)."""
+    im = Image.open(png).convert('RGBA')
+    Image.merge('RGBA', (*Image.new('RGB', im.size, tuple(rgb)).split(), im.getchannel('A'))).save(png)

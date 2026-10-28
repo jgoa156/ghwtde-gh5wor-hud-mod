@@ -359,10 +359,12 @@ SP_PLASMA_COLOURS = dict(base=(2, 104, 86), hot=(4, 118, 86), dark=(1, 77, 77)) 
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
-SP_NEON_HALO = (5.0, 1.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+SP_NEON_HALO = (2.8, 1.6)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
-SP_NEON_CORE_BLUR = (2.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_NEON_CORE_BLUR = (1.2, 1.6)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
+SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
+SP_NEON_BOTTOM_CORE = (110, 255, 240)        # bottom glow (192..202,255,255) vs WoR (100..144,255,245): cyan core, not white
 SP_NEON_RGB = (40, 230, 210)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
 SP_BALL_NAMES = [f'WoR_HUD_spball_{i:02d}' for i in range(16)]

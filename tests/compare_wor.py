@@ -92,11 +92,13 @@ def sample(px, mask, keep):
     sat = (mx - mn) / np.maximum(mx, 1)
     if mask == 'fill':
         p = p[(sat > 0.3) & (mx > 60) & (p[:, 1] > p[:, 0] + 25) & (p[:, 2] > p[:, 0] + 15)]   # teal / cyan only
+    elif mask == 'plasma':   # charged / active: the bright fill only (the venue's star power glow behind the tube is dim)
+        p = p[(sat > 0.25) & (mx > 120) & (p[:, 1] > p[:, 0] + 25) & (p[:, 2] > p[:, 0] + 15)]
     elif mask == 'gold':
         p = p[(sat > 0.35) & (p[:, 0] >= p[:, 2])]
     if len(p) < 12:
         return None, len(p)
-    if mask != 'fill':
+    if mask not in ('fill', 'plasma'):
         lum = p.sum(1)
         p = p[lum >= np.quantile(lum, 1 - keep)]
     return np.median(p, 0), len(p)
@@ -154,7 +156,7 @@ def main():
     for st in ('charging', 'ready', 'active'):
         for p in refs[st]:
             im = np.asarray(Image.open(p).convert('RGB'))
-            add(f'SP fill ({st})', 'wor', sample(im[TUBE_BOX[1]:TUBE_BOX[3], TUBE_BOX[0]:TUBE_BOX[2]], 'fill', 0)[0])
+            add(f'SP fill ({st})', 'wor', sample(im[TUBE_BOX[1]:TUBE_BOX[3], TUBE_BOX[0]:TUBE_BOX[2]], 'fill' if st == 'charging' else 'plasma', 0)[0])
     for p in refs['score']:
         im = np.asarray(Image.open(p).convert('RGB'))
         for n, (b, m, k) in SCORE_ELEMENTS.items():
@@ -173,7 +175,7 @@ def main():
             add(n, 'ours', sample(im[b[1] + ds[1]:b[3] + ds[1], b[0] + ds[0]:b[2] + ds[0]], m, k)[0])
         st = sp_state(img, (tx, ty))
         if st:
-            add(f'SP fill ({st})', 'ours', sample(im[ty:ty + 220, tx:tx + 110], 'fill', 0)[0])
+            add(f'SP fill ({st})', 'ours', sample(im[ty:ty + 220, tx:tx + 110], 'fill' if st == 'charging' else 'plasma', 0)[0])
         sheet.append((os.path.basename(p), st, crop(img, SCORE_BOX, ds), crop(img, TUBE_BOX, dt)))
 
     lines, out = [], {}

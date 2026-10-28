@@ -142,6 +142,7 @@ def main():
             + ' }, { ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_SP_TEX) + ' } };',
             f'static const uint32_t kVSpGlow = 0x{qbkey(wor_vocals.SP_GLOW_TEX):08x};',
             f'static const uint32_t kVocalSpFlag = 0x{qbkey("WoR_HUD_vocal_sp"):08x};',
+            f'static const uint32_t kVSpFill = 0x{qbkey(wor_vocals.SP_FILL):08x};   // the vocalist\'s star power strip segments',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

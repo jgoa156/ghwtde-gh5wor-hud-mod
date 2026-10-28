@@ -1356,6 +1356,28 @@ namespace
 		return false;
 	}
 
+	// 1.63 diagnostics (user 2026-10-27: the vocalist's star power strip never fills, single or band): every distinct
+	// scale / alpha / dims a strip segment gets, up to 24, so the log says whether the DE writes them at all
+	float g_vsp_seen[24][3] = {};
+	int g_vsp_n = 0;
+
+	void vocal_sp_segment(void *e)
+	{
+		const float sx = f32(e, kElementScale), sy = f32(e, kElementScale + 4), a = f32(e, kElementAlpha);
+		for (int i = 0; i < g_vsp_n; ++i)
+			if (fabsf(g_vsp_seen[i][0] - sx) < 0.01f && fabsf(g_vsp_seen[i][1] - sy) < 0.01f && fabsf(g_vsp_seen[i][2] - a) < 0.01f)
+				return;
+		if (g_vsp_n >= 24)
+			return;
+		g_vsp_seen[g_vsp_n][0] = sx;
+		g_vsp_seen[g_vsp_n][1] = sy;
+		g_vsp_seen[g_vsp_n][2] = a;
+		++g_vsp_n;
+		log("vocal sp segment %p: scale %.3f x %.3f, alpha %.2f, dims %.1f x %.1f, rot %.1f deg, parent rot %.1f deg", e, sx, sy, a,
+		    f32(e, kElementDims), f32(e, kElementDims + 4), f32(e, kElementRot) * 57.2957795f,
+		    f32(*reinterpret_cast<void **>(field(e, kElementParent)), kElementRot) * 57.2957795f);
+	}
+
 	// the star power glow bands: fade in / out with the flag
 	void vocal_sp_glow(void *e)
 	{
@@ -1386,6 +1408,8 @@ namespace
 				vocal_now(element, tex);
 			else if (tex == kVSpGlow)
 				vocal_sp_glow(element);
+			else if (tex == kVSpFill)
+				vocal_sp_segment(element);
 			for (const Grow &g : g_grow)
 				if (g.e == element && g.t0 > 0.0)
 				{
@@ -2115,7 +2139,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.62 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.63 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

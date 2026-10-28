@@ -174,4 +174,5 @@ static const float kVNoteBand[12] = { 12.000f, 16.971f, 24.000f, 33.941f, 48.000
 static const uint32_t kVNow[2][4] = { { 0xb7c84163, 0xc0cf71f5, 0x59c6204f, 0x2ec110d9 }, { 0xd3a48467, 0xa4a3b4f1, 0x3daae54b, 0x4aadd5dd } };
 static const uint32_t kVSpGlow = 0x1bbc4b8d;
 static const uint32_t kVocalSpFlag = 0xa9aedfd3;
+static const uint32_t kVSpFill = 0xc99bedbf;   // the vocalist's star power strip segments
 static const uint32_t kHighwayIcons[4] = { 0x3003e8f5, 0x738934b8, 0xe4d7eca8, 0x8b10e6a5 };   // sic (DE names)

@@ -362,6 +362,10 @@ def main():
     neon = Image.open(nh).convert('RGBA')
 
     def finish(fill):
+        # 2026-10-28: no baked bottom arc any more (with WoR's SB_Tubeglow01 it crossed the fill diagonally ~8 px over
+        # the cap); the sp_glow_bottom sprite alone is the bottom arc
+        if not wor_1g.SP_BAKE_BOTTOM_ARC:
+            return wor_1g.clip_to(wor_1g.clip_to(fill, glass), tube_a)
         return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT
                                                         + wor_1g.SP_NEON_BOTTOM_ROT, shift=(1.0, 2.0)), tube_a)
     finish(Image.open(full).convert('RGBA')).save(full)

@@ -365,6 +365,7 @@ SP_NEON_HALO = (2.8, 2.3)   # 2026-10-28: top glow (118..138,196..201,183..189) 
 SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the cap (wor_art.fill_arc)
 SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
+SP_BOTTOM_ARC_SHIFT = (1.0 + 2 / 1.5, 2.0 + 4 / 1.5)   # user 2026-10-28: 2 px right, 4 px down more (1080p px; canvas units)
 SP_BAKE_BOTTOM_ARC = True                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
 SP_NEON_BOTTOM_TINT = (70, 255, 235)        # 2026-10-28: the bottom arc = WoR's SB_Tubeglow01 in this colour (WoR's bottom ~(100..144,255,245))
 SP_NEON_BOTTOM_GAIN = 0.7   # 2026-10-28: ours (170..201,255,255) vs WoR (100..144,255,245)

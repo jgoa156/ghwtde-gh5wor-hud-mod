@@ -370,7 +370,7 @@ def main():
         if not wor_1g.SP_BAKE_BOTTOM_ARC:
             return wor_1g.clip_to(wor_1g.clip_to(fill, glass), tube_a)
         return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT
-                                                        + wor_1g.SP_NEON_BOTTOM_ROT, shift=(1.0, 2.0)), tube_a)
+                                                        + wor_1g.SP_NEON_BOTTOM_ROT, shift=wor_1g.SP_BOTTOM_ARC_SHIFT), tube_a)
     finish(Image.open(full).convert('RGBA')).save(full)
     frames = [finish(f) for f in frames]
 

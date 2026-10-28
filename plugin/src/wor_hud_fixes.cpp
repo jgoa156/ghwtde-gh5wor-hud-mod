@@ -627,8 +627,8 @@ namespace
 	// turned fill isn't cut. On the 1-player tube rot is 0: same placement as before.
 	constexpr float kRotMargin = 40.0f;
 	constexpr float kCutRot = 0.0f;   // 1.76: off again (1.75's soft columns left seams across the fill top)
-	constexpr int kSoftCols = 1, kSoftBands = 16;   // 1.77: one full-width column of 16 nested bands (columns left seams)   // 1.75: 16 windows = 4 columns (8 px wide) x 4 nested bands
-	constexpr float kSoftEdge = 2.5f;   // 1.77: the top edge fades in over this (WoR ~3 px)   // 1.75: the top edge's fade (canvas units, ~4 px at 1080p; WoR ~3 px)
+	constexpr int kSoftCols = 0, kSoftBands = 16;   // 1.78: off (1.77's bands left a dark line where they meet the solid fill)   // 1.75: 16 windows = 4 columns (8 px wide) x 4 nested bands
+	constexpr float kSoftEdge = 0.0f;   // 1.78: off   // 1.75: the top edge's fade (canvas units, ~4 px at 1080p; WoR ~3 px)
 
 	// 1.55 (user 2026-10-26, 2+ highways: the tube looked worse since 1.53): only the main clip window grows downwards
 	// (1.53 grew every feather band too, so their faded copies stacked over the solid fill), and on a turned tube the
@@ -2222,7 +2222,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.77 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.78 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

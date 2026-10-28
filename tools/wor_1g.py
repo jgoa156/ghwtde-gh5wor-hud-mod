@@ -424,10 +424,9 @@ def sp_tube_width(y):
 # The glass's bottom end in SP_Base (texture px, before the mirror): a concave arch, its lighter rim low at the left
 # (where the hook-shaped tail hangs below), up to ~223 between columns 48 and 52, down again at the right edge (read
 # off the enlarged art, 2026-10-27: the fill used to end flat above it and the neon sat too high, user crops)
-SP_GLASS_END = ((28.0, 231.0), (34.0, 230.5), (39.0, 228.0),   # user 2026-10-28: the arc's screen-right end (texture right) curved down too
-                (44.0, 224.4), (47.0, 223.6),   # user 2026-10-28: the right end bends down from x 48 (55..58 lies under the rim)
-                (50.0, 224.2), (53.0, 225.8),
-                (55.0, 227.8), (58.0, 231.5))
+SP_GLASS_END = ((28.0, 240.0), (31.0, 236.5), (34.0, 233.5), (39.0, 229.0),   # user 2026-10-28: the arc's screen-right
+                (44.0, 224.8), (48.0, 223.2), (52.0, 223.0),                   # end bends down: texture left (the tube
+                (55.0, 224.6), (58.0, 228.5))                                  # is mirrored; its tilt eats ~5 texels)
 SP_GLASS_X = (29, 57)            # glass interior columns (between the rims)
 
 

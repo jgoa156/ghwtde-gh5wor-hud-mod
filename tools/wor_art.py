@@ -461,7 +461,7 @@ def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.
     peak = max(1, a.getextrema()[1])          # the needle art is semi-transparent: its line peaks at full alpha
     a = a.point(lambda v: 0 if v < 48 else min(255, int(v * 255 / peak)))
     core = Image.new('RGBA', nd.size, (255, 255, 255, 255))
-    core.putalpha(a)
+    core.putalpha(a.filter(ImageFilter.GaussianBlur(0.9)).point(lambda v: min(255, int(v * 1.5))))   # soft core (user 2026-10-27)
     core.save(out_core)
     halo = Image.new('RGBA', nd.size, tuple(rgb) + (255,))
     halo.putalpha(a.filter(ImageFilter.GaussianBlur(halo_blur)).point(lambda v: min(255, int(v * halo_gain))))

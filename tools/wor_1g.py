@@ -354,7 +354,7 @@ SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD
 SP_PLASMA_COLOURS = dict(base=(120, 215, 255), hot=(220, 245, 255), dark=(60, 160, 230))   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.35                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
 SP_FLAT_BOTTOM = False                       # the fill runs down to the glass end's arch (glass_mask), not flat
-SP_NEON_HALO = (3.6, 2.8)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
+SP_NEON_HALO = (5.5, 2.4)                    # neon halo blur / gain (user 2026-10-22: WoR's bottom neon blurrier, more glow;
                                              # was the defaults 1.4 / 1.8)
 SP_NEON_RGB = (60, 200, 255)                 # neon needle halo: bottom edge of the ready fill (baked) + the fill-top cap
 SP_NEON_NEEDLE = 'SB_TubeNeedle01'           # WoR's tube needle (the half divider's arc)
@@ -367,7 +367,8 @@ SP_GLOW_NAMES = ('WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w', 'WoR_HUD_spneon_c'
 SP_GLOW_BOTTOM_LEVEL = 0.011                 # bottom needle masks the fill's bottom end (user 2026-10-09: 0.035 sat ~5 px too high)
 SP_NEON_X_K = 1.0                            # the neon needles exactly like the half divider (user 2026-10-27: 'angled EXACTLY
                                              # like the middle needle'; 0.75 since 2026-10-09)
-SP_NEON_BOTTOM_ROT = 0.0                     # the bottom needle at the divider's angle too (2026-10-27; -5 since 2026-10-09)
+SP_NEON_BOTTOM_SHIFT = (1.0, 2.0)            # user 2026-10-27: bottom ring 1px right, 1-2px down (canvas units)
+SP_NEON_BOTTOM_ROT = 0.0                    # the bottom needle at the divider's angle too (2026-10-27; -5 since 2026-10-09)
 # the bottom needle glows a bit less than the top one (WoR; user 2026-10-09): alpha 0.7 vs the cap's 1.0
 SP_GLOW_SPRITES = (('sp_glow_bottom', None, None, (255, 255, 255, 255), 0.0),   # bottom neon now baked in the fill;    # (id, scale, rot vs tube, rgba,
                    ('sp_cap_w', None, None, (255, 255, 255, 255), 1.0),           #  alpha when shown); the cap
@@ -509,7 +510,7 @@ def sp_effect_sprites():
     """Bottom glow, fill-top cap and burst sprites (hidden; the plugin places and shows them)."""
     out = []
     for (lid, k, rot_off, rgba, _), tex in zip(SP_GLOW_SPRITES, SP_GLOW_NAMES):
-        pos = sp_level_point(SP_GLOW_BOTTOM_LEVEL) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
+        pos = add(sp_level_point(SP_GLOW_BOTTOM_LEVEL), SP_NEON_BOTTOM_SHIFT) if lid == 'sp_glow_bottom' else sp_level_point(0.5)
         if k is None:   # neon needle cap: drawn like the half divider (same texture frame, rotation and scale)
             k, rot = RAIL_SX * 1.1 * SP_MARKER_K, SP_MARKER_ROT + (SP_NEON_BOTTOM_ROT if lid == 'sp_glow_bottom' else 0.0)
             sc = (k * SP_NEON_X_K, k)

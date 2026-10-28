@@ -664,11 +664,46 @@ namespace
 
 	// the feather windows: bands of kFeatherH / kFeathers above the level, each showing the fill's texture faded (the
 	// desc gives each band's fill its alpha), so the fill's top edge is a soft gradient instead of a pixel-hard cut
+	// 1.65 (user 2026-10-27: "the blue fill being a rectangle while the arc is over it"): each feather band is also
+	// narrower the higher it reaches (an ellipse's half width around the tube axis), so the soft top is a dome under
+	// the cap's arc instead of a flat-topped band. kDomeHW: half the fill's horizontal span (~20 px at 1080p) + a bit
+	constexpr float kDomeHW = 8.5f;
+	// the cap's arc rides this far up the dome (fraction of kFeatherH), so it lies on the curved top, not below it
+	constexpr float kCapUp = 0.45f;
+
+	// the tube axis' x shift per canvas unit of y (from the level points around `level`)
+	float axis_slope(float level)
+	{
+		float x0, y0, x1, y1;
+		level_point(level < 0.95f ? level : 0.95f, x0, y0);
+		level_point(level < 0.95f ? level + 0.05f : 1.0f, x1, y1);
+		return y1 != y0 ? (x1 - x0) / (y1 - y0) : 0.0f;
+	}
+
+	void place_dome_band(void *win, void *fill, float top, float h, float cx, float hw)
+	{
+		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
+		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
+		const float r = g_sp.rot, c = cosf(r), s = sinf(r);
+		const float wx = cx - hw, t = top + hw * s / c;
+		const float hh = h + (top - t);
+		set_dims(win, nullptr, 2.0f * hw, hh > 0.0f ? hh : 0.0f, 0);
+		set_pos(win, nullptr, wx, t, 1);
+		const float dx = kFillX - wx, dy = kFillY - t;
+		if (r != 0.0f)
+			set_rot(fill, g_sp.fill_rot0 + r);
+		set_pos(fill, nullptr, dx * c - dy * s, dx * s + dy * c, 1);
+	}
+
 	void place_feathers()
 	{
 		const auto set_dims = reinterpret_cast<SetDimsFn>(kSetDims);
 		const bool hidden = g_sp.level <= 0.001f || g_sp.level >= 0.999f;
 		const float top = hidden ? 0.0f : level_y(g_sp.level), band = kFeatherH / kFeathers;
+		float lx = 0.0f, ly = 0.0f;
+		if (!hidden)
+			level_point(g_sp.level, lx, ly);
+		const float slope = hidden ? 0.0f : axis_slope(g_sp.level);
 		for (int k = 0; k < g_sp.feathers; ++k)
 		{
 			void *win = g_sp.feather[k];
@@ -681,7 +716,8 @@ namespace
 				continue;
 			}
 			set_tube_texture(fill, texture_of(g_sp.fill));
-			place_in_window(win, fill, t, lo - t, false);
+			const float f = (k + 1.0f) / kFeathers;
+			place_dome_band(win, fill, t, lo - t, lx + (t - ly) * slope, kDomeHW * sqrtf(1.0f - f * f * 0.97f));
 		}
 	}
 
@@ -781,6 +817,7 @@ namespace
 		const auto set_pos = reinterpret_cast<SetPosFn>(kSetPos);
 		float x, y;
 		level_point(g_sp.level, x, y);
+		const float cap_dy = -kCapUp * kFeatherH, cap_x = x + cap_dy * axis_slope(g_sp.level), cap_y = y + cap_dy;
 		set_alpha(g_sp.glow[0], shown ? kGlowAlpha[0] : 0.0f);
 		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
 		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
@@ -789,7 +826,7 @@ namespace
 		for (int k = 1; k < 3; ++k)
 		{
 			if (shown)
-				set_pos(g_sp.glow[k], nullptr, x + 1.0f, y, 1);   // 1.64: 1px right (user 2026-10-27)
+				set_pos(g_sp.glow[k], nullptr, cap_x + 1.0f, cap_y, 1);   // 1.64: 1px right (user 2026-10-27)
 			set_alpha(g_sp.glow[k], shown ? kGlowAlpha[k] * (g_sp.ready ? 1.0f : kCapChargeK) : 0.0f);
 		}
 		if (g_sp.burst_t0 >= 0.0)
@@ -2139,7 +2176,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.64 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.65 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

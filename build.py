@@ -369,6 +369,9 @@ def main():
         # the cap); the sp_glow_bottom sprite alone is the bottom arc
         if not wor_1g.SP_BAKE_BOTTOM_ARC:
             return wor_1g.clip_to(wor_1g.clip_to(fill, glass), tube_a)
+        if wor_1g.SP_BOTTOM_TRACE:   # 2026-10-28: the arc traced on the fill's own bottom contour (the glass end's arch)
+            return wor_1g.clip_to(wor_art.neon_edge(wor_1g.clip_to(fill, glass), wor_1g.SP_NEON_BOTTOM_RGB,
+                                                    core_rgb=wor_1g.SP_NEON_BOTTOM_CORE, **wor_1g.SP_BOTTOM_TRACE), tube_a)
         return wor_1g.clip_to(wor_1g.bake_screen_needle(wor_1g.clip_to(fill, glass), neon, rot_deg=wor_1g.SP_MARKER_ROT
                                                         + wor_1g.SP_NEON_BOTTOM_ROT, shift=wor_1g.SP_BOTTOM_ARC_SHIFT), tube_a)
     finish(Image.open(full).convert('RGBA')).save(full)

@@ -366,12 +366,13 @@ SP_FILL_ARC_RGB = (70, 160, 230)              # the fill-coloured arc under the 
 SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom glows are soft blobs: core blur, gain
 SP_TOP_EDGE = True                            # 2026-10-28: sp_glow_bottom (never visible) becomes the charging fill's soft top edge
 SP_EDGE_RGB = (53, 128, 120)                  # the charging fill's on-screen colour (compare_wor, 1.79 run)
-SP_EDGE_GEOM = dict(width=19.0, wall_soft=0.8, fade_in=2.5, solid=1.8, fade_out=2.5, slope_deg=6.5)   # canvas units
+SP_EDGE_GEOM = dict(width=19.0, wall_soft=0.8, fade_in=2.5, solid=2.8, fade_out=2.5, slope_deg=2.0, dome=1.8)   # dome: the ends sit this much lower (user 2026-10-28: 'too straight'; WoR's top is rounded)   # canvas units
 SP_CAP_ROT = 6.5                              # 2026-10-28: the top glow lies along WoR's fill-top slope (was the needle's 37)
 SP_CAP_CORE_SIZE = (12, 4)                    # top glow ellipses (texels; the sprite's x scale is k * SP_NEON_X_K)
 SP_CAP_HALO_SIZE = (15, 8)
 SP_NEON_TOP_CORE = (215, 255, 245)           # compare_wor 2026-10-28: top glow (172,255,255) vs WoR (163,255,245)
 SP_BOTTOM_ARC_SHIFT = (1.0 + 2 / 1.5, 2.0 + 4 / 1.5)   # user 2026-10-28: 2 px right, 4 px down more (1080p px; canvas units)
+SP_BOTTOM_TRACE = dict(core_px=1.0, halo_blur=1.3, halo_gain=2.0, inset=0.6)   # user 2026-10-28: thinner, a perfect arc on the tube's bottom: traced along the fill's own bottom contour
 SP_BAKE_BOTTOM_ARC = True                   # 2026-10-28: the sprite alone (the baked copy sat ~8 px over the cap)
 SP_NEON_BOTTOM_TINT = (70, 255, 235)        # 2026-10-28: the bottom arc = WoR's SB_Tubeglow01 in this colour (WoR's bottom ~(100..144,255,245))
 SP_NEON_BOTTOM_GAIN = 0.7   # 2026-10-28: ours (170..201,255,255) vs WoR (100..144,255,245)
@@ -1094,7 +1095,7 @@ def edge_texture(out_png):
     dx, dy = (xs + 0.5 - 32) * sx, (ys + 0.5 - 32) * sy
     across = np.abs(dx - dy * axis)
     wall = np.clip((g['width'] / 2 - across) / g['wall_soft'], 0, 1)
-    v = dy - dx * tn                                  # below the sloped edge line: > 0
+    v = dy - dx * tn - g.get('dome', 0.0) * (dx / (g['width'] / 2)) ** 2   # below the (domed, sloped) edge line: > 0
     sm = lambda t: t * t * (3 - 2 * t)
     up = sm(np.clip((v + g['fade_in']) / g['fade_in'], 0, 1))
     down = sm(np.clip(1 - (v - g['solid']) / g['fade_out'], 0, 1))

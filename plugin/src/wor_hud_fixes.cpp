@@ -673,7 +673,7 @@ namespace
 	// 1.67: the fill's half width across the tube (~20 px at 1080p = 13.4 units) and its top corners' radius
 	// 1.68: the dome over the level: half width (the fill's ~30 px at 1080p / 1.5 / 2, a bit over so the lowest
 	// slice is the full fill), height and slice count (the rest of the feather windows stay empty)
-	constexpr float kEdgeCutDrop = 0.9f;   // 1.80: the hard cut sits this far under the level, inside the top-edge sprite's opaque band
+	constexpr float kEdgeCutDrop = 2.3f;   // 1.81: the domed edge's ends sit ~2.1 under the level   // 1.80: the hard cut sits this far under the level, inside the top-edge sprite's opaque band
 	constexpr float kTubeHW = 11.0f;   // 1.72: half the span the slope columns cover (the fill's ~15 units, a bit over)
 
 	// how far below the level the solid fill's cut sits: the sloped top's drop from the axis to the tube's right side
@@ -2230,7 +2230,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.80 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.81 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

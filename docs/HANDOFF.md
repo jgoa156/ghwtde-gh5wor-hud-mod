@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-29): HANDOFF GUIDE: plugin 1.81, section 5o first (10-28: the star power tube against WoR footage), then 5n's open items, then 5m / 5l
+## START HERE (2026-10-29 evening): HANDOFF GUIDE: plugin 1.84, section 5p first (releases 0.51 + Ultrawide Fix 1.2, what the user confirmed, the ranked open list in 6), then 5o / 5n
 
 Everything after this section is older history; read it only for a detail.
 
@@ -350,11 +350,55 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
 - **Not done / to check**: 5n item 3 (charged plasma top slightly blocky) was not re-checked after these changes; the
   multiplayer tubes share the single-player textures and engine, so their look changed too and was not captured.
 
-### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
-0. **Current order (2026-10-29)**: 5n item 1 (vocal SP strip never fills: run a short `--lineup 1v` and read the
-   "vocal sp segment" lines), then 5n items 2-4, then the list below (much of 1-2 below is done in 5l-5n: the panel,
-   lyric font / colours, notes, now line, SP glow bands; still open there: phrase meter driver, "EXCELLENT!" in the
-   panel, star animation, purple freeform fill).
+### 5p. 2026-10-29: releases 0.51 (plugin 1.82) + Ultrawide Fix 1.2, then plugin 1.83
+- **Released** (GitHub, both pushed): HUD **0.51** (plugin 1.82: vocals stage A+B, star power tube vs WoR, score box,
+  band bulb, battle fixes; `releases/GH5-WoR_HUD_0.51.zip`) and **GHWT:DE Ultrawide Fix 1.2** (repo
+  E:\Dev\ghwt\ghwtde-ultrawide-fix, Hor+ on 3 of 5 projections, HorPlusSites=7; bundled in 0.51).
+- **User-confirmed by eye** (10-29): Ultrawide Fix 1.2 at its default (HorPlusSites=7, 2560x1080) looks fixed, band
+  close-ups included. Test configs on the user's desktop: `OneDrive\Área de Trabalho\Ultrawide tests\` (1 = Hor+ off,
+  2 = release default, 3 = HorPlusSites=15 experimental; `USE *.cmd` copies one over the game's ini). Switching HUD
+  theme in the options **no longer crashes** (dropped from the known issues). 6th star: verified by the user in single
+  player, NOT yet in band (the band star meter 0x08b99cb3 calls the same rating dbc9b21e, so the wrapper applies; a
+  vocalist's getplayerinfo notes_hit / total_notes may not match and block it: check in a band bot run to the end).
+- **Dropped (user)**: automated tests with a venue background (the black background in bot runs is not a goal any
+  more); the venue filter (E:\Dev\ghwt\ghwtde-venue-filter) stays local, never published, no repo.
+- **Practice still crashes** (user, 10-29), despite the 1.61 guard. No log survives: the DE restarts Logs\debug.txt
+  before our ASI loads (the boot copy to debug.prev.txt never worked) and no WER dump since 10-28 is from practice.
+  **Plugin 1.83** copies Logs\debug.txt to **Logs\debug.last.txt** at process exit (DLL_PROCESS_DETACH) and on an
+  unhandled exception (SetUnhandledExceptionFilter at boot and again at the gameplay marker, chaining the previous
+  filter; logs "crash: exception X at Y"). Next practice crash: read debug.last.txt (look for "anim pak ... still
+  held" and the scriptassert).
+- **Harness**: capture_band `--video` (30 fps ffmpeg gdigrab of the desktop from the gameplay marker / SHOT_FROM);
+  `--native` (windowed borderless at the screen size), venue z_norway, the boot screen skip are all from 1.82.
+  **Battle has no gameplay marker** (no score box, no star power tube): `--play` never starts there; use SHOT_FROM
+  frames (`--every`, `--until`) and `--video`. The 10-29 battle run (`--play`) got no frames; the game quit by itself
+  at T+100 s (code 0, "Thanks for playing": the battle ended), logs fine.
+- **Battle, user 2026-10-29 (plugin 1.84, installed, not seen in game)**: (1) "power ups still have no animation
+  when going to the battle slots": the add wrapper sets WoR_HUD_bfly; WoR_HUD_battlecards_place jumps the NEW card
+  (slot 0) to the strike line's centre at the big slot's height (wor_battle.fly_start: P1 (388.8, 579.1), slot
+  (602.7, 579.1), 214 canvas units; P2 the same + p2_dx) with a 0-time morph (replaces the DE's own 0.3 s flight
+  from its gem), z FLY_Z 19 (over the highway), and spawns WoR_HUD_battlecard_fly: WoR's ready lightning (the tube's
+  Tesla arc sheet 0c30522c, wor_art.arc_frame) in red (ARC_RGB, the battle gems' Mat_*_Battle pass-2 colour 2,0,0),
+  a sprite spanning start -> slot, 10 frames at 20 fps, faded over the last 0.2 s; the card slides in over 0.25 s
+  and drops back to CARD_Z on arrival. Textures WoR_HUD_barc_00..15 in the UI pak. The strike line is 54 canvas units
+  below the slot, so the slide runs at the slot's height (user: "just an horizontal move"). (2) The battle needle at
+  full health a bit higher: WoR_HUD_battle_needle_set's top knot runs NEEDLE_TOP_EXTRA (10%) past path[3]; plugin
+  remap_on lets the top segment's t reach 1.25 (the DE's own paths never pass their last knot, so band / quickplay
+  are unchanged).
+
+### 6. Open / next, ranked (user 2026-10-29: vocals and full band first)
+0. **Current order (2026-10-29 evening)**: housekeeping done (5p); battle check of 1.84 (the red arc + slide, the
+   needle top, slot spacing): capture with `--lineup battle --native --every 3 --until 200 --video` (no --play in
+   battle); then
+   a. vocalist's star power strip never fills (5n item 1; run `--lineup 1v --play 60`, read "vocal sp segment",
+      "star power widget for player", "vocalist star power strip attached" in the debug.txt copy);
+   b. in-game check of vocals (item 1 below) and full band 1.53-1.82 (item 3 below, plus band commas, bulb popup,
+      tubes after the 1.64-1.81 redesign) and the 6th star in band;
+   c. star power phrase notes' blue blur (5n item 2), phrase meter driver, "EXCELLENT!" in the panel, strip
+      smoothness, vocals purple freeform fill (mock first);
+   d. every mode: star meter animation + thicker tip balls, charged plasma top blockiness (5n item 3);
+   e. practice crash (needs the user's debug.last.txt from 1.83).
+   Much of 1-2 below is done in 5l-5n: the panel, lyric font / colours, notes, now line, SP glow bands.
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
    tests/capture_band.py, `1g1v` too; ask before launching). Look for:
    - panel at canvas 141..386 x 457..499 glued on the highway's top line; score group top right (890,410) like the
@@ -388,10 +432,10 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
    is turned the WRONG way, flip the sign in place_in_window: fill rot0 - rot and the offset rotation), no washed
    band below the fill level on 2/3 highways, needle position, battle slots spacing and the collect flight.
 4. If a whole layout's pieces are off by a constant, the container-origin model (G_CAL) is the suspect.
-5. Older: practice-mode crash logs, 6th star check.
+5. Older: practice-mode crash (5p: 1.83 keeps the log), 6th star in band.
 6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.81 + mod at 178cb2c (5o), 2026-10-28, run by the user that evening (single-player only). Release 0.50 on GitHub is still plugin 1.52; every commit since is pushed to origin/main but not released.
+Installed: plugin 1.84 + mod (battle arc / slide / needle, 2026-10-29 evening). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

@@ -82,6 +82,20 @@ CARD_FILL = 0.82                        # a card fills this much of its visor's 
                                         # 2026-10-22, the slot's border must show around the card). 2026-10-23: the
                                         # cards weren't sized at all before the script (64 px, "huge"); at 0.375 they
                                         # were too small: "just enough so we can see the rim border"
+# a new power-up (user 2026-10-29: "no animation when going to the battle slots"): the card slides HORIZONTALLY from
+# the strike line's centre (x, at the big slot's height) into the big slot in ARC_FLY s, over the highway (z FLY_Z),
+# along WoR's star power ready lightning (the tube's Tesla arc, Lightining_arc_anim01, 16 frames at 20 fps) in red:
+# the battle gems' glow (guitar_material Mat_*_Battle, pass 2 colour 2, 0, 0). The arc spans start -> slot, plays
+# ARC_FRAMES frames and fades over the last ARC_FADE s. In the UI pak (always loaded, no size cap).
+ARC_NAMES = [f'WoR_HUD_barc_{i:02d}' for i in range(16)]
+ARC_RGB, ARC_CORE = (255, 24, 16), (255, 205, 195)
+ARC_H = 40.0                            # screen height of the arc sprite (the frames are 256 x 64)
+ARC_FLY, ARC_FRAMES, ARC_FADE = 0.25, 10, 0.2
+FLY_Z = 19.0                            # the DE's own card z: over the highway while it flies
+# the needle at full health a little higher (user 2026-10-29: battle's "feels like it could go further up, just
+# slightly"): the top segment of the needle path runs this fraction of itself further; the plugin (1.84) lets the
+# needle past the last LED stop by up to 25% of that segment (only this script goes past it)
+NEEDLE_TOP_EXTRA = 0.10
 HUD_Z = 0                               # the layout's z (stock 0); 4 (round 1) put the slots over the rail, but the
                                         # user wants them behind the highway (2026-10-23, test of 1.48)
 VISOR_INSET = 9.0                       # screen px the whole slot set moves towards the highway (user 2026-10-22: the
@@ -296,6 +310,65 @@ def rock_point(p, player):
 def slots_on_tube(sep=SEP):
     """[(slot, glass centre, element dims, glass radius)] of the visors (the cards' slots), P1 screen."""
     return [(key, c, dims, r) for key, _, dims, c, r in visors(sep)]
+
+
+def fly_start(sep=SEP):
+    """Where a new card starts its slide (P1 screen): the strike line's centre x, at the big slot's height (user
+    2026-10-29: just a horizontal move, the distance measured from the bottom slot's centre to the strike line)."""
+    big = next(c for key, c, _, _ in slots_on_tube(sep) if key == 'big')
+    centre = (_line_x(RAIL_L, STRIKE_2P) + _line_x(RAIL_R, STRIKE_2P)) / 2 - sep
+    return (centre, big[1])
+
+
+def arc_box(player):
+    """(centre, dims) of the red arc for player: from the slide's start to the big slot (screen)."""
+    big = next(c for key, c, _, _ in slots_on_tube() if key == 'big')
+    a, b = (fly_start(), big) if player == 1 else (_p2(fly_start()), _p2(big))
+    return ((a[0] + b[0]) / 2, a[1]), (abs(b[0] - a[0]), ARC_H)
+
+
+def fly_script():
+    """WoR_HUD_battlecard_fly (params id, to, mid, dims, player): the red arc centred on mid, dims from the slide's
+    start to `to` (constants per player, arc_box), at 20 fps and faded at the end, and the card's slide along it; the
+    card goes back under the highway (its slot's z) on arrival."""
+    w = ARC_NAMES
+    frames = ':a{' + ''.join(f'${n}$' for n in w) + ':a}'
+    fly_frames = round(ARC_FLY * 20)
+    fade_from = ARC_FRAMES - round(ARC_FADE * 20)
+    return ('Script WoR_HUD_battlecard_fly [\n'
+            '\t:i $FormatText$$checksumname$ = $WoR_bolt$%s("WoR_HUD_barc_p%p")$p$ = %GLOBAL%$player$\n'
+            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
+            '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n'
+            '\t:i endif\n'
+            '\t:i if $ScreenElementExists$$id$ = $battlemode_container$\n'
+            '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = $battlemode_container$'
+            f'$texture$ = ${w[0]}$$Pos$ = %GLOBAL%$mid$$dims$ = %GLOBAL%$dims$$just$ = :a{{$center$$center$:a}}'
+            f'$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$alpha$ = %i(1)$z_priority$ = %f({FLY_Z - 0.1:.1f})$Blend$ = $add$:s}}\n'
+            '\t:i endif\n'
+            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+            f'\t\t:i $LegacyDoScreenElementMorph$:s{{$id$ = %GLOBAL%$id$$Pos$ = %GLOBAL%$to$$time$ = %f({ARC_FLY:.2f}):s}}\n'
+            '\t:i endif\n'
+            f'\t:i $WoR_frames$ = {frames}\n'
+            '\t:i $WoR_f$ = %i(0)\n'
+            '\t:i while \n'
+            '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
+            '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_bolt$$texture$ = (%GLOBAL%$WoR_frames$:a{%GLOBAL%$WoR_f$:a})\n'
+            f'\t\t\t:i if (%GLOBAL%$WoR_f$ = %i({fade_from}))\n'
+            f'\t\t\t\t:i $LegacyDoScreenElementMorph$:s{{$id$ = %GLOBAL%$WoR_bolt$$alpha$ = %i(0)$time$ = %f({ARC_FADE:.2f}):s}}\n'
+            '\t\t\t:i endif\n'
+            '\t\t:i endif\n'
+            f'\t\t:i if (%GLOBAL%$WoR_f$ = %i({fly_frames}))\n'
+            '\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+            f'\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$z_priority$ = %f({CARD_Z["big"]})\n'
+            '\t\t\t:i endif\n'
+            '\t\t:i endif\n'
+            '\t\t:i $wait$%f(0.05)$seconds$\n'
+            '\t\t:i %GLOBAL%$WoR_f$ = (%GLOBAL%$WoR_f$ + %i(1))\n'
+            f'\t:i loop_to %i({ARC_FRAMES})\n'
+            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
+            '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n'
+            '\t:i endif\n'
+            '\t:i endfunction\n]\n\n')
 
 
 def card_sizes():
@@ -642,7 +715,14 @@ def scripts():
     # others), position, scale and draw priority (CARD_Z: just above its own slot, the bottom pair over the middle).
     keys = ('big', 'mid', 'small')
     centres = {key: c for key, c, _, _ in slots_on_tube()}
+    starts = {1: fly_start(), 2: _p2(fly_start())}
     vec = lambda pts: ':a{' + ''.join(f'%vec2({x:.2f},{y:.2f})' for x, y in pts) + ':a}'
+
+    def arc_locals(p):
+        (mx, my), (dw, dh) = arc_box(p)
+        return (f'\t\t:i %GLOBAL%$WoR_from$ = %vec2({starts[p][0]:.2f},{starts[p][1]:.2f})\n'
+                f'\t\t:i %GLOBAL%$WoR_mid$ = %vec2({mx:.2f},{my:.2f})\n'
+                f'\t\t:i %GLOBAL%$WoR_adims$ = %vec2({dw:.2f},{dh:.2f})\n')
     flt = lambda vs: ':a{' + ''.join(f'%f({v:.4f})' for v in vs) + ':a}'
     sizes = [1.0, scales['medium_scale'], scales['small_scale']]
     place = (
@@ -650,9 +730,11 @@ def scripts():
         '\t:i if (~%GLOBAL%$player_status$->$player$ = %i(1))\n'
         '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p1$)\n'
         f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([centres[k] for k in keys])}\n'
+        + arc_locals(1) +
         '\t:i else \n'
         '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p2$)\n'
         f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([_p2(centres[k]) for k in keys])}\n'
+        + arc_locals(2) +
         '\t:i endif\n'
         f'\t:i %GLOBAL%$WoR_scales$ = {flt(sizes)}\n'
         f'\t:i %GLOBAL%$WoR_z$ = {flt([CARD_Z[k] for k in keys])}\n'
@@ -673,13 +755,26 @@ def scripts():
         '\t\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$'
         '$Pos$ = (%GLOBAL%$WoR_slots$:a{%GLOBAL%$WoR_slot$:a})$Scale$ = (%GLOBAL%$WoR_scales$:a{%GLOBAL%$WoR_slot$:a})'
         '$alpha$ = %i(1)$time$ = %f(0.3):s}\n'
+        # 2026-10-29 (user: still no animation into the slots): a NEW card (the add wrapper sets WoR_HUD_bfly) jumps to
+        # the strike line's centre (a 0-time morph replaces the DE's own flight) and WoR_HUD_battlecard_fly slides it
+        # into the big slot along the red arc
+        '\t\t\t\t\t:i elseif (~$WoR_HUD_bfly$ = %i(1))\n'
+        '\t\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$$Pos$ = %GLOBAL%$WoR_from$'
+        '$Scale$ = %f(1.0)$alpha$ = %i(1)$time$ = %i(0):s}\n'
+        f'\t\t\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_id$$z_priority$ = %f({FLY_Z:.1f})\n'
+        '\t\t\t\t\t\t:i $spawnscriptnow$$WoR_HUD_battlecard_fly$$params$ = :s{$id$ = %GLOBAL%$WoR_id$'
+        '$mid$ = %GLOBAL%$WoR_mid$$dims$ = %GLOBAL%$WoR_adims$$to$ = (%GLOBAL%$WoR_slots$:a{%i(0):a})'
+        '$player$ = (~%GLOBAL%$player_status$->$player$):s}\n'
         '\t\t\t\t\t:i endif\n'
         '\t\t\t\t:i endif\n'
         '\t\t\t:i endif\n'
         '\t\t:i endif\n'
         '\t\t:i %GLOBAL%$WoR_i$ = (%GLOBAL%$WoR_i$ + %i(1))\n'
         '\t:i loop_to %i(3)\n'
-        '\t:i endfunction\n]\n\n')
+        '\t:i $change$$WoR_HUD_bfly$ = %i(0)\n'
+        '\t:i endfunction\n]\n\n'
+        'SectionInteger WoR_HUD_bfly 0\n\n')
+    place += fly_script()
     # 2026-10-23 (user test of 1.50: a new card flew up, then sideways into the big slot): guitar_battle reads every card
     # target from the global battle_hud_2d_elements (rock_pos + card_*_off, also attack_ready_text_pos and z), never
     # from the theme's layout, and the per-field $change$ of its vec2 offsets never took (test 2026-10-21). So each
@@ -701,10 +796,12 @@ def scripts():
               'SectionInteger WoR_HUD_battle_saved 0\n\n'
               'SectionStruct WoR_HUD_battle_stock\n{\n\tStructHeader\n\t{\n\t\tStructInt WoR_HUD_placeholder = 0\n\t}\n}\n\n')
     for name in ('update_battlecards_add', 'update_battlecards_remove'):
+        fly = '\t\t:i $change$$WoR_HUD_bfly$ = %i(1)\n' if name.endswith('_add') else ''
         place += (f'Script WoR_HUD_{name} [\n'
                   '\t:i $WoR_HUD_battle_globals$ isNull\n'
                   f'\t:i $WoR_HUD_{name}_orig$ isNull\n'
                   f'\t:i if {is_ours}\n'
+                  + fly +
                   '\t\t:i $WoR_HUD_battlecards_place$ isNull\n'
                   '\t:i endif\n'
                   '\t:i endfunction\n]\n\n'
@@ -839,13 +936,14 @@ def rock_scripts():
           '\t:i loop_to \n'
           '\t:i endfunction\n]\n\n')
     path = M.NEEDLE_PATHS[2]
-    v = lambda q: f'%vec2({q[0]:.1f},{q[1]:.1f})'
+    v = lambda q: f'%vec2({q[0]:.2f},{q[1]:.2f})'
+    top = tuple(path[3][k] + (path[3][k] - path[2][k]) * NEEDLE_TOP_EXTRA for k in (0, 1))
     # the DE's 0x3205f550 for one player (health 0 / .6666 / 1.3333 / 2 on the path's knots)
     t += ('Script WoR_HUD_battle_needle_set [\n'
           '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
           '\t\t:i $getplayerinfo$%GLOBAL%$player$$current_health$\n'
           '\t\t:i if (%GLOBAL%$current_health$ >= %f(1.3332998))\n'
-          f'\t\t\t:i $pos_a$ = {v(path[2])}\n\t\t\t:i $pos_b$ = {v(path[3])}\n'
+          f'\t\t\t:i $pos_a$ = {v(path[2])}\n\t\t\t:i $pos_b$ = {v(top)}\n'
           '\t\t\t:i $WoR_t$ = ((%GLOBAL%$current_health$ - %f(1.3332998)) / %f(0.6669999))\n'
           '\t\t:i elseif (%GLOBAL%$current_health$ >= %f(0.6665999))\n'
           f'\t\t\t:i $pos_a$ = {v(path[1])}\n\t\t\t:i $pos_b$ = {v(path[2])}\n'

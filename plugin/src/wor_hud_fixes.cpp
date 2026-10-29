@@ -169,6 +169,53 @@ namespace
 		fflush(g_log);
 	}
 
+	// 1.83: the DE's Logs\debug.txt is restarted at every launch, so a crash's script log (practice crash,
+	// 2026-10-29) was always lost. Copy it to debug.last.txt when the game exits or hits an unhandled exception.
+	// Read with full sharing: the DE still has it open.
+	char g_debug[MAX_PATH] = {}, g_debug_last[MAX_PATH] = {};
+	LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
+
+	void keep_debug_log(const char *why)
+	{
+		static LONG done = 0;
+		if (!g_debug[0] || InterlockedExchange(&done, 1))
+			return;
+		bool ok = false;
+		HANDLE in = CreateFileA(g_debug, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+		                        OPEN_EXISTING, 0, nullptr);
+		if (in != INVALID_HANDLE_VALUE)
+		{
+			HANDLE out = CreateFileA(g_debug_last, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+			if (out != INVALID_HANDLE_VALUE)
+			{
+				static char buf[64 * 1024];
+				DWORD got = 0, put = 0;
+				ok = true;
+				while (ok && ReadFile(in, buf, sizeof(buf), &got, nullptr) && got)
+					ok = WriteFile(out, buf, got, &put, nullptr) && put == got;
+				CloseHandle(out);
+			}
+			CloseHandle(in);
+		}
+		log("%s: Logs\\debug.txt %s debug.last.txt", why, ok ? "copied to" : "NOT copied to");
+	}
+
+	LONG WINAPI crash_filter(EXCEPTION_POINTERS *ep)
+	{
+		const EXCEPTION_RECORD *r = ep ? ep->ExceptionRecord : nullptr;
+		log("crash: exception %08lx at %p", r ? r->ExceptionCode : 0, r ? r->ExceptionAddress : nullptr);
+		keep_debug_log("crash");
+		return g_prev_filter ? g_prev_filter(ep) : EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	// at boot and again at the first gameplay frame: the DE or a crash reporter may set its own filter in between
+	void watch_crashes()
+	{
+		LPTOP_LEVEL_EXCEPTION_FILTER prev = SetUnhandledExceptionFilter(&crash_filter);
+		if (prev != &crash_filter)
+			g_prev_filter = prev;
+	}
+
 	bool is_ours(uint32_t texture)
 	{
 		for (uint32_t t : kOurLights)
@@ -817,6 +864,7 @@ namespace
 			if (FILE *f = fopen("wor_hud_gameplay.flag", "w"))
 				fclose(f);
 			log("gameplay marker: first score box update");
+			watch_crashes();
 		}
 		if (tex == kStarBar)
 		{
@@ -1070,7 +1118,10 @@ namespace
 			++i;
 		const float dy = de[i + 1][1] - de[i][1];
 		float t = dy != 0.0f ? (y - de[i][1]) / dy : 0.0f;
-		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+		// 1.84: the top segment may run 25% past the last stop: the battle needle script (wor_battle
+		// NEEDLE_TOP_EXTRA) goes a little higher at full health; the DE's own path never passes its last knot
+		const float t_max = i == 2 ? 1.25f : 1.0f;
+		t = t < 0.0f ? 0.0f : t > t_max ? t_max : t;
 		f32(needle, kElementPos) = wor[i][0] + (wor[i + 1][0] - wor[i][0]) * t;
 		f32(needle, kElementPos + 4) = wor[i][1] + (wor[i + 1][1] - wor[i][1]) * t;
 		if (!logged)
@@ -2231,19 +2282,19 @@ namespace
 		char prev[MAX_PATH];
 		sprintf_s(prev, "%.*s.prev.log", static_cast<int>(strlen(path) - 4), path);
 		const bool kept_log = CopyFileA(path, prev, FALSE) != 0;
+		// 1.83: the boot copy of debug.txt never worked (the DE restarts it before we load), so it is copied to
+		// Logs\debug.last.txt when the game exits or crashes instead (keep_debug_log)
 		char docs[MAX_PATH] = {};
-		bool kept_debug = false;
 		if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
 		{
-			char debug[MAX_PATH], debug_prev[MAX_PATH];
-			sprintf_s(debug, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.txt", docs);
-			sprintf_s(debug_prev, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.prev.txt", docs);
-			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
+			sprintf_s(g_debug, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.txt", docs);
+			sprintf_s(g_debug_last, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.last.txt", docs);
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.82 (GH5 / WoR HUD)");
-		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
-		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
+		log("wor_hud_fixes 1.84 (GH5 / WoR HUD)");
+		log("previous session log kept: wor_hud_fixes.prev.log %s; Logs\\debug.txt is copied to debug.last.txt at exit or crash",
+		    kept_log ? "yes" : "no");
+		watch_crashes();
 		if (!sites_match())
 			return;
 		log(install_set_lights() ? "streak lights: patched (WoR colours, x1 pink, own texture names)"
@@ -2304,5 +2355,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 		DisableThreadLibraryCalls(module);
 		init(module);
 	}
+	else if (reason == DLL_PROCESS_DETACH)
+		keep_debug_log("exit");
 	return TRUE;
 }

@@ -516,6 +516,20 @@ def fill_arc(halo_png, needle_png, rgb, alpha=190, grow=5):
     arc.alpha_composite(Image.open(halo_png).convert('RGBA'))
     arc.save(halo_png)
 
+def arc_frame(sheet_png, frame, out_png, rgb, core_rgb, frames=16):
+    """One frame of WoR's Tesla arc sheet (horizontal bolts, white on black, stacked) as a coloured bolt for additive
+    blending: brightness -> alpha, the glow `rgb`, the hot core towards `core_rgb` (2026-10-29: the battle power-up's
+    red lightning)."""
+    import numpy as np
+    im = Image.open(sheet_png).convert('RGB')
+    h = im.height // frames
+    lum = np.asarray(im.crop((0, frame * h, im.width, frame * h + h))).astype(float).max(-1) / 255.0
+    core = np.clip((lum - 0.55) / 0.45, 0.0, 1.0)[..., None]
+    col = (1.0 - core) * np.array(rgb, float) + core * np.array(core_rgb, float)
+    out = np.dstack([col, np.clip(lum * 1.5, 0.0, 1.0) * 255.0])
+    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
+
+
 def recolour(png, rgb):
     """Every texel of `png` takes `rgb`, its alpha kept (a white glow core tinted, compare_wor 2026-10-28)."""
     im = Image.open(png).convert('RGBA')

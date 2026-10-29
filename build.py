@@ -388,6 +388,13 @@ def main():
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
     for i, name in enumerate(wor_1g.SP_BALL_NAMES):
         ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
+    # battle: a new power-up slides into its slot along the tube's ready lightning in red (tools/wor_battle.py ARC_*);
+    # the UI pak, like the plasma frames
+    for i, name in enumerate(wor_battle.ARC_NAMES):
+        out = os.path.join(work, name + '.png')
+        wor_art.arc_frame(arc_src, i, out, wor_battle.ARC_RGB, wor_battle.ARC_CORE)
+        ui_pngs.append(out)
+        sources[name] = {'src': arc_src, 'arc_frame': i, 'rgb': list(wor_battle.ARC_RGB), 'core': list(wor_battle.ARC_CORE)}
     # WoR's straight star-progress bar and song progress line: soft-edged strips from hud_progression_bar_lead's
     # vertical profile (the DE tints the star bar), the same dot at both tips, WoR's dark progress track
     lead = os.path.join(WOR_PNG, 'hud_progression_bar_lead.png')

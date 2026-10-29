@@ -1,5 +1,14 @@
 # GH5 / WoR HUD: release notes
 
+## Next (unreleased)
+
+Plugin `wor_hud_fixes.asi` 1.84:
+- **Battle:** a new power-up slides from the strike line into its slot along WoR's star power ready lightning, in the
+  battle gems' red; the rock needle goes a little higher at full health.
+- The game's script log (Logs\debug.txt) is kept as Logs\debug.last.txt when the game exits or crashes, so a crash
+  report can include it.
+- Known issues: switching HUD theme no longer crashes; practice mode can still crash.
+
 ## 0.51 (beta) - vocals
 
 `GH5-WoR_HUD_0.51.zip` (plugin `wor_hud_fixes.asi` 1.82), on top of 0.50:

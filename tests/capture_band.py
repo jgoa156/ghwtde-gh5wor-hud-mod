@@ -192,6 +192,9 @@ def run(name, parts, a, out):
         play = getattr(a, 'play', 0)   # tests/ultrawide_ab.py passes its own namespace
         if play:
             next_shot = deadline + 1
+        # --video (2026-10-29: the battle card's collect flight lasts under a second, between frames): the whole
+        # screen at 30 fps from the gameplay marker (or SHOT_FROM) to the end, ffmpeg gdigrab, stopped with 'q'
+        video = None
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
             if play and play_from is None and os.path.exists(flag):
@@ -199,6 +202,13 @@ def run(name, parts, a, out):
                 next_shot = play_from + 1
                 deadline = min(deadline, play_from + play)
                 print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {play} s', flush=True)
+            start = (play_from and play_from - PLAY_DELAY) if play else t0 + SHOT_FROM
+            if getattr(a, 'video', False) and video is None and start and time.time() >= start:
+                video = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'gdigrab', '-framerate', '30',
+                                          '-i', 'desktop', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '20',
+                                          '-pix_fmt', 'yuv420p', os.path.join(out, f'{name}.mp4')],
+                                         stdin=subprocess.PIPE)
+                print(f'[{name}] video started at T+{int(time.time() - t0)} s', flush=True)
             if int(time.time() - t0) % 5 == 0:
                 tries += 1
                 held += bool(keep_in_front(proc.pid))
@@ -211,6 +221,12 @@ def run(name, parts, a, out):
                 got.append(dst)
                 print(f'[{name}] frame {dst}', flush=True)
                 next_shot += (a.every or SHOT_EVERY)
+        if video is not None:
+            try:
+                video.communicate(b'q', timeout=30)
+            except subprocess.TimeoutExpired:
+                video.kill()
+            print(f'[{name}] video {os.path.join(out, name + ".mp4")}', flush=True)
         print(f'[{name}] foreground held {held}/{tries} checks', flush=True)
         if proc.poll() is not None:
             print(f'[{name}] game closed (code {proc.returncode}) after {int(time.time() - t0)} s (it quits by itself after the song)', flush=True)
@@ -246,6 +262,7 @@ def main():
     ap.add_argument('--native', action='store_true')     # windowed borderless at the screen's size (no stretching)
     ap.add_argument('--sp-states', action='store_true')  # 25/45/70/100 % then deploy, every 28 s (compare_wor.py)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
+    ap.add_argument('--video', action='store_true')      # 30 fps screen video from the gameplay marker (or SHOT_FROM)
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')
     if os.path.exists(done):

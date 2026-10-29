@@ -392,7 +392,9 @@ def fly_script():
          '\t\t:i endif\n'
          '\t\t:i $GetScreenElementDims$$id$ = %GLOBAL%$WoR_probe$\n'
          '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_probe$\n'
-         '\t\t:i $WoR_bdims$ = ((%GLOBAL%$width$ * %vec2(1.0,0.0)) + (%GLOBAL%$height$ * %vec2(0.0,1.0)))\n'
+         # the material's dims are its whole sheet (1024 x 768 in game, 2026-10-29: the bolt came out 8x too wide);
+         # the material shows one of its BOLT_NAMES cells side by side
+         f'\t\t:i $WoR_bdims$ = (((%GLOBAL%$width$ / %f({float(len(BOLT_NAMES)):.1f})) * %vec2(1.0,0.0)) + (%GLOBAL%$height$ * %vec2(0.0,1.0)))\n'
          '\t\t:i $printf$%s("WoR_HUD: battle strike %p lane %i, bolt %w x %h")$p$ = %GLOBAL%$color$$i$ = %GLOBAL%$WoR_lane$$w$ = %GLOBAL%$width$$h$ = %GLOBAL%$height$\n'
          '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = %GLOBAL%$container_id$'
          f'$texture$ = ${BOLT_NAMES[0]}$$dims$ = %GLOBAL%$WoR_bdims$$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$Pos$ = %GLOBAL%$WoR_pos2d$'

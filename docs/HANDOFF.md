@@ -4,7 +4,7 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-27 night): HANDOFF GUIDE: plugin 1.63, section 5n first (end of day: open items), then 5m / 5l
+## START HERE (2026-10-29): HANDOFF GUIDE: plugin 1.81, section 5o first (10-28: the star power tube against WoR footage), then 5n's open items, then 5m / 5l
 
 Everything after this section is older history; read it only for a detail.
 
@@ -315,7 +315,46 @@ Open, next session:
 4. Unanswered: venue filter GitHub repo; ultrawide 1.2 band close-ups on the user's screen; practice crash guard
    (1.61) not exercised yet.
 
+### 5o. 2026-10-27 late night -> 10-28: plugin 1.64 -> 1.81, the single-player star power tube against WoR footage
+Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installed and was run by the user on 10-28
+(logs 19:46 and 20:19, both 1.81, no vocalist in either: no "vocal sp segment" lines yet). Each step is its own commit
+(`git log --since=2026-10-27` for the detail); this is where it ended up.
+- **Method**: tests/compare_wor.py measures our HUD against the user's WoR 1-guitar capture
+  (~\OneDrive\Videos\GH\WOR.mp4, frames cached in tests/reference/wor_1g): template-matches the score box and the SP
+  tube, samples each element with a mask, sorts frames into charging / ready / active, and prints CIEDE2000 colour
+  differences (< 3 barely visible) and pixel offsets, plus a side-by-side sheet:
+  `python tests\compare_wor.py <capture folder> [--ref path\WOR.mp4]`.
+- **Harness additions** (tests/capture_band.py): `--sp-states` ([WoR_HUD] TestSPStates=1: star power set to 25 / 45 /
+  70 / 100 % then deployed, every 28 s, replacing the bot SP watcher; build.py WoR_HUD_test_sp_states), `--play N`
+  (frames for N s of play counted from the plugin's gameplay marker, then the game is killed; it waits out the title
+  card), `--every S`, `--until S`. The ultrawide A/B test lives in the same harness (ultrawide_ab).
+- **Colours (calibration passes 1-3, 1.68-1.71)**: plasma / charging fill WoR teal (two correction steps; the screen
+  adds the glass and the white core, so the source is darker), less white core, star numeral and star bar WoR gold
+  (the DE's own colour writes to those two now go to sinks), song line hue, dark texels of the score glass transparent,
+  the charged look kept through the drain, charged test level 85.
+- **Tube look as in the WoR footage (1.70+)**: no top cap while charging; the charging fill's top edge is soft and
+  slopes 6.5 deg like WoR's, drawn by ONE normal-blend sprite (the old sp_glow_bottom repurposed, 1.80) over a hard cut,
+  domed like WoR (1.81) and painted in the fill's measured colour profile; the charged top has a soft teal glow made of
+  soft ellipses along that 6.5 deg slope, centred on the axis (1.79). The bottom arc is traced on the fill's own bottom
+  contour (thin, cyan, light blur), its SCREEN-RIGHT end bent down: on this mirrored tube that is the texture's LEFT end
+  (178cb2c; the commits just before it bent the wrong end).
+- **Dead ends (don't retry)**: window rotation does NOT clip, so column windows can't make a sloped top (1.73: a
+  dotted line, 1.74 off); 4x4 / 16 nested soft bands for the top edge left seams or a dark seam line (1.75-1.78, off);
+  WoR's SB_Tubeglow01 as the bottom arc crossed the fill (9d4b50f..c19e107, back to a baked needle line, now the traced
+  contour).
+- **Earlier the same night (1.64-1.67)**: cap and bottom ring exactly the half divider's needle art and angle
+  (00634de), blurrier arcs, rounded fill top corners (kCornerR), multiplayer tubes 1 unit outwards on 2 / 3 highways
+  (1.66).
+- **Not the HUD**: ReShade preset now uses the original's blur (SurfaceBlur edge 10 / radius 4 / offset 1 / strength
+  0.858, motion blur 1.0, no sharpen) with our colour calibration kept (8b6133f).
+- **Not done / to check**: 5n item 3 (charged plasma top slightly blocky) was not re-checked after these changes; the
+  multiplayer tubes share the single-player textures and engine, so their look changed too and was not captured.
+
 ### 6. Open / next (vocals first; the user approved mock v2 = docs/mocks/mock_vocals_v2.jpg / _sp.jpg)
+0. **Current order (2026-10-29)**: 5n item 1 (vocal SP strip never fills: run a short `--lineup 1v` and read the
+   "vocal sp segment" lines), then 5n items 2-4, then the list below (much of 1-2 below is done in 5l-5n: the panel,
+   lyric font / colours, notes, now line, SP glow bands; still open there: phrase meter driver, "EXCELLENT!" in the
+   panel, star animation, purple freeform fill).
 1. **In-game check of vocals A + B** (vocals-only and guitar + vocals; capture line-up `1v` exists in
    tests/capture_band.py, `1g1v` too; ask before launching). Look for:
    - panel at canvas 141..386 x 457..499 glued on the highway's top line; score group top right (890,410) like the
@@ -352,7 +391,7 @@ Open, next session:
 5. Older: practice-mode crash logs, 6th star check.
 6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.58 + mod (5l), 1.57 (5k), on top of plugin 1.56 + mod with vocals stage A + B (commits d05da56, 5b1335f + the stage B commit), 2026-10-26, hashes verified. Not tested in game yet. Release 0.50 on GitHub is 1.52; nothing after it is pushed.
+Installed: plugin 1.81 + mod at 178cb2c (5o), 2026-10-28, run by the user that evening (single-player only). Release 0.50 on GitHub is still plugin 1.52; every commit since is pushed to origin/main but not released.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

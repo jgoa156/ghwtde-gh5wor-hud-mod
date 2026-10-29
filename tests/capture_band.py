@@ -33,9 +33,18 @@ MODES = {'faceoff': 'p2_faceoff', 'profaceoff': 'p2_pro_faceoff', 'battle': 'p2_
 
 
 PLAY_DELAY = 10   # s from the plugin's gameplay marker (title card) to the first notes (2026-10-28 run)
+VENUE = 'z_norway'      # Fjord of Swords: every test runs there (user 2026-10-29)
 SHOT_FROM, SHOT_EVERY, SHOT_WINDOW = 90, 15, 180   # seconds after the launch: shots start at T+90 and run for 3 minutes
 SHOT_UNTIL = SHOT_FROM + SHOT_WINDOW                 # (user 2026-10-22; ontheroadagain plays ~T+100..250 s); the game
 # then sits on the results screen (user 2026-10-22: it does not proceed), so it is closed at SHOT_UNTIL
+
+
+def screen_size():
+    """The primary screen's size in physical pixels."""
+    import ctypes
+    u = ctypes.windll.user32
+    u.SetProcessDPIAware()
+    return u.GetSystemMetrics(0), u.GetSystemMetrics(1)
 
 
 def game_windows(pid):
@@ -135,13 +144,20 @@ def run(name, parts, a, out):
         # the DE's own AutoLaunch only runs for WTDE developers (WTDE_IsUser); [WoR_HUD] TestAutoLaunch=1 makes the
         # mod's title screen run the same AutoLaunch setup (build.py TEST_AUTOLAUNCH_SCRIPT, plugin 1.42)
         sets = [('WoR_HUD', 'TestAutoLaunch', '1'), ('AutoLaunch', 'Song', a.song), ('AutoLaunch', 'Players', str(len(parts))),
-                ('AutoLaunch', 'Venue', 'z_frathouse'), ('AutoLaunch', 'HideHUD', '0'), ('Graphics', 'HUDTheme', 'ghwor'),
+                ('AutoLaunch', 'Venue', VENUE), ('AutoLaunch', 'HideHUD', '0'), ('Graphics', 'HUDTheme', 'ghwor'),
                 ('AutoLaunch', 'GameMode', MODES.get(name, 'not_defined'))]
         for i, p in enumerate(parts):
             sfx = '' if i == 0 else str(i + 1)
             sets += [('AutoLaunch', 'Part' + sfx, p), ('AutoLaunch', 'Bot' + sfx, '1')]
         if a.bulb_cycle:          # the band bulb steps through x1..x4 and star power x2..x8 (tools/wor_band.py)
             sets.append(('WoR_HUD', 'TestBulbCycle', '1'))
+        # --native (user 2026-10-29: "the 1920x1080 resolution is stretched and needs to be windowed so it does not
+        # stretch"): the game windowed and borderless at the screen's own size, no scaling of the picture (the INI's
+        # own 3840x2160 borderless full screen is scaled onto the 2560x1080 screen)
+        if getattr(a, 'native', False):
+            w, h = screen_size()
+            sets += [('Graphics', 'WindowedMode', '1'), ('Graphics', 'Borderless', '1'),
+                     ('Graphics', 'ResolutionX', str(w)), ('Graphics', 'ResolutionY', str(h))]
         if getattr(a, 'sp_states', False):   # fixed star power states (build.py WoR_HUD_test_sp_states)
             sets.append(('WoR_HUD', 'TestSPStates', '1'))
         for sec, k, v in sets:
@@ -227,6 +243,7 @@ def main():
     ap.add_argument('--until', type=int, default=0)     # seconds after the launch to close the game (0 = SHOT_UNTIL)
     ap.add_argument('--every', type=int, default=0)      # seconds between frames (0 = SHOT_EVERY)
     ap.add_argument('--play', type=int, default=0)       # seconds of gameplay from the plugin's marker, then kill
+    ap.add_argument('--native', action='store_true')     # windowed borderless at the screen's size (no stretching)
     ap.add_argument('--sp-states', action='store_true')  # 25/45/70/100 % then deploy, every 28 s (compare_wor.py)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
     a = ap.parse_args()

@@ -385,6 +385,8 @@ SCRIPTS = (
     # tube copy, wor_mp.sp_desc), the band's star power in band / co-op (user 2026-10-22: every player's tube shows the
     # band's), each player's own in face-off types, battle and boss battles; other themes: the DE's own three segments
     'Script WoR_HUD_HUD_attach_widget_player_star_power [\n'
+    # 2026-10-29: the vocalist's strip never moved (one run, star power set and deployed): which branch runs
+    '\t:i $printf$%s("WoR_HUD: star power widget for player %p")$p$ = %GLOBAL%$player$\n'
     '\t:i $getplayerinfo$%GLOBAL%$player$$checksum$\n'
     '\t:i $ResolveScreenElementID$$id$ = %GLOBAL%$parent_id$$param$ = $id$\n'
     '\t:i if (~$current_num_players$ > %i(1))\n'
@@ -483,6 +485,7 @@ SCRIPTS = (
     # one player: only a vocalist (our panel's strip, tools/wor_vocals.py sp_desc: glow0..2); a single guitar / bass /
     # drum player's tube is the 1-player layout's own (plugin), as before (2026-10-27: the 1v strip never filled)
     '\t:i elseif $playerinfoequals$%GLOBAL%$player$$part$ = $Vocals$\n'
+    '\t\t:i $printf$%s("WoR_HUD: vocalist star power strip attached, player %p")$p$ = %GLOBAL%$player$\n'
     '\t\t:i $AttachHudWidget$:s{\n'
     '\t\t\t:i $Input$ = :s{\n'
     '\t\t\t\t:i $object$ = %GLOBAL%$checksum$\n'

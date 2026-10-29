@@ -804,9 +804,20 @@ namespace
 	// Every star bar / song line now places its own sibling dot from its own update.
 	double g_score_seen = -100.0;        // 1.56: one of our score boxes updated (vocals: no tube marks the HUD as ours)
 
+	bool g_score_marked = false;
+
 	void score_lead_from(void *element, uint32_t tex)
 	{
 		g_score_seen = now();
+		// 1.82: the gameplay marker for tests/capture_band.py --play also from our score box (a vocalist has no tube the
+		// smooth fill sees, so the 1.72 marker never came: 2026-10-29 1v run, no frames)
+		if (!g_score_marked)
+		{
+			g_score_marked = true;
+			if (FILE *f = fopen("wor_hud_gameplay.flag", "w"))
+				fclose(f);
+			log("gameplay marker: first score box update");
+		}
 		if (tex == kStarBar)
 		{
 			if (void *lead = sibling_with(element, kStarLead))
@@ -2230,7 +2241,7 @@ namespace
 			kept_debug = CopyFileA(debug, debug_prev, FALSE) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.81 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.82 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.prev.txt %s",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (!sites_match())

@@ -691,21 +691,33 @@ CAREER_METER_SCRIPT = ('Script WoR_HUD_career_side_meter [\n'
 # title screen instead runs the DE's own AutoLaunch setup script 0x581325cc with [AutoLaunch] Venue: players, parts,
 # bots, difficulty and song from [AutoLaunch], straight into the song. Without the key the title screen is stock.
 # The developer check itself is left alone (it also gates the devs' tools).
+# the test star power scripts end with the song: the gameplay HUD (hud_root) is gone once it has ended
+TEST_SP_STOP = ('\t\t:i if NOT $ScreenElementExists$$id$ = $hud_root$\n'
+                '\t\t\t:i $printf$%s("WoR_HUD: test star power stopped, song over")\n'
+                '\t\t\t:i return\n'
+                '\t\t:i endif\n')
 TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
-                          '\t:i $WoR_HUD_ui_create_boot_iis_orig$ isNull\n'
+                          # 2026-10-29 (user: "background still black"): the venue loaded, but the boot screen's intro
+                          # camera (ui_boot_iis_camera, started before the jump into the song) stayed on. With the test
+                          # key the boot screen is skipped entirely, like the DE's own developer AutoLaunch from startup
                           '\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestAutoLaunch")$default$ = %i(0)\n'
                           '\t:i if (%GLOBAL%$value$ = %i(1))\n'
                           '\t\t:i $SpawnScriptLater$$WoR_HUD_test_autolaunch$\n'
+                          '\t\t:i return\n'
                           '\t:i endif\n'
+                          '\t:i $WoR_HUD_ui_create_boot_iis_orig$ isNull\n'
                           '\t:i endfunction\n]\n\n'
                           'Script WoR_HUD_ui_create_boot_iis_orig [\n'
                           '\t:i $printf$%s("WoR_HUD: boot screen placeholder ran, plugin swap missing")\n'
                           '\t:i endfunction\n]\n\n'
                           'Script WoR_HUD_test_autolaunch [\n'
                           '\t:i $wait$%f(1.0)$seconds$\n'
-                          '\t:i $[40f2dacd]$$section$ = %s("AutoLaunch")$key$ = %s("Venue")$default$ = %s("z_frathouse")\n'
+                          '\t:i $[40f2dacd]$$section$ = %s("AutoLaunch")$key$ = %s("Venue")$default$ = %s("z_norway")\n'
                           '\t:i $printf$%s("WoR_HUD: test autolaunch into %g")$g$ = %GLOBAL%$[3684fc56]$\n'
                           '\t:i $change$$primary_controller_assigned$ = %i(1)\n'
+                          # the title screen's intro camera (menu_transitions task_menu_default_anim_in: PlayIGCCam
+                          # menu_view_cam) kept running into the song: black venue behind the HUD (2026-10-29)
+                          '\t:i $KillCamAnim$$name$ = $menu_view_cam$\n'
                           '\t:i $[581325cc]$$venue_string$ = %GLOBAL%$[3684fc56]$\n'
                           '\t:i endfunction\n]\n\n'
                           # Bot star power (user 2026-10-26: "fix tests to actually use star power, at the same time
@@ -718,6 +730,7 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           'Script WoR_HUD_test_sp_start [\n'
                           '\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestAutoLaunch")$default$ = %i(0)\n'
                           '\t:i if (%GLOBAL%$value$ = %i(1))\n'
+                          '\t\t:i $KillCamAnim$$name$ = $menu_view_cam$\n'   # the title screen's camera, again in the song
                           '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_test_sp$\n'
                           '\t\t:i $[e5eb89ff]$$section$ = %s("WoR_HUD")$key$ = %s("TestSPStates")$default$ = %i(0)\n'
                           '\t\t:i if (%GLOBAL%$value$ = %i(1))\n'
@@ -750,6 +763,9 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i endif\n'
                           '\t:i $wait$%f(12.0)$seconds$\n'   # past the song's title card (2026-10-28 run)
                           '\t:i while \n'
+                          # 2026-10-29: the loop outlived the song (a 1v run deployed star power while the HUD was
+                          # unloading, then crashed in the game's code): stop with the gameplay HUD
+                          + TEST_SP_STOP +
                           '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(25.0)\n'
                           '\t\t:i $wait$%f(4.0)$seconds$\n'
                           '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(45.0)\n'
@@ -758,6 +774,7 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t\t:i $wait$%f(4.0)$seconds$\n'
                           '\t\t:i $WoR_HUD_test_sp_set$$level$ = %f(85.0)\n'
                           '\t\t:i $wait$%f(4.0)$seconds$\n'
+                          + TEST_SP_STOP +
                           '\t\t:i $GameMode_GetNumPlayersShown$\n'
                           '\t\t:i $p$ = %i(1)\n'
                           '\t\t:i while \n'
@@ -777,8 +794,15 @@ TEST_AUTOLAUNCH_SCRIPT = ('Script WoR_HUD_ui_create_boot_iis [\n'
                           '\t:i endif\n'
                           '\t:i $printf$%s("WoR_HUD: test star power watcher on")\n'
                           '\t:i $waited$ = %i(0)\n'
+                          '\t:i $hud_seen$ = %i(0)\n'
                           '\t:i while \n'
                           '\t\t:i $wait$%f(0.25)$seconds$\n'
+                          '\t\t:i if $ScreenElementExists$$id$ = $hud_root$\n'
+                          '\t\t\t:i %GLOBAL%$hud_seen$ = %i(1)\n'
+                          '\t\t:i elseif (%GLOBAL%$hud_seen$ = %i(1))\n'
+                          '\t\t\t:i $printf$%s("WoR_HUD: test star power stopped, song over")\n'
+                          '\t\t\t:i return\n'
+                          '\t\t:i endif\n'
                           '\t\t:i $GameMode_GetNumPlayersShown$\n'
                           '\t\t:i $ready$ = %i(0)\n'
                           '\t\t:i $active$ = %i(0)\n'

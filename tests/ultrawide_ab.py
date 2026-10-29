@@ -58,6 +58,7 @@ def main():
     ap.add_argument('--frames', type=int, default=5)
     ap.add_argument('--bulb-cycle', action='store_true')
     a = ap.parse_args()
+    a.native = True          # always windowed at the screen's own size: a scaled picture can't validate the FOV
     if H.game_running():
         print('REFUSED: the game is already running; close it first.')
         return 2

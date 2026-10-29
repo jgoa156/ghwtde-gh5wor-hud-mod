@@ -388,13 +388,14 @@ def main():
     ball = paths.wor('basic_gems_png', '249c3fc1.png')
     for i, name in enumerate(wor_1g.SP_BALL_NAMES):
         ship(name, ball, (32 * (i % 4), 32 * (i // 4), 32 * (i % 4) + 32, 32 * (i // 4) + 32), (32, 32))
-    # battle: a new power-up slides into its slot along the tube's ready lightning in red (tools/wor_battle.py ARC_*);
-    # the UI pak, like the plasma frames
-    for i, name in enumerate(wor_battle.ARC_NAMES):
-        out = os.path.join(work, name + '.png')
-        wor_art.arc_frame(arc_src, i, out, wor_battle.ARC_RGB, wor_battle.ARC_CORE)
+    # battle: quickplay's star power strike (the bolt sheet's 8 cells) in red on a new power-up's gem
+    # (tools/wor_battle.py BOLT_*); the UI pak, like the plasma frames
+    bolt_cells = [os.path.join(work, name + '.png') for name in wor_battle.BOLT_NAMES]
+    wor_art.bolt_sheet(arc_src, None, cells=len(bolt_cells), core=wor_battle.BOLT_CORE, glow=wor_battle.BOLT_RGB,
+                       cell_pngs=bolt_cells)
+    for name, out in zip(wor_battle.BOLT_NAMES, bolt_cells):
         ui_pngs.append(out)
-        sources[name] = {'src': arc_src, 'arc_frame': i, 'rgb': list(wor_battle.ARC_RGB), 'core': list(wor_battle.ARC_CORE)}
+        sources[name] = {'src': arc_src, 'bolt_cell': name, 'core': list(wor_battle.BOLT_CORE), 'glow': list(wor_battle.BOLT_RGB)}
     # WoR's straight star-progress bar and song progress line: soft-edged strips from hud_progression_bar_lead's
     # vertical profile (the DE tints the star bar), the same dot at both tips, WoR's dark progress track
     lead = os.path.join(WOR_PNG, 'hud_progression_bar_lead.png')

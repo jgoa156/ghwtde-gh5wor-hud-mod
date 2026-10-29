@@ -363,12 +363,13 @@ def comet(lead_png, out_png, tail_rgb, size=(64, 16), head=0.8, tail_len=0.32, t
     Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
 
 
-def bolt_sheet(arc_png, out_png, cells=8, cell=(128, 512)):
+def bolt_sheet(arc_png, out_png, cells=8, cell=(128, 512), core=(200, 255, 255), glow=(0, 255, 255), cell_pngs=None):
     """The star power strike's art in the DE's own bolt layout (big_lighning01: `cells` vertical cells of `cell` px, thick
     start on top, tip at the bottom = the gem) from WoR's Tesla arc sheet (Lightining_arc_anim01: 16 horizontal 256 x 64
     frames, start ball on the left). Every second frame is used; each cell is WoR's two layers (GuitarEvent_StarSequenceBonus:
     Mat_Lightning_Arc_Anim01 white-cyan, Anim02 cyan at half alpha, one frame later), turned 90 degrees clockwise so the
-    arc's tip points down, and enlarged 2x to the cell."""
+    arc's tip points down, and enlarged 2x to the cell. core / glow: the two layers' colours (2026-10-29: red for the
+    battle strike); cell_pngs: also save each cell on its own (out_png may then be None)."""
     import numpy as np
     sheet = Image.open(arc_png).convert('RGBA')
     n = sheet.size[1] // 64
@@ -384,14 +385,17 @@ def bolt_sheet(arc_png, out_png, cells=8, cell=(128, 512)):
         alpha = np.clip(lum_a + lum_b * 0.5, 0, 1)
         rgb = np.zeros(a.shape[:2] + (3,))
         w = np.clip(lum_a / np.maximum(alpha, 1e-6), 0, 1)[..., None]
-        rgb[...] = np.array([200, 255, 255], float) * w + np.array([0, 255, 255], float) * (1 - w)
+        rgb[...] = np.array(core, float) * w + np.array(glow, float) * (1 - w)
         im = np.zeros(a.shape[:2] + (4,))
         im[..., :3] = rgb
         im[..., 3] = alpha * 255.0
         fr = Image.fromarray(np.clip(im + 0.5, 0, 255).astype('uint8'), 'RGBA').rotate(-90, expand=True)
         fr = fr.resize(cell, Image.BICUBIC)
         out.alpha_composite(fr, (c * cell[0], 0))
-    out.save(out_png)
+        if cell_pngs:
+            fr.save(cell_pngs[c])
+    if out_png:
+        out.save(out_png)
 
 
 def shrink_into(src_png, out_png, canvas, content, alpha=1.0):
@@ -515,20 +519,6 @@ def fill_arc(halo_png, needle_png, rgb, alpha=190, grow=5):
     arc.putalpha(a)
     arc.alpha_composite(Image.open(halo_png).convert('RGBA'))
     arc.save(halo_png)
-
-def arc_frame(sheet_png, frame, out_png, rgb, core_rgb, frames=16):
-    """One frame of WoR's Tesla arc sheet (horizontal bolts, white on black, stacked) as a coloured bolt for additive
-    blending: brightness -> alpha, the glow `rgb`, the hot core towards `core_rgb` (2026-10-29: the battle power-up's
-    red lightning)."""
-    import numpy as np
-    im = Image.open(sheet_png).convert('RGB')
-    h = im.height // frames
-    lum = np.asarray(im.crop((0, frame * h, im.width, frame * h + h))).astype(float).max(-1) / 255.0
-    core = np.clip((lum - 0.55) / 0.45, 0.0, 1.0)[..., None]
-    col = (1.0 - core) * np.array(rgb, float) + core * np.array(core_rgb, float)
-    out = np.dstack([col, np.clip(lum * 1.5, 0.0, 1.0) * 255.0])
-    Image.fromarray(np.clip(out + 0.5, 0, 255).astype('uint8'), 'RGBA').save(out_png)
-
 
 def recolour(png, rgb):
     """Every texel of `png` takes `rgb`, its alpha kept (a white glow core tinted, compare_wor 2026-10-28)."""

@@ -180,7 +180,8 @@ def run(name, parts, a, out):
         from PIL import ImageGrab
         held = tries = 0
         t0 = time.time()
-        next_shot = t0 + SHOT_FROM
+        shot_from = getattr(a, 'shot_from', 0) or SHOT_FROM   # --from: battle ended at T+100 s (2026-10-29)
+        next_shot = t0 + shot_from
         deadline = t0 + (a.until or SHOT_UNTIL)   # --until: close the game earlier (user 2026-10-27: ~1 min of song)
         # --play N (user 2026-10-28: "your runs are going way past 30s ... force kill after that time"): the plugin
         # (1.72) writes wor_hud_gameplay.flag on the song's first star power update; frames run from there and the
@@ -202,7 +203,7 @@ def run(name, parts, a, out):
                 next_shot = play_from + 1
                 deadline = min(deadline, play_from + play)
                 print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {play} s', flush=True)
-            start = (play_from and play_from - PLAY_DELAY) if play else t0 + SHOT_FROM
+            start = (play_from and play_from - PLAY_DELAY) if play else t0 + shot_from
             if getattr(a, 'video', False) and video is None and start and time.time() >= start:
                 video = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'gdigrab', '-framerate', '30',
                                           '-i', 'desktop', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '20',
@@ -262,6 +263,7 @@ def main():
     ap.add_argument('--native', action='store_true')     # windowed borderless at the screen's size (no stretching)
     ap.add_argument('--sp-states', action='store_true')  # 25/45/70/100 % then deploy, every 28 s (compare_wor.py)
     ap.add_argument('--bulb-cycle', action='store_true')   # band line-ups: every bulb in turn with its popup
+    ap.add_argument('--from', dest='shot_from', type=int, default=0)   # seconds after the launch for the first frame (0 = SHOT_FROM)
     ap.add_argument('--video', action='store_true')      # 30 fps screen video from the gameplay marker (or SHOT_FROM)
     a = ap.parse_args()
     done = os.path.join(H.OUT, 'capture_band.done')

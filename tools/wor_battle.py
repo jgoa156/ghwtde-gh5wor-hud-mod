@@ -82,15 +82,21 @@ CARD_FILL = 0.82                        # a card fills this much of its visor's 
                                         # 2026-10-22, the slot's border must show around the card). 2026-10-23: the
                                         # cards weren't sized at all before the script (64 px, "huge"); at 0.375 they
                                         # were too small: "just enough so we can see the rim border"
-# a new power-up (user 2026-10-29: "no animation when going to the battle slots"): the card slides HORIZONTALLY from
-# the strike line's centre (x, at the big slot's height) into the big slot in ARC_FLY s, over the highway (z FLY_Z),
-# along WoR's star power ready lightning (the tube's Tesla arc, Lightining_arc_anim01, 16 frames at 20 fps) in red:
-# the battle gems' glow (guitar_material Mat_*_Battle, pass 2 colour 2, 0, 0). The arc spans start -> slot, plays
-# ARC_FRAMES frames and fades over the last ARC_FADE s. In the UI pak (always loaded, no size cap).
-ARC_NAMES = [f'WoR_HUD_barc_{i:02d}' for i in range(16)]
-ARC_RGB, ARC_CORE = (255, 24, 16), (255, 205, 195)
-ARC_H = 40.0                            # screen height of the arc sprite (the frames are 256 x 64)
-ARC_FLY, ARC_FRAMES, ARC_FADE = 0.25, 10, 0.2
+# a new power-up (user 2026-10-29: "no animation when going to the battle slots"; then, after the first try: the
+# lightning must STRIKE the strike line like quickplay, and the icon must leave from the strike line):
+#  - the strike: quickplay's star power strike (GuitarEvent_StarSequenceBonus: a sprite in gem_container<p>, material
+#    sys_Big_Bolt01 = WoR's Tesla arc, at the button's pos_2d, lane angle, star_power_bolt_scale, just centre / bottom,
+#    z 6, plus its spark particles) on the gem of the last battle note, in red (the battle gems' glow: guitar_material
+#    Mat_*_Battle pass 2 colour 2, 0, 0). The sprite is created with the DE's material (its size), then shows our red
+#    frames (BOLT_NAMES: the same 8 cells, UI pak) at BOLT_FPS for BOLT_TIME s;
+#  - the card: from that gem on the strike line (GEM_Y, lane x = highway centre + (lane - 2) x LANE_DX, measured on
+#    the user's 2026-10-29 screenshot) into the big slot in CARD_FLY s, over the highway (z FLY_Z), then back under
+#    it. The slot is ~55 canvas units above the strike line, so the slide rises that much on its way.
+BOLT_NAMES = [f'WoR_HUD_bbolt_{i}' for i in range(8)]
+BOLT_RGB, BOLT_CORE = (255, 24, 16), (255, 205, 195)
+BOLT_FPS, BOLT_TIME = 15, 0.6
+GEM_Y, LANE_DX = 635.0, 79.4
+CARD_FLY = 0.3
 FLY_Z = 19.0                            # the DE's own card z: over the highway while it flies
 # the needle at full health a little higher (user 2026-10-29: battle's "feels like it could go further up, just
 # slightly"): the top segment of the needle path runs this fraction of itself further; the plugin (1.84) lets the
@@ -312,63 +318,108 @@ def slots_on_tube(sep=SEP):
     return [(key, c, dims, r) for key, _, dims, c, r in visors(sep)]
 
 
-def fly_start(sep=SEP):
-    """Where a new card starts its slide (P1 screen): the strike line's centre x, at the big slot's height (user
-    2026-10-29: just a horizontal move, the distance measured from the bottom slot's centre to the strike line)."""
-    big = next(c for key, c, _, _ in slots_on_tube(sep) if key == 'big')
+def gem_starts(player, sep=SEP):
+    """The five strike-line gems (green .. orange) on player's highway (screen): where a new card starts its slide."""
     centre = (_line_x(RAIL_L, STRIKE_2P) + _line_x(RAIL_R, STRIKE_2P)) / 2 - sep
-    return (centre, big[1])
+    pts = [(centre + (lane - 2) * LANE_DX, GEM_Y) for lane in range(5)]
+    return pts if player == 1 else [_p2(p) for p in pts]
 
 
-def arc_box(player):
-    """(centre, dims) of the red arc for player: from the slide's start to the big slot (screen)."""
-    big = next(c for key, c, _, _ in slots_on_tube() if key == 'big')
-    a, b = (fly_start(), big) if player == 1 else (_p2(fly_start()), _p2(big))
-    return ((a[0] + b[0]) / 2, a[1]), (abs(b[0] - a[0]), ARC_H)
+def _particles(fx, pos, material, start, end, s0, s1, rot, spread, velocity, friction, time):
+    return ('\t\t:i $destroy2dparticlesystem$$id$ = %GLOBAL%$' + fx + '$\n'
+            f'\t\t:i $create2dparticlesystem$:s{{$id$ = %GLOBAL%${fx}$$Pos$ = {pos}$z_priority$ = %f(8.0)$material$ = ${material}$'
+            '$parent$ = %GLOBAL%$container_id$'
+            '$start_color$ = :a{' + ''.join(f'%i({c})' for c in start) + ':a}$end_color$ = :a{' + ''.join(f'%i({c})' for c in end) + ':a}'
+            f'$start_scale$ = %vec2({s0},{s0})$end_scale$ = %vec2({s1},{s1})$start_angle_spread$ = %f(360.0)'
+            f'$min_rotation$ = %f({rot[0]:.1f})$max_rotation$ = %f({rot[1]:.1f})$emit_start_radius$ = %f(0.0)$emit_radius$ = %f(2.0)'
+            f'$emit_rate$ = %f(0.04)$emit_dir$ = %f(0.0)$emit_spread$ = %f({spread:.1f})$velocity$ = %f({velocity:.1f})'
+            f'$friction$ = %vec2(0.0,{friction:.1f})$time$ = %f({time:.1f}):s}}\n')
 
 
 def fly_script():
-    """WoR_HUD_battlecard_fly (params id, to, mid, dims, player): the red arc centred on mid, dims from the slide's
-    start to `to` (constants per player, arc_box), at 20 fps and faded at the end, and the card's slide along it; the
-    card goes back under the highway (its slot's z) on arrival."""
-    w = ARC_NAMES
-    frames = ':a{' + ''.join(f'${n}$' for n in w) + ':a}'
-    fly_frames = round(ARC_FLY * 20)
-    fade_from = ARC_FRAMES - round(ARC_FADE * 20)
-    return ('Script WoR_HUD_battlecard_fly [\n'
-            '\t:i $FormatText$$checksumname$ = $WoR_bolt$%s("WoR_HUD_barc_p%p")$p$ = %GLOBAL%$player$\n'
-            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
-            '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n'
-            '\t:i endif\n'
-            '\t:i if $ScreenElementExists$$id$ = $battlemode_container$\n'
-            '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = $battlemode_container$'
-            f'$texture$ = ${w[0]}$$Pos$ = %GLOBAL%$mid$$dims$ = %GLOBAL%$dims$$just$ = :a{{$center$$center$:a}}'
-            f'$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$alpha$ = %i(1)$z_priority$ = %f({FLY_Z - 0.1:.1f})$Blend$ = $add$:s}}\n'
-            '\t:i endif\n'
-            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
-            f'\t\t:i $LegacyDoScreenElementMorph$:s{{$id$ = %GLOBAL%$id$$Pos$ = %GLOBAL%$to$$time$ = %f({ARC_FLY:.2f}):s}}\n'
-            '\t:i endif\n'
-            f'\t:i $WoR_frames$ = {frames}\n'
-            '\t:i $WoR_f$ = %i(0)\n'
-            '\t:i while \n'
-            '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
-            '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_bolt$$texture$ = (%GLOBAL%$WoR_frames$:a{%GLOBAL%$WoR_f$:a})\n'
-            f'\t\t\t:i if (%GLOBAL%$WoR_f$ = %i({fade_from}))\n'
-            f'\t\t\t\t:i $LegacyDoScreenElementMorph$:s{{$id$ = %GLOBAL%$WoR_bolt$$alpha$ = %i(0)$time$ = %f({ARC_FADE:.2f}):s}}\n'
-            '\t\t\t:i endif\n'
-            '\t\t:i endif\n'
-            f'\t\t:i if (%GLOBAL%$WoR_f$ = %i({fly_frames}))\n'
-            '\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
-            f'\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$z_priority$ = %f({CARD_Z["big"]})\n'
-            '\t\t\t:i endif\n'
-            '\t\t:i endif\n'
-            '\t\t:i $wait$%f(0.05)$seconds$\n'
-            '\t\t:i %GLOBAL%$WoR_f$ = (%GLOBAL%$WoR_f$ + %i(1))\n'
-            f'\t:i loop_to %i({ARC_FRAMES})\n'
-            '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
-            '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n'
-            '\t:i endif\n'
-            '\t:i endfunction\n]\n\n')
+    """WoR_HUD_battlecard_fly (params id, to, player_status): quickplay's star power strike on the gem of the last battle
+    note, in red (GuitarEvent_StarSequenceBonus's sprite and sparks: its container, pos_2d, angle, scale, just, z),
+    and the card's slide from that gem into the big slot; the card goes back under the highway on arrival."""
+    lane = lambda c: {'green': 0, 'red': 1, 'yellow': 2, 'blue': 3, 'orange': 4}[c]
+    gems = lambda p: ':a{' + ''.join(f'%vec2({x:.2f},{y:.2f})' for x, y in gem_starts(p)) + ':a}'
+    n = round(BOLT_TIME * BOLT_FPS)
+    frames = ':a{' + ''.join(f'${BOLT_NAMES[i % len(BOLT_NAMES)]}$' for i in range(n)) + ':a}'
+    land = round(CARD_FLY * BOLT_FPS)
+    fx = (('WoR_fx1', '%GLOBAL%$WoR_pos2d$', 'sys_Particle_Star01_sys_Particle_Star01', (255, 40, 24, 255), (128, 0, 0, 0),
+           0.55, 0.25, (-120.0, 240.0), 44.0, 24.0, 66.0, 2.0),
+          ('WoR_fx3', '(%GLOBAL%$WoR_pos2d$ - %vec2(0.0,15.0))', 'sys_Particle_Spark01_sys_Particle_Spark01',
+           (255, 60, 40, 255), (255, 30, 20, 0), 1.5, 0.25, (-500.0, 500.0), 180.0, 12.0, 0.0, 1.0))
+    t = ('Script WoR_HUD_battlecard_fly [\n'
+         '\t:i $color$ = (~%GLOBAL%$player_status$->$last_hit_note$)\n'
+         '\t:i if (%GLOBAL%$color$ = $None$)\n\t\t:i %GLOBAL%$color$ = $green$\n\t:i endif\n'
+         '\t:i $WoR_p0$ = ((~%GLOBAL%$player_status$->$player$) - %i(1))\n'
+         '\t:i $WoR_lane$ = %i(2)\n'
+         + ''.join(f'\t:i if (%GLOBAL%$color$ = ${c}$)\n\t\t:i %GLOBAL%$WoR_lane$ = %i({lane(c)})\n\t:i endif\n'
+                   for c in ('green', 'red', 'blue', 'orange')) +
+         # the DE's own lookups (GuitarEvent_StarSequenceBonus), lefty included
+         '\t:i if (~%GLOBAL%$player_status$->$lefthanded_button_ups$ = %i(1))\n'
+         '\t\t:i $WoR_pos2d$ = ((~$button_up_models$:a{%GLOBAL%$WoR_p0$:a})->%GLOBAL%$color$->$left_pos_2d$)\n'
+         '\t\t:i $WoR_angle$ = ((~$button_models$:a{%GLOBAL%$WoR_p0$:a})->%GLOBAL%$color$->$Angle$)\n'
+         '\t\t:i %GLOBAL%$WoR_lane$ = (%i(4) - %GLOBAL%$WoR_lane$)\n'
+         '\t:i else \n'
+         '\t\t:i $WoR_pos2d$ = ((~$button_up_models$:a{%GLOBAL%$WoR_p0$:a})->%GLOBAL%$color$->$pos_2d$)\n'
+         '\t\t:i $WoR_angle$ = ((~$button_models$:a{%GLOBAL%$WoR_p0$:a})->%GLOBAL%$color$->$left_angle$)\n'
+         '\t:i endif\n'
+         '\t:i if (%GLOBAL%$WoR_p0$ = %i(0))\n'
+         f'\t\t:i $WoR_gems$ = {gems(1)}\n'
+         '\t:i else \n'
+         f'\t\t:i $WoR_gems$ = {gems(2)}\n'
+         '\t:i endif\n'
+         # the card: onto the gem now (a 0-time morph replaces the DE's own flight), then into the big slot
+         '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+         '\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$id$$Pos$ = (%GLOBAL%$WoR_gems$:a{%GLOBAL%$WoR_lane$:a})'
+         '$Scale$ = %f(1.0)$alpha$ = %i(1)$time$ = %i(0):s}\n'
+         f'\t\t:i $LegacyDoScreenElementMorph$:s{{$id$ = %GLOBAL%$id$$Pos$ = %GLOBAL%$to$$time$ = %f({CARD_FLY:.2f}):s}}\n'
+         '\t:i endif\n'
+         # the strike, in the gem's own container like quickplay's; its size is the DE bolt's (a probe sprite with the
+         # DE's material, measured and dropped), its frames ours
+         '\t:i $FormatText$$checksumname$ = $container_id$%s("gem_container%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i $FormatText$$checksumname$ = $WoR_bolt$%s("WoR_HUD_bbolt_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i $FormatText$$checksumname$ = $WoR_probe$%s("WoR_HUD_bprobe_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i $FormatText$$checksumname$ = $WoR_fx1$%s("WoR_HUD_bfx1_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i $FormatText$$checksumname$ = $WoR_fx3$%s("WoR_HUD_bfx3_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$container_id$\n'
+         '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n\t\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n\t\t:i endif\n'
+         '\t\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$WoR_probe$\n'
+         '\t\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_probe$$parent$ = %GLOBAL%$container_id$'
+         '$material$ = $sys_Big_Bolt01_sys_Big_Bolt01$$rgba$ = :a{%i(255)%i(255)%i(255)%i(255):a}$Pos$ = %GLOBAL%$WoR_pos2d$'
+         '$Scale$ = ~$star_power_bolt_scale$$just$ = :a{$center$$bottom$:a}$z_priority$ = %i(6)$alpha$ = %i(0):s}\n'
+         '\t\t:i endif\n'
+         '\t\t:i $GetScreenElementDims$$id$ = %GLOBAL%$WoR_probe$\n'
+         '\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_probe$\n'
+         '\t\t:i $WoR_bdims$ = ((%GLOBAL%$width$ * %vec2(1.0,0.0)) + (%GLOBAL%$height$ * %vec2(0.0,1.0)))\n'
+         '\t\t:i $printf$%s("WoR_HUD: battle strike %p lane %i, bolt %w x %h")$p$ = %GLOBAL%$color$$i$ = %GLOBAL%$WoR_lane$$w$ = %GLOBAL%$width$$h$ = %GLOBAL%$height$\n'
+         '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = %GLOBAL%$container_id$'
+         f'$texture$ = ${BOLT_NAMES[0]}$$dims$ = %GLOBAL%$WoR_bdims$$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$Pos$ = %GLOBAL%$WoR_pos2d$'
+         '$rot_angle$ = %GLOBAL%$WoR_angle$$Scale$ = ~$star_power_bolt_scale$$just$ = :a{$center$$bottom$:a}$z_priority$ = %i(6)'
+         '$Blend$ = $add$:s}\n'
+         + ''.join(_particles(*f) for f in fx) +
+         '\t:i endif\n'
+         f'\t:i $WoR_frames$ = {frames}\n'
+         '\t:i $WoR_f$ = %i(0)\n'
+         '\t:i while \n'
+         '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n'
+         '\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_bolt$$texture$ = (%GLOBAL%$WoR_frames$:a{%GLOBAL%$WoR_f$:a})'
+         '$dims$ = %GLOBAL%$WoR_bdims$\n'
+         '\t\t:i endif\n'
+         f'\t\t:i if (%GLOBAL%$WoR_f$ = %i({land}))\n'
+         '\t\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$id$\n'
+         f'\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$id$$z_priority$ = %f({CARD_Z["big"]})\n'
+         '\t\t\t:i endif\n'
+         '\t\t:i endif\n'
+         f'\t\t:i $wait$%f({1.0 / BOLT_FPS:.4f})$seconds$\n'
+         '\t\t:i %GLOBAL%$WoR_f$ = (%GLOBAL%$WoR_f$ + %i(1))\n'
+         f'\t:i loop_to %i({n})\n'
+         '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n\t:i endif\n'
+         '\t:i $destroy2dparticlesystem$$id$ = %GLOBAL%$WoR_fx1$$kill_when_empty$\n'
+         '\t:i $destroy2dparticlesystem$$id$ = %GLOBAL%$WoR_fx3$$kill_when_empty$\n'
+         '\t:i endfunction\n]\n\n')
+    return t
 
 
 def card_sizes():
@@ -715,14 +766,7 @@ def scripts():
     # others), position, scale and draw priority (CARD_Z: just above its own slot, the bottom pair over the middle).
     keys = ('big', 'mid', 'small')
     centres = {key: c for key, c, _, _ in slots_on_tube()}
-    starts = {1: fly_start(), 2: _p2(fly_start())}
     vec = lambda pts: ':a{' + ''.join(f'%vec2({x:.2f},{y:.2f})' for x, y in pts) + ':a}'
-
-    def arc_locals(p):
-        (mx, my), (dw, dh) = arc_box(p)
-        return (f'\t\t:i %GLOBAL%$WoR_from$ = %vec2({starts[p][0]:.2f},{starts[p][1]:.2f})\n'
-                f'\t\t:i %GLOBAL%$WoR_mid$ = %vec2({mx:.2f},{my:.2f})\n'
-                f'\t\t:i %GLOBAL%$WoR_adims$ = %vec2({dw:.2f},{dh:.2f})\n')
     flt = lambda vs: ':a{' + ''.join(f'%f({v:.4f})' for v in vs) + ':a}'
     sizes = [1.0, scales['medium_scale'], scales['small_scale']]
     place = (
@@ -730,11 +774,9 @@ def scripts():
         '\t:i if (~%GLOBAL%$player_status$->$player$ = %i(1))\n'
         '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p1$)\n'
         f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([centres[k] for k in keys])}\n'
-        + arc_locals(1) +
         '\t:i else \n'
         '\t\t:i %GLOBAL%$WoR_cards$ = (~$current_battlecard_p2$)\n'
         f'\t\t:i %GLOBAL%$WoR_slots$ = {vec([_p2(centres[k]) for k in keys])}\n'
-        + arc_locals(2) +
         '\t:i endif\n'
         f'\t:i %GLOBAL%$WoR_scales$ = {flt(sizes)}\n'
         f'\t:i %GLOBAL%$WoR_z$ = {flt([CARD_Z[k] for k in keys])}\n'
@@ -755,16 +797,12 @@ def scripts():
         '\t\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$'
         '$Pos$ = (%GLOBAL%$WoR_slots$:a{%GLOBAL%$WoR_slot$:a})$Scale$ = (%GLOBAL%$WoR_scales$:a{%GLOBAL%$WoR_slot$:a})'
         '$alpha$ = %i(1)$time$ = %f(0.3):s}\n'
-        # 2026-10-29 (user: still no animation into the slots): a NEW card (the add wrapper sets WoR_HUD_bfly) jumps to
-        # the strike line's centre (a 0-time morph replaces the DE's own flight) and WoR_HUD_battlecard_fly slides it
-        # into the big slot along the red arc
+        # 2026-10-29 (user: still no animation into the slots): a NEW card (the add wrapper sets WoR_HUD_bfly) goes over
+        # the highway; WoR_HUD_battlecard_fly strikes its gem in red and slides it from there into the big slot
         '\t\t\t\t\t:i elseif (~$WoR_HUD_bfly$ = %i(1))\n'
-        '\t\t\t\t\t\t:i $LegacyDoScreenElementMorph$:s{$id$ = %GLOBAL%$WoR_id$$Pos$ = %GLOBAL%$WoR_from$'
-        '$Scale$ = %f(1.0)$alpha$ = %i(1)$time$ = %i(0):s}\n'
         f'\t\t\t\t\t\t:i $SetScreenElementProps$$id$ = %GLOBAL%$WoR_id$$z_priority$ = %f({FLY_Z:.1f})\n'
         '\t\t\t\t\t\t:i $spawnscriptnow$$WoR_HUD_battlecard_fly$$params$ = :s{$id$ = %GLOBAL%$WoR_id$'
-        '$mid$ = %GLOBAL%$WoR_mid$$dims$ = %GLOBAL%$WoR_adims$$to$ = (%GLOBAL%$WoR_slots$:a{%i(0):a})'
-        '$player$ = (~%GLOBAL%$player_status$->$player$):s}\n'
+        '$to$ = (%GLOBAL%$WoR_slots$:a{%i(0):a})$player_status$ = %GLOBAL%$player_status$:s}\n'
         '\t\t\t\t\t:i endif\n'
         '\t\t\t\t:i endif\n'
         '\t\t\t:i endif\n'

@@ -9,7 +9,7 @@ the score / star / note-streak panel, the multiplier badge and soft HUD shadows.
 
 ## Download
 
-Latest: **[releases/GH5-WoR_HUD_0.50.zip](releases/GH5-WoR_HUD_0.50.zip)** (beta, also on the
+Latest: **[releases/GH5-WoR_HUD_0.51.zip](releases/GH5-WoR_HUD_0.51.zip)** (beta, also on the
 [Releases page](https://github.com/jgoa156/ghwtde-gh5wor-hud-mod/releases); notes in
 [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md)). Extract into the game folder. Recommended alongside it (separate):
 [All Main Menu Music](https://github.com/jgoa156/ghwtde-all-main-menu-music).
@@ -23,7 +23,7 @@ the zip's optional folder.
 |---|---|---|
 | HUD theme | `DATA\MODS\WoR_HUD\`, `DATA\PAK\hud_ghwor.pak.xen`, `DATA\PAK\gems_ghwor_hud.pak.xen` | HUD Theme = Warriors of Rock (no in-play messages, darker highway metal); the WoR border needs Gem Theme = WoR |
 | HUD fixes | `dinput8.dll` (Ultimate ASI Loader), `wor_hud_fixes.asi` | star power look, rock needle, score commas, multiplayer / battle pieces, WoR menus / popups / pause / YOU ROCK, crash fixes |
-| Ultrawide Fix 1.1 | `ghwtde_ultrawide.asi`, `ghwtde_ultrawide.ini` | [GHWT:DE Ultrawide Fix](https://github.com/jgoa156/ghwtde-ultrawide-fix): 16:9 vertical FOV for the 3D view, HUD and menus as a centred 16:9 picture; nothing at 16:9 |
+| Ultrawide Fix 1.2 | `ghwtde_ultrawide.asi`, `ghwtde_ultrawide.ini` | [GHWT:DE Ultrawide Fix](https://github.com/jgoa156/ghwtde-ultrawide-fix): 16:9 vertical FOV for the 3D view, HUD and menus as a centred 16:9 picture; nothing at 16:9 |
 | Optional - ReShade (WoR shaders) | `d3d9.dll`, `ReShade.ini`, `GHWoRHudModPreset.ini`, `reshade-shaders\`, `ghwt_bgfx.addon32` | ReShade 6.8.0 + the WoR preset; the add-on keeps effects off the HUD |
 
 ## Building

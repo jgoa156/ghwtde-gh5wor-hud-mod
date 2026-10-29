@@ -21,10 +21,10 @@ ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
 MOD_NAME = 'WoR_HUD'
 PAK_NAME = 'hud_ghwor'
-VERSION = '0.50'
+VERSION = '0.51'
 BGFX_ADDON = os.path.join(ROOT, 'addon', 'build', 'ghwt_bgfx.addon32')   # option 2 (ReShade add-on, addon/build.bat)
 GH5_GRADE = os.path.join(ROOT, 'addon', 'shaders', 'GH5_Grade.fx')
-ULTRAWIDE_DIR = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix')   # GHWT:DE Ultrawide Fix 1.1 (its build.bat)
+ULTRAWIDE_DIR = os.path.join(ROOT, '..', 'ghwtde-ultrawide-fix')   # GHWT:DE Ultrawide Fix 1.2 (its build.bat)
 RESHADE_DIR = os.path.join(ROOT, 'extras', 'reshade')                    # vendored shaders, preset, ReShade.ini
 OUT = os.path.join(ROOT, 'build', MOD_NAME)
 
@@ -1204,7 +1204,7 @@ def package():
     # HUD fixes plugin (smooth star power, streak lights, ...) + its loader (Ultimate ASI Loader, MIT, as dinput8.dll)
     shutil.copy(os.path.join(ROOT, 'plugin', 'build', 'wor_hud_fixes.asi'), main)
     shutil.copy(paths.ASI_LOADER, os.path.join(main, 'dinput8.dll'))
-    # GHWT:DE Ultrawide Fix 1.1 ships with the HUD mod (built in its own repo): an ASI plugin next to ours
+    # GHWT:DE Ultrawide Fix 1.2 ships with the HUD mod (built in its own repo): an ASI plugin next to ours
     shutil.copy(os.path.join(ULTRAWIDE_DIR, 'build', 'ghwtde_ultrawide.asi'), main)
     shutil.copy(os.path.join(ULTRAWIDE_DIR, 'ghwtde_ultrawide.ini'), main)
     shutil.copy(os.path.join(RESHADE_DIR, 'THIRD_PARTY_LICENSES.txt'), main)

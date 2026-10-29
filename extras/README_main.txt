@@ -18,7 +18,7 @@ Install: extract this archive into the game folder (the one with GHWT_Definitive
                                 the WoR highway border for the other stock gem themes
   wor_hud_fixes.asi             native fixes (smooth animated star power, WoR star power highway, note-streak lights)
   ghwtde_ultrawide.asi, ghwtde_ultrawide.ini
-                                GHWT:DE Ultrawide Fix 1.1 (see ULTRAWIDE SCREENS below); does nothing at 16:9
+                                GHWT:DE Ultrawide Fix 1.2 (see ULTRAWIDE SCREENS below); does nothing at 16:9
   dinput8.dll                   Ultimate ASI Loader (MIT), loads the .asi files
 Then in game: Options > HUD Theme > "Guitar Hero: Warriors of Rock". Gem Theme = Warriors of Rock gives the full
 WoR look; the WoR highway border also shows with the other stock gem themes (custom gem-theme mods keep their own).
@@ -43,12 +43,12 @@ RECOMMENDED (separate downloads, by WitchDoctoR)
 
 KNOWN ISSUES (beta)
   - Switching HUD theme in the options can crash the game. Pick the theme and restart if needed.
-  - The microphone's streak meter still shows the WoR instrument multiplier art (WoR vocals layout to come).
+  - Vocals: the star power strip in the vocalist's panel may stay empty.
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
 
 ULTRAWIDE SCREENS
   On screens wider than 16:9 the game stretches the HUD and menus sideways and zooms the 3D view in (the highway
-  runs off the bottom). ghwtde_ultrawide.asi (GHWT:DE Ultrawide Fix 1.1, no ReShade needed) keeps 16:9's vertical
+  runs off the bottom). ghwtde_ultrawide.asi (GHWT:DE Ultrawide Fix 1.2, no ReShade needed) keeps 16:9's vertical
   field of view for the 3D view and draws the HUD and menus as a centred 16:9 picture, with full-screen backgrounds
   filling the screen and side panels pinned to the screen edges. Settings in ghwtde_ultrawide.ini. Updating from
   an older HUD zip: delete ghwtde_ultrawide.addon32 from the game folder. Source and standalone release:

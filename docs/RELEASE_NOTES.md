@@ -1,5 +1,26 @@
 # GH5 / WoR HUD: release notes
 
+## 0.51 (beta) - vocals
+
+`GH5-WoR_HUD_0.51.zip` (plugin `wor_hud_fixes.asi` 1.82), on top of 0.50:
+- **Vocals in the WoR style** (vocals only, and the vocalist in band): WoR's meter panel on the vocal highway (health
+  lamps and needle, the "xN" multiplier, the phrase box, the star power strip on the highway line), the vocal highway
+  at WoR's height with the dark lyric band, WoR's lyric font, sizes and colours, WoR-style notes, a green lightning
+  now line (cyan in star power) with arrowheads, star power glow bands, the comet's purple miss sparks hidden, and the
+  score box at WoR's vocals spot.
+- **Star power tube** redone against WoR footage in every mode: WoR's teal while charging, a soft sloped and domed
+  top edge, no top cap while charging, the charged glow and the bottom arc like WoR's, the fill kept inside the glass.
+  Multiplayer tubes turn with their highway (2 and 3 highways) and use the same engine.
+- **Score box:** wider digits, thousands separators in every mode, WoR's tip balls on the star bar and song line in
+  every mode, WoR gold star bar and numeral.
+- **Band:** the band multiplier bulb also at x1, with WoR's slide-in popup on every change; tubes on the third
+  highway in front of it; rock needle stops as in quickplay.
+- **Battle:** each player's rock tube is the band one, slots spaced and moved right, the collect flight of a new attack
+  card ends in its slot.
+- **Every theme:** purple drum fill; a practice-mode crash guard; the ReShade preset uses the original's blur.
+- Bundles **GHWT:DE Ultrawide Fix 1.2** (Hor+ on one more projection: band close-ups no longer zoomed).
+- Known: the vocalist's star power strip may stay empty; star power phrase notes have no blue blur yet.
+
 ## 0.50 (beta) - multiplayer
 
 `GH5-WoR_HUD_0.50.zip` (plugin `wor_hud_fixes.asi` 1.52), on top of 0.49:

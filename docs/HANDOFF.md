@@ -374,14 +374,15 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
   frames (`--every`, `--until`) and `--video`. The 10-29 battle run (`--play`) got no frames; the game quit by itself
   at T+100 s (code 0, "Thanks for playing": the battle ended), logs fine.
 - **Battle, user 2026-10-29 (plugin 1.84, installed, not seen in game)**: (1) "power ups still have no animation
-  when going to the battle slots": the add wrapper sets WoR_HUD_bfly; WoR_HUD_battlecards_place jumps the NEW card
-  (slot 0) to the strike line's centre at the big slot's height (wor_battle.fly_start: P1 (388.8, 579.1), slot
-  (602.7, 579.1), 214 canvas units; P2 the same + p2_dx) with a 0-time morph (replaces the DE's own 0.3 s flight
-  from its gem), z FLY_Z 19 (over the highway), and spawns WoR_HUD_battlecard_fly: WoR's ready lightning (the tube's
-  Tesla arc sheet 0c30522c, wor_art.arc_frame) in red (ARC_RGB, the battle gems' Mat_*_Battle pass-2 colour 2,0,0),
-  a sprite spanning start -> slot, 10 frames at 20 fps, faded over the last 0.2 s; the card slides in over 0.25 s
-  and drops back to CARD_Z on arrival. Textures WoR_HUD_barc_00..15 in the UI pak. The strike line is 54 canvas units
-  below the slot, so the slide runs at the slot's height (user: "just an horizontal move"). (2) The battle needle at
+  when going to the battle slots". First try (a horizontal red arc across the highway, the card from the highway's
+  centre at slot height) was rejected after the 18:34 capture: the lightning must STRIKE the strike line like
+  quickplay and the icon leave from the strike line. Now (b9eecd6): the add wrapper sets WoR_HUD_bfly; place puts the
+  NEW card over the highway (z 19) and spawns WoR_HUD_battlecard_fly: quickplay's strike (GuitarEvent_StarSequenceBonus
+  copied: gem_container<p>, button pos_2d, lane angle, star_power_bolt_scale, just centre/bottom, z 6; size from a probe
+  sprite with sys_Big_Bolt01, logged "battle strike <colour> lane <n>, bolt W x H") with our red cells
+  WoR_HUD_bbolt_0..7 at 15 fps for 0.6 s + red star / spark particles, on the last_hit_note gem; the card jumps onto
+  that gem (wor_battle.gem_starts: GEM_Y 635, LANE_DX 79.4 from the user's screenshot) and slides into the big slot
+  (0.3 s; the slot is ~55 units higher), then drops back to CARD_Z. Not seen yet. (2) The battle needle at
   full health a bit higher: WoR_HUD_battle_needle_set's top knot runs NEEDLE_TOP_EXTRA (10%) past path[3]; plugin
   remap_on lets the top segment's t reach 1.25 (the DE's own paths never pass their last knot, so band / quickplay
   are unchanged).

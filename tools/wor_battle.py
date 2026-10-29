@@ -325,6 +325,12 @@ def gem_starts(player, sep=SEP):
     return pts if player == 1 else [_p2(p) for p in pts]
 
 
+def hw_scale():
+    """A battle highway's size against the 1-player one (tools/hw_geom.py: 2 highways)."""
+    import hw_geom as HG
+    return HG.similarity(2, HG.shifts(2)[0], 'left')[0]
+
+
 def _particles(fx, pos, material, start, end, s0, s1, rot, spread, velocity, friction, time):
     return ('\t\t:i $destroy2dparticlesystem$$id$ = %GLOBAL%$' + fx + '$\n'
             f'\t\t:i $create2dparticlesystem$:s{{$id$ = %GLOBAL%${fx}$$Pos$ = {pos}$z_priority$ = %f(8.0)$material$ = ${material}$'
@@ -345,9 +351,9 @@ def fly_script():
     n = round(BOLT_TIME * BOLT_FPS)
     frames = ':a{' + ''.join(f'${BOLT_NAMES[i % len(BOLT_NAMES)]}$' for i in range(n)) + ':a}'
     land = round(CARD_FLY * BOLT_FPS)
-    fx = (('WoR_fx1', '%GLOBAL%$WoR_pos2d$', 'sys_Particle_Star01_sys_Particle_Star01', (255, 40, 24, 255), (128, 0, 0, 0),
+    fx = (('WoR_fx1', '%GLOBAL%$WoR_gem$', 'sys_Particle_Star01_sys_Particle_Star01', (255, 40, 24, 255), (128, 0, 0, 0),
            0.55, 0.25, (-120.0, 240.0), 44.0, 24.0, 66.0, 2.0),
-          ('WoR_fx3', '(%GLOBAL%$WoR_pos2d$ - %vec2(0.0,15.0))', 'sys_Particle_Spark01_sys_Particle_Spark01',
+          ('WoR_fx3', '(%GLOBAL%$WoR_gem$ - %vec2(0.0,15.0))', 'sys_Particle_Spark01_sys_Particle_Spark01',
            (255, 60, 40, 255), (255, 30, 20, 0), 1.5, 0.25, (-500.0, 500.0), 180.0, 12.0, 0.0, 1.0))
     t = ('Script WoR_HUD_battlecard_fly [\n'
          '\t:i $color$ = (~%GLOBAL%$player_status$->$last_hit_note$)\n'
@@ -383,8 +389,9 @@ def fly_script():
          '\t:i $FormatText$$checksumname$ = $WoR_probe$%s("WoR_HUD_bprobe_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
          '\t:i $FormatText$$checksumname$ = $WoR_fx1$%s("WoR_HUD_bfx1_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
          '\t:i $FormatText$$checksumname$ = $WoR_fx3$%s("WoR_HUD_bfx3_%p")$p$ = (~%GLOBAL%$player_status$->$text$)$addtostringlookup$ = $true$\n'
+         '\t:i $WoR_bdims$ = %vec2(128.0,768.0)\n'   # the 2026-10-29 reading (1024 x 768) / 8, if the probe can't run
+         '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n\t:i endif\n'
          '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$container_id$\n'
-         '\t\t:i if $ScreenElementExists$$id$ = %GLOBAL%$WoR_bolt$\n\t\t\t:i $DestroyScreenElement$$id$ = %GLOBAL%$WoR_bolt$\n\t\t:i endif\n'
          '\t\t:i if NOT $ScreenElementExists$$id$ = %GLOBAL%$WoR_probe$\n'
          '\t\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_probe$$parent$ = %GLOBAL%$container_id$'
          '$material$ = $sys_Big_Bolt01_sys_Big_Bolt01$$rgba$ = :a{%i(255)%i(255)%i(255)%i(255):a}$Pos$ = %GLOBAL%$WoR_pos2d$'
@@ -396,10 +403,18 @@ def fly_script():
          # the material shows one of its BOLT_NAMES cells side by side
          f'\t\t:i $WoR_bdims$ = (((%GLOBAL%$width$ / %f({float(len(BOLT_NAMES)):.1f})) * %vec2(1.0,0.0)) + (%GLOBAL%$height$ * %vec2(0.0,1.0)))\n'
          '\t\t:i $printf$%s("WoR_HUD: battle strike %p lane %i, bolt %w x %h")$p$ = %GLOBAL%$color$$i$ = %GLOBAL%$WoR_lane$$w$ = %GLOBAL%$width$$h$ = %GLOBAL%$height$\n'
-         '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = %GLOBAL%$container_id$'
-         f'$texture$ = ${BOLT_NAMES[0]}$$dims$ = %GLOBAL%$WoR_bdims$$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$Pos$ = %GLOBAL%$WoR_pos2d$'
-         '$rot_angle$ = %GLOBAL%$WoR_angle$$Scale$ = ~$star_power_bolt_scale$$just$ = :a{$center$$bottom$:a}$z_priority$ = %i(6)'
-         '$Blend$ = $add$:s}\n'
+         '\t:i endif\n'
+         # 2026-10-29 capture: on the battle highways pos_2d is not the gem (the bolt landed ~170 px up and right, on the
+         # slots; the DE moves its own cards off it by hand, -225 / -90). So the strike goes where the card starts: the
+         # gem on the strike line (gem_starts), in battlemode_container over the highway, at the 2-highway size
+         '\t:i $WoR_gem$ = (%GLOBAL%$WoR_gems$:a{%GLOBAL%$WoR_lane$:a})\n'
+         f'\t:i $WoR_bdims$ = (%GLOBAL%$WoR_bdims$ * %f({hw_scale():.4f}))\n'
+         '\t:i if $ScreenElementExists$$id$ = $battlemode_container$\n'
+         '\t\t:i $container_id$ = $battlemode_container$\n'
+         '\t\t:i $CreateScreenElement$:s{$type$ = $SpriteElement$$id$ = %GLOBAL%$WoR_bolt$$parent$ = $battlemode_container$'
+         f'$texture$ = ${BOLT_NAMES[0]}$$dims$ = %GLOBAL%$WoR_bdims$$rgba$ = :a{{%i(255)%i(255)%i(255)%i(255):a}}$Pos$ = %GLOBAL%$WoR_gem$'
+         '$rot_angle$ = %GLOBAL%$WoR_angle$$Scale$ = ~$star_power_bolt_scale$$just$ = :a{$center$$bottom$:a}'
+         f'$z_priority$ = %f({FLY_Z - 0.1:.1f})$Blend$ = $add$:s}}\n'
          + ''.join(_particles(*f) for f in fx) +
          '\t:i endif\n'
          f'\t:i $WoR_frames$ = {frames}\n'

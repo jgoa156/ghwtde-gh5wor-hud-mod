@@ -87,11 +87,18 @@ YR_SOUND_SRC = ('You_Rock_Front', 'You_Rock_Back', 'You_Rock_LFE')
 YR_SOUND_VOL = 0.0
 YR_SOUND_PLAY = True    # test B: play it through a sound event (WoR_HUD_YouRock + _container, like the DE's events)
 YR_EVENT = 'WoR_HUD_YouRock'
+# 2026-10-30 (user: the YOU ROCK sound still isn't WoR's): GuitarEvent_SongWon_Spawned fires the DE's own
+# You_Rock_End_SFX (global_sound_events: sound You_Rock at vol 4.5, buss front_end) just before it spawns
+# create_exploding_text, so ours (default volume) was buried under it. Our create_exploding_text (WoR theme only) now
+# stops it first, and ours plays at the DE's loudness
+YR_STOCK_EVENT = 'You_Rock_End_SFX'
+YR_SOUND_DB = 4.5
 YR_EVENT_SECTION = (f'SectionStruct {YR_EVENT}_container\n{{\n\tStructHeader\n\t{{\n\t\tStructInt default_priority = 50\n'
                     '\t\tStructQBKey default_buss = front_end\n\t\tStructFloat norepeatfor = 0.10000000149011612\n'
                     '\t\tStructQBKey instancemanagement = ignore\n\t\tStructInt instancelimit = 1\n'
                     '\t\tStructQBKey command = playsound\n\t\tStructQBKey randomness = None\n\t\tStructArray sounds\n'
                     f'\t\t{{\n\t\t\tArrayStruct\n\t\t\t[\n\t\t\t\tStructHeader\n\t\t\t\t{{\n\t\t\t\t\tStructQBKey {YR_SOUND}\n'
+                    f'\t\t\t\t\tStructFloat vol = {YR_SOUND_DB}\n'
                     '\t\t\t\t}\n\t\t\t]\n\t\t}\n\t}\n}\n')
 
 
@@ -288,7 +295,8 @@ def ported_scripts():
                 d0 = body.index('${')
                 assert not body[:d0].strip(), 'create_exploding_text: no leading default block'
                 d1 = body.index('\n\t}$', d0) + len('\n\t}$')
-                body = body[:d1] + f'\n\t:i $SoundEvent$${{StructQBKey event = {YR_EVENT}}}$' + body[d1:]
+                body = (body[:d1] + f'\n\t:i $stopsoundevent$${{StructQBKey {YR_STOCK_EVENT}}}$'
+                        f'\n\t:i $SoundEvent$${{StructQBKey event = {YR_EVENT}}}$' + body[d1:])
             k = body.index('\t:i $FormatText$$checksumname$ = $cont_id$')
             body = (body[:k] + '\t:i $GetUpperCaseString$%GLOBAL%$text$\n\t:i %GLOBAL%$text$ = %GLOBAL%$uppercasestring$\n'
                     + body[k:])

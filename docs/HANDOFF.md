@@ -371,7 +371,19 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
   itself logged no "exit": the game ends its process without DLL_PROCESS_DETACH), so a thread now MIRRORS
   debug.txt to Logs\debug.live.txt every 100 ms (appends the new bytes, full sharing), and at the next launch
   debug.live.txt is moved to debug.last.txt (logged "Logs\debug.last.txt yes"). Right after a crash, debug.live.txt
-  holds it; after the next launch, debug.last.txt.
+  holds it; after the next launch, debug.last.txt. **It does not work**: the 10-30 1v run wrote no debug.live.txt
+  (the DE keeps debug.txt locked against reading while it runs: also why the boot copy always failed). Next practice
+  crash: ask the user to send Logs\debug.txt BEFORE relaunching (unlocked once the game is gone). The mirror thread
+  only fails a CreateFile every 100 ms; remove it or replace it (handle duplication / WriteFile hook) later.
+- **10-30, plugin 1.86 (installed, not seen in game)**, from the 1v run 025717 (--sp-states: 25/45/70/85 % set, our
+  attach ran "vocalist star power strip attached, player 1", the strip segment logged ONE state, scale 1 x 0):
+  the DE's setubes widget scales the element behind each TEXTURE prop (the plugin's tube hook sees exactly those
+  elements), and the strip's glowN_texture pointed at a sink. Now both glowN props go to glowN_src (an invisible
+  sibling of the fill in segN) and the plugin (vocal_sp_segment) copies scale y / x onto the fill every frame.
+  User 10-30 also: vocal highway messages off (WoR_HUD_vocals_message swap of vocals_message 0x7ede9325, star power
+  ready + phrase grades); the orange comet and its trail gone (COMET_SCALE / COMET_SPARK 0; "keep the green line,
+  remove the orange"); the charged tube look stuck after a deployment (25% shown charged in quickplay): the sticky
+  charged flag now also needs star_power_on() (IsStarPower, players 0-3).
 - **Harness**: capture_band `--video` (30 fps ffmpeg gdigrab of the desktop from the gameplay marker / SHOT_FROM);
   `--native` (windowed borderless at the screen size), venue z_norway, the boot screen skip are all from 1.82.
   **Battle has no gameplay marker** (no score box, no star power tube): `--play` never starts there; use SHOT_FROM

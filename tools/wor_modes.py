@@ -5,8 +5,8 @@ docs/research/de_layouts.md).
    own, wor_1g.layout(no_messages=True)). Every per-player and band message of the DE goes through hud_create_message
    (note streaks, Hot Start, Star Power Ready, band streaks, the band fail hint, drum fills / solos; it also creates the
    band message container at runtime, so no desc edit reaches those): WoR_HUD_hud_create_message (plugin swap) returns
-   before it when the theme has WoR_HUD_no_messages. The vocal phrase grades (vocals_message, on the vocal highway) are
-   not messages above a highway and stay. Battle: its attack names (attack_ready_text, gated by the global
+   before it when the theme has WoR_HUD_no_messages. The vocal highway's messages (vocals_message: star power ready,
+   phrase grades) go the same way since 2026-10-30 (user), WoR_HUD_vocals_message. Battle: its attack names (attack_ready_text, gated by the global
    show_battle_text) and attack alert cards (battle_alert_containerp1 / p2, built by create_battle_alert_frames, which
    wor_battle already wraps) are switched off there.
 """
@@ -45,4 +45,15 @@ SCRIPTS = (
     # placeholder: the plugin moves the DE script's data here
     'Script WoR_HUD_hud_create_message_orig [\n'
     '\t:i $printf$%s("WoR_HUD: hud message placeholder ran, plugin swap missing")\n'
+    '\t:i endfunction\n]\n\n'
+    # 2026-10-30 (user: "messages should be disabled for vocals, Star power enabled! etc"): the vocal highway's messages
+    # (vocals_message: star power ready from guitar_starpower, the phrase grades) are gone too with this theme
+    'Script WoR_HUD_vocals_message [\n'
+    f'\t:i if {IS_OURS}\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_vocals_message_orig$ isNull\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_vocals_message_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: vocals message placeholder ran, plugin swap missing")\n'
     '\t:i endfunction\n]\n')

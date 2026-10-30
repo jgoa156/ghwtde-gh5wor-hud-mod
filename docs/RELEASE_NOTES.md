@@ -2,7 +2,10 @@
 
 ## Next (unreleased)
 
-Plugin `wor_hud_fixes.asi` 1.85:
+Plugin `wor_hud_fixes.asi` 1.86:
+- **Vocals:** the star power strip fills (the game's widget scaled an invisible element); no messages on the vocal
+  highway (star power ready, phrase grades); no orange pitch comet or its trail (the green now line stays).
+- The charged star power look only while star power is on (a 25% tube could show charged after a deployment).
 - **Battle:** a new power-up slides from the strike line into its slot along WoR's star power ready lightning, in the
   battle gems' red; the rock needle goes a little higher at full health.
 - The game's script log (Logs\debug.txt) is mirrored to Logs\debug.live.txt while the game runs and kept as

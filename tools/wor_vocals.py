@@ -105,8 +105,10 @@ VH_DY = 29.0
 LYRIC_BAND_Y, LYRIC_BAND_H, LYRIC_BAND_A = 157.0, 32.0, 0.9
 LYRICS_Y = 161.0
 NOW_BAR_DX = 12.0
-COMET_SCALE = 0.35                           # WoR's fireball_bg (the DE's: 0.55)
-COMET_SPARK = (0.55, 0.2)                    # singing sparks' start / end scale (the DE: 1.6 / 1.5 -> 0.5)
+# user 2026-10-30: the orange comet (fireball_bg) and its trail must go, the green now line stays: both at scale 0
+# (was WoR's fireball_bg 0.35, the DE's 0.55; singing sparks 0.55 -> 0.2, the DE's 1.6 / 1.5 -> 0.5)
+COMET_SCALE = 0.0
+COMET_SPARK = (0.0, 0.0)                     # singing sparks' start / end scale
 # the now line (mock v3, user 2026-10-26): WoR's green crackling lightning, cyan in star power; ours rides in
 # pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below the root;
 # the lines' centres at root y 35 / 137). NOW_FRAMES bolts per colour, the plugin (1.58) steps through them.
@@ -247,13 +249,17 @@ def sp_desc():
         # child (x, y) -> screen (y, -x): the sprite's height runs right along the strip, its width across it
         fill = E(f'glow{i}', 'SpriteElement', pos=(0.0, 0.0), dims=(y1 - y0, seg), just=(0, -1), scale=(1.0, 0.0),
                  z=0.14, rgba=SP_RGB + (255,), texture=SP_FILL, blend='Add')
+        # 2026-10-30 (1v run: the strip never moved): the DE's setubes widget scales the element behind each TEXTURE
+        # prop, which was a sink, so the fill never moved. Both props now go to glow{i}_src, the fill's invisible
+        # sibling (the DE's texture writes resize it, not the strip); the plugin copies its fill (scale y / x) onto
+        # glow{i} every frame, like a multiplayer tube's level source
+        src = E(f'glow{i}_src', 'SpriteElement', dims=(4, 4), just=(0, -1), alpha=0.0, z=0.13, texture='WoR_HUD_blank')
         kids.append(E(f'seg{i}', 'ContainerElement', pos=(x0 + i * seg, (y0 + y1) / 2), dims=(4, 4), just=(0, 0),
-                      rot=-90.0, z=0.14, children=[fill]))
-        kids.append(_sink(f'glow{i}_tex_sink'))
+                      rot=-90.0, z=0.14, children=[fill, src]))
     root = E('vocal_sp', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=kids)
     props = []
     for i in range(SP_SEGS):
-        props += [(f'glow{i}_scale', f'glow{i}', 'Scale'), (f'glow{i}_texture', f'glow{i}_tex_sink', 'texture')]
+        props += [(f'glow{i}_scale', f'glow{i}_src', 'Scale'), (f'glow{i}_texture', f'glow{i}_src', 'texture')]
     return desc(SP_NAME, root, props)
 
 

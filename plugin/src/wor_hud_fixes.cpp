@@ -1036,6 +1036,9 @@ namespace
 		// 1.35: no messages above the highway in any mode with the WoR theme (tools/wor_modes.py)
 		{ 0x8a3b4c01 /* hud_create_message */, 0xbca8b3cd /* wor_hud_hud_create_message */, 0x68c30716 /* _orig */,
 		  "messages: hud_create_message wrapped (none above the highway with the WoR theme)" },
+		// 1.86 (user 2026-10-30): none on the vocal highway either (star power ready, phrase grades)
+		{ 0x7ede9325 /* vocals_message */, 0xe9b7b754 /* WoR_HUD_vocals_message */, 0xeb01987c /* _orig */,
+		  "messages: vocals_message wrapped (none on the vocal highway with the WoR theme)" },
 		{ 0xa076e10c /* HUD_attach_widget_band_faceoff_meter */, 0xcd9c2a12 /* wrapper */, 0xb668444b /* _orig */,
 		  "versus: HUD_attach_widget_band_faceoff_meter wrapped (WoR versus meter shown when attached)" },
 		// 1.40: band score group (tools/wor_band.py): WoR's band multiplier bulb on our score group
@@ -1537,6 +1540,20 @@ namespace
 
 	void vocal_sp_segment(void *e)
 	{
+		// 1.86: the fill follows its level source (glow<i>_src, the sibling the DE's widget scales: fill = scale y / x)
+		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		for (void *s = parent ? *reinterpret_cast<void **>(field(parent, kElementFirstChild)) : nullptr; s;
+		     s = *reinterpret_cast<void **>(field(s, kElementNextSibling)))
+		{
+			if (s == e)
+				continue;
+			const float ssx = f32(s, kElementScale), ssy = f32(s, kElementScale + 4);
+			float f = ssx > 1e-4f ? ssy / ssx : 0.0f;
+			f = f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
+			if (fabsf(f32(e, kElementScale + 4) - f) > 1e-3f || fabsf(f32(e, kElementScale) - 1.0f) > 1e-3f)
+				reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, 1.0f, f, 0, 0);
+			break;
+		}
 		const float sx = f32(e, kElementScale), sy = f32(e, kElementScale + 4), a = f32(e, kElementAlpha);
 		for (int i = 0; i < g_vsp_n; ++i)
 			if (fabsf(g_vsp_seen[i][0] - sx) < 0.01f && fabsf(g_vsp_seen[i][1] - sy) < 0.01f && fabsf(g_vsp_seen[i][2] - a) < 0.01f)
@@ -1781,6 +1798,18 @@ namespace
 		tube_set(clip, fill, level, charged);
 	}
 
+	// any player (up to 4: band) in star power (the same DE query as the streak lights)
+	bool star_power_on()
+	{
+		void *obj = *reinterpret_cast<void **>(kStarPower);
+		if (!obj)
+			return false;
+		for (int p = 0; p < 4; ++p)
+			if (reinterpret_cast<IsStarPowerFn>(kIsStarPower)(obj, nullptr, p))
+				return true;
+		return false;
+	}
+
 	// the 1-player engine on one tube: a new level / state from the DE (the widget hook, or a multiplayer tube's
 	// level source)
 	void tube_set(void *clip, void *fill, float level, bool charged)
@@ -1791,7 +1820,9 @@ namespace
 		// 1.70 (compare_wor 2026-10-28: active fill (50,111,120) vs WoR's (79,144,138)): the DE drops the _b texture once a
 		// deployment drains below 50%, WoR keeps the charged plasma to the end. A charged meter only goes down by being
 		// deployed, so the charged look stays until the tube is empty.
-		charged = charged || (g_sp.ready && level > 0.01f);
+		// 1.86 (user 2026-10-30: quickplay showed the charged look at 25%): only while star power is really on; a
+		// deployment that ended above 1% left the flag set, so the next phrase showed charged
+		charged = charged || (g_sp.ready && level > 0.01f && star_power_on());
 		// GH5's ready burst: the meter crosses into ready (not on the first update of a HUD, not on activation)
 		if (g_sp.seen && charged && !g_sp.ready && level >= 0.49f && g_sp.effects)
 			g_sp.burst_t0 = now();
@@ -2324,7 +2355,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.85 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.86 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])

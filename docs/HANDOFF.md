@@ -384,6 +384,12 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
   ready + phrase grades); the orange comet and its trail gone (COMET_SCALE / COMET_SPARK 0; "keep the green line,
   remove the orange"); the charged tube look stuck after a deployment (25% shown charged in quickplay): the sticky
   charged flag now also needs star_power_on() (IsStarPower, players 0-3).
+- **10-30 checks (bot runs)**: 1v 031323: the strip fills (25% = 3/4 of segment 0), drains in a deployment, cyan
+  glow on the line; no messages; no comet. Band 3g1v 032000: the vocalist's strip moves in band too; band score
+  commas (1,258,579); tubes on all three highways; but **no 6th star** (5 to the end, all bots, gold glow on = the
+  no-miss flag set). Built + installed, NOT run: SIXTH_STAR_SCRIPT skips vocalists in the per-player note check
+  and logs "6th star check: type, no-miss flag" once and "6th star player N: hit / total / max" (3x) when a player
+  is through the chart but the check fails. **User 10-30: no more test runs** (the user plays; read their logs).
 - **Harness**: capture_band `--video` (30 fps ffmpeg gdigrab of the desktop from the gameplay marker / SHOT_FROM);
   `--native` (windowed borderless at the screen size), venue z_norway, the boot screen skip are all from 1.82.
   **Battle has no gameplay marker** (no score box, no star power tube): `--play` never starts there; use SHOT_FROM

@@ -170,41 +170,70 @@ namespace
 	}
 
 	// 1.83: the DE's Logs\debug.txt is restarted at every launch, so a crash's script log (practice crash,
-	// 2026-10-29) was always lost. Copy it to debug.last.txt when the game exits or hits an unhandled exception.
-	// Read with full sharing: the DE still has it open.
-	char g_debug[MAX_PATH] = {}, g_debug_last[MAX_PATH] = {};
+	// 2026-10-29) was always lost. 1.83 copied it at process detach / unhandled exception, but the game ends itself
+	// without either (10-29 test runs: closed by itself, no "exit" line), so 1.85 MIRRORS it while the game runs:
+	// every kMirrorMs the new bytes of debug.txt are appended to debug.live.txt (read with full sharing: the DE has it
+	// open); at the next launch debug.live.txt becomes debug.last.txt. Any kind of exit keeps all but the last
+	// kMirrorMs of the log.
+	constexpr DWORD kMirrorMs = 100;
+	char g_debug[MAX_PATH] = {}, g_debug_live[MAX_PATH] = {}, g_debug_last[MAX_PATH] = {};
 	LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
+	SRWLOCK g_mirror_lock = SRWLOCK_INIT;
+	LONGLONG g_mirror_at = 0;
 
-	void keep_debug_log(const char *why)
+	// wait = false from the crash filter / detach: the mirror thread may hold the lock (or be gone, holding it)
+	void mirror_debug_log(bool wait)
 	{
-		static LONG done = 0;
-		if (!g_debug[0] || InterlockedExchange(&done, 1))
+		if (!g_debug[0])
 			return;
-		bool ok = false;
+		if (wait)
+			AcquireSRWLockExclusive(&g_mirror_lock);
+		else if (!TryAcquireSRWLockExclusive(&g_mirror_lock))
+			return;
 		HANDLE in = CreateFileA(g_debug, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
 		                        OPEN_EXISTING, 0, nullptr);
 		if (in != INVALID_HANDLE_VALUE)
 		{
-			HANDLE out = CreateFileA(g_debug_last, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
-			if (out != INVALID_HANDLE_VALUE)
+			LARGE_INTEGER size = {};
+			GetFileSizeEx(in, &size);
+			if (size.QuadPart < g_mirror_at)      // restarted under us: start the mirror over
+				g_mirror_at = 0;
+			if (size.QuadPart > g_mirror_at)
 			{
-				static char buf[64 * 1024];
-				DWORD got = 0, put = 0;
-				ok = true;
-				while (ok && ReadFile(in, buf, sizeof(buf), &got, nullptr) && got)
-					ok = WriteFile(out, buf, got, &put, nullptr) && put == got;
-				CloseHandle(out);
+				HANDLE out = CreateFileA(g_debug_live, FILE_APPEND_DATA, FILE_SHARE_READ, nullptr,
+				                         g_mirror_at ? OPEN_ALWAYS : CREATE_ALWAYS, 0, nullptr);
+				if (out != INVALID_HANDLE_VALUE)
+				{
+					static char buf[64 * 1024];
+					LARGE_INTEGER at = {};
+					at.QuadPart = g_mirror_at;
+					SetFilePointerEx(in, at, nullptr, FILE_BEGIN);
+					DWORD got = 0, put = 0;
+					while (ReadFile(in, buf, sizeof(buf), &got, nullptr) && got &&
+					       WriteFile(out, buf, got, &put, nullptr) && put == got)
+						g_mirror_at += got;
+					CloseHandle(out);
+				}
 			}
 			CloseHandle(in);
 		}
-		log("%s: Logs\\debug.txt %s debug.last.txt", why, ok ? "copied to" : "NOT copied to");
+		ReleaseSRWLockExclusive(&g_mirror_lock);
+	}
+
+	DWORD WINAPI mirror_thread(void *)
+	{
+		for (;;)
+		{
+			mirror_debug_log(true);
+			Sleep(kMirrorMs);
+		}
 	}
 
 	LONG WINAPI crash_filter(EXCEPTION_POINTERS *ep)
 	{
 		const EXCEPTION_RECORD *r = ep ? ep->ExceptionRecord : nullptr;
 		log("crash: exception %08lx at %p", r ? r->ExceptionCode : 0, r ? r->ExceptionAddress : nullptr);
-		keep_debug_log("crash");
+		mirror_debug_log(false);
 		return g_prev_filter ? g_prev_filter(ep) : EXCEPTION_CONTINUE_SEARCH;
 	}
 
@@ -2282,18 +2311,25 @@ namespace
 		char prev[MAX_PATH];
 		sprintf_s(prev, "%.*s.prev.log", static_cast<int>(strlen(path) - 4), path);
 		const bool kept_log = CopyFileA(path, prev, FALSE) != 0;
-		// 1.83: the boot copy of debug.txt never worked (the DE restarts it before we load), so it is copied to
-		// Logs\debug.last.txt when the game exits or crashes instead (keep_debug_log)
+		// the boot copy of debug.txt never worked (the DE restarts it before we load): 1.85 mirrors it to
+		// debug.live.txt while the game runs (mirror_debug_log), and the last session's mirror becomes debug.last.txt
 		char docs[MAX_PATH] = {};
+		bool kept_debug = false;
 		if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
 		{
-			sprintf_s(g_debug, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.txt", docs);
-			sprintf_s(g_debug_last, "%s\\My Games\\Guitar Hero World Tour Definitive Edition\\Logs\\debug.last.txt", docs);
+			const char *logs = "My Games\\Guitar Hero World Tour Definitive Edition\\Logs";
+			sprintf_s(g_debug, "%s\\%s\\debug.txt", docs, logs);
+			sprintf_s(g_debug_live, "%s\\%s\\debug.live.txt", docs, logs);
+			sprintf_s(g_debug_last, "%s\\%s\\debug.last.txt", docs, logs);
+			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.84 (GH5 / WoR HUD)");
-		log("previous session log kept: wor_hud_fixes.prev.log %s; Logs\\debug.txt is copied to debug.last.txt at exit or crash",
-		    kept_log ? "yes" : "no");
+		log("wor_hud_fixes 1.85 (GH5 / WoR HUD)");
+		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
+		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
+		if (g_debug[0])
+			if (HANDLE t = CreateThread(nullptr, 0, mirror_thread, nullptr, 0, nullptr))
+				CloseHandle(t);
 		watch_crashes();
 		if (!sites_match())
 			return;
@@ -2356,6 +2392,6 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 		init(module);
 	}
 	else if (reason == DLL_PROCESS_DETACH)
-		keep_debug_log("exit");
+		mirror_debug_log(false);
 	return TRUE;
 }

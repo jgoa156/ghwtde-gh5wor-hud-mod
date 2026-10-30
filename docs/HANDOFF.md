@@ -367,7 +367,11 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
   **Plugin 1.83** copies Logs\debug.txt to **Logs\debug.last.txt** at process exit (DLL_PROCESS_DETACH) and on an
   unhandled exception (SetUnhandledExceptionFilter at boot and again at the gameplay marker, chaining the previous
   filter; logs "crash: exception X at Y"). Next practice crash: read debug.last.txt (look for "anim pak ... still
-  held" and the scriptassert).
+  held" and the scriptassert). **1.85 (10-30)**: that copy never ran (the 10-29 test runs where the game closed by
+  itself logged no "exit": the game ends its process without DLL_PROCESS_DETACH), so a thread now MIRRORS
+  debug.txt to Logs\debug.live.txt every 100 ms (appends the new bytes, full sharing), and at the next launch
+  debug.live.txt is moved to debug.last.txt (logged "Logs\debug.last.txt yes"). Right after a crash, debug.live.txt
+  holds it; after the next launch, debug.last.txt.
 - **Harness**: capture_band `--video` (30 fps ffmpeg gdigrab of the desktop from the gameplay marker / SHOT_FROM);
   `--native` (windowed borderless at the screen size), venue z_norway, the boot screen skip are all from 1.82.
   **Battle has no gameplay marker** (no score box, no star power tube): `--play` never starts there; use SHOT_FROM
@@ -436,7 +440,7 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
 5. Older: practice-mode crash (5p: 1.83 keeps the log), 6th star in band.
 6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.84 + mod (battle arc / slide / needle, 2026-10-29 evening). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
+Installed: plugin 1.85 + mod at 3d069c2 (battle strike on the gem / slide / needle; 2026-10-30). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

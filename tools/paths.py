@@ -9,6 +9,7 @@ MENU_MUSIC_SOURCES  other DE menu music mods to merge into the menu music collec
 WOR_XBOX     your own Warriors of Rock copy as pulled from the Xbox 360 (tools/xbox_pull.py; holds data/compressed).
 DE_EXTRACT   decompiled DE / World Tour+ / GH3:WoR material (scripts, GH3:WoR multiplier and light images).
 GH5_VIDEO    GH5 reference footage (original.mp4) used by the mocks.
+WOR_VIDEO    WoR quickplay footage (1080p): the star-earned burst is lifted from it once (tools/wor_star_burst.py).
 RESHADE      folder with ReShade 6.8.0's 32-bit d3d9.dll (shipped in the package).
 ASI_LOADER   Ultimate ASI Loader v9.7.4 x86 dinput8.dll (shipped in the package).
 
@@ -24,10 +25,11 @@ _DEFAULTS = {
     'MENU_MUSIC_SOURCES': r'E:\Dev\ghwt\menu-music-sources',
     'DE_EXTRACT': r'E:\Dev\ghwt\ghwt-extract',
     'GH5_VIDEO': r'E:\Dev\ghwt\reference-video',
+    'WOR_VIDEO': r'C:\Users\rockb\OneDrive\Videos\GH\WOR.mp4',
     'RESHADE': r'E:\Dev\ghwt\reshade-6.8.0',
     'ASI_LOADER': r'E:\Dev\ghwt\asi-loader-9.7.4\dinput8.dll',
 }
-GAME, GAME_CONFIG, GH_TOOLS, WOR_EXTRACT, WOR_XBOX, MENU_MUSIC_SOURCES, DE_EXTRACT, GH5_VIDEO, RESHADE, ASI_LOADER = (os.environ.get(k, v) for k, v in _DEFAULTS.items())
+GAME, GAME_CONFIG, GH_TOOLS, WOR_EXTRACT, WOR_XBOX, MENU_MUSIC_SOURCES, DE_EXTRACT, GH5_VIDEO, WOR_VIDEO, RESHADE, ASI_LOADER = (os.environ.get(k, v) for k, v in _DEFAULTS.items())
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = os.path.join(GH_TOOLS, 'guitar-hero-sdk', 'sdk.js')

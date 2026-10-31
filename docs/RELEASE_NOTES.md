@@ -2,14 +2,16 @@
 
 ## Next (unreleased)
 
+Plugin `wor_hud_fixes.asi` 1.87:
+- **Star meter:** earning a star plays WoR's burst on the star (orange sparks, a white-gold flash with light streaks,
+  falling sparkles) instead of the game's four flame bursts; the tip balls on the star bar and song line are WoR's size.
+
 Plugin `wor_hud_fixes.asi` 1.86:
 - **Vocals:** the star power strip fills (the game's widget scaled an invisible element); no messages on the vocal
   highway (star power ready, phrase grades); no orange pitch comet or its trail (the green now line stays).
 - The charged star power look only while star power is on (a 25% tube could show charged after a deployment).
 - **Battle:** a new power-up slides from the strike line into its slot along WoR's star power ready lightning, in the
   battle gems' red; the rock needle goes a little higher at full health.
-- The game's script log (Logs\debug.txt) is mirrored to Logs\debug.live.txt while the game runs and kept as
-  Logs\debug.last.txt at the next launch, so a crash report can include it.
 - Known issues: switching HUD theme no longer crashes; practice mode can still crash.
 
 ## 0.51 (beta) - vocals

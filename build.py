@@ -15,7 +15,7 @@ import atexit, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
-import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_band, wor_battle, wor_modes, wor_mp, wor_ui, wor_versus, wor_vocals, wor_yourock  # noqa: E402
+import desc_edit, paths, texdict, wor_1g, wor_art, wor_font, wor_menu_music, wor_menus, wor_band, wor_battle, wor_modes, wor_mp, wor_star_burst, wor_ui, wor_versus, wor_vocals, wor_yourock  # noqa: E402
 
 ROOT = paths.REPO
 TOOLS, SDK, GAME, WOR_PNG, WOR_UI_PNG = paths.GH_TOOLS, paths.SDK, paths.GAME, paths.WOR_PNG, paths.WOR_UI_PNG
@@ -396,6 +396,10 @@ def main():
     for name, out in zip(wor_battle.BOLT_NAMES, bolt_cells):
         ui_pngs.append(out)
         sources[name] = {'src': arc_src, 'bolt_cell': name, 'core': list(wor_battle.BOLT_CORE), 'glow': list(wor_battle.BOLT_RGB)}
+    # WoR's star-earned burst (tools/wor_star_burst.py): frames lifted from WoR footage, cached in WOR_EXTRACT; the UI pak
+    for name, src in zip(wor_star_burst.NAMES, wor_star_burst.frames()):
+        ui_pngs.append(src)
+        sources[name] = {'src': paths.WOR_VIDEO, 'star_burst': name}
     # WoR's straight star-progress bar and song progress line: soft-edged strips from hud_progression_bar_lead's
     # vertical profile (the DE tints the star bar), the same dot at both tips, WoR's dark progress track
     lead = os.path.join(WOR_PNG, 'hud_progression_bar_lead.png')
@@ -509,7 +513,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, PRACTICE_GUARD_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, wor_star_burst.script(), PRACTICE_GUARD_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), wor_vocals.global_sections(vocals_fx), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)

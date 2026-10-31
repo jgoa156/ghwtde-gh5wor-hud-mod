@@ -43,8 +43,8 @@ RECOMMENDED (separate downloads, by WitchDoctoR)
 
 KNOWN ISSUES (beta)
   - Vocals: the star power strip in the vocalist's panel may stay empty.
-  - Practice mode can crash after playing a song. Please send Logs\debug.last.txt (Documents\My Games\Guitar Hero
-    World Tour Definitive Edition\Logs) after it happens.
+  - Practice mode can crash after playing a song. Please send Logs\debug.txt (Documents\My Games\Guitar Hero
+    World Tour Definitive Edition\Logs) after it happens, before starting the game again (each launch overwrites it).
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.
 
 ULTRAWIDE SCREENS

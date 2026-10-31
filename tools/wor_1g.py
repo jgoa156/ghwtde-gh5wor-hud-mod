@@ -622,6 +622,9 @@ STAR_LEAD_NAME = 'WoR_HUD_star_lead'
 COMET_HEAD = 0.5                           # where the ball sits in its texture (64 x 16): centred, no tail (WoR's dot is an aura ball)
 STAR_LEAD_S = 1.1                          # ball sprite scale (canvas px per texel); user 2026-10-07: 1.5 was too big
 PROG_LEAD_S = 1.1
+# 2026-10-31 (user: thicker tip balls): WoR's ball measured on the clip is 12 x 8 canvas (core), ours 7.7 x 6.6 at 1.1,
+# so both sprites stretch to (1.7, 1.3); the plugin's tip offset keeps STAR_LEAD_S (zero with the ball centred)
+LEAD_SCALE = (1.7, 1.3)
 STAR_LEAD_RGB = (255, 255, 255)            # tail colours (clip: gold trail on the star bar, steel blue on the song line)
 PROG_LEAD_RGB = (255, 255, 255)           # both bars use the same white ball
 PROG_FILL_NAME = 'WoR_HUD_prog_fill'
@@ -716,7 +719,7 @@ def band_meter():
           star_slot_height() * STAR_BAR_H), just=(-1, 0), scale=(0.7, 1.0), z=4.0, rgba=STAR_BAR_RGBA,
           texture=STAR_BAR_NAME),
         E('star_lead', 'SpriteElement', pos=(filler_l[0], star_slot_centre()), dims=(64, 16),
-          scale=(STAR_LEAD_S, STAR_LEAD_S), z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
+          scale=LEAD_SCALE, z=7.5, alpha=0.0, texture=STAR_LEAD_NAME, blend='Add'),
         # song progress: the DE sets songtime_fg's dims to songtime_bg's width x completion (script dadb0cff)
         # the track's visible art (texture columns PROG_BACK_ART) covers exactly the line's span
         E('prog_back', 'SpriteElement', pos=(prog_x() + prog_w() / 2 - prog_back_w() * ((PROG_BACK_ART[0] + PROG_BACK_ART[1] + 1) / 2 - 128) / 256,
@@ -730,7 +733,7 @@ def band_meter():
         E('prog_half', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET + (prog_w() - PROG_FILL_INSET) / 2, prog_y()),
           dims=(PROG_HALF_W, PROG_H * SCORE_K * 1.3), z=4.15, rgba=(0, 0, 0, 255), texture=PROG_TICK_NAME),
         E('prog_lead', 'SpriteElement', pos=(prog_x() + PROG_FILL_INSET, prog_y()), dims=(64, 16),
-          scale=(PROG_LEAD_S, PROG_LEAD_S), z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
+          scale=LEAD_SCALE, z=4.2, alpha=0.0, texture=PROG_LEAD_NAME, blend='Add'),
         E('score_back', 'SpriteElement', pos=SCORE_C, dims=(512, 128), scale=(SCORE_K * SCORE_X_K, SCORE_K), z=5.0,
           rgba=SCORE_TINT, texture='WoR_HUD_score_box'),
         E('Score', 'TextBlockElement',

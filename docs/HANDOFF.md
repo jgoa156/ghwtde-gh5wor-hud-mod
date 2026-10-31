@@ -458,7 +458,13 @@ Everything below is committed and pushed (origin/main 178cb2c); 1.81 is installe
 5. Older: practice-mode crash (5p: 1.83 keeps the log), 6th star in band.
 6. Vocals purple freeform fill (recolour VH_FF_FX01 / VH_Crowd_Noise; mock first).
 
-Installed: plugin 1.85 + mod at 3d069c2 (battle strike on the gem / slide / needle; 2026-10-30). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
+2026-10-31 (user picked "star meter animation"; user away, built without mock approval, mocks sent): star-earned
+burst = WoR's own frames lifted from WOR.mp4 (tools/wor_star_burst.py, cached in WOR_EXTRACT\star_burst_png, UI pak),
+played by WoR_HUD_star_burst in star_flame (plugin 1.87 swaps Star_Meter_Sparks01; band goes through it too); tip
+balls at LEAD_SCALE (1.7, 1.3). The FC_GLOW constant flicker was NOT added (user turned the fire glow down 2026-10-07).
+Unverified in game: burst position / size / z (z 13.5 in star_flame), 0.3 s delay, ball size.
+
+Installed: plugin 1.87 + mod (star burst, tip balls; 2026-10-31). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

@@ -42,7 +42,6 @@ RECOMMENDED (separate downloads, by WitchDoctoR)
     menu music mod; switch games off in its menumusic.ini. https://github.com/jgoa156/ghwtde-all-main-menu-music
 
 KNOWN ISSUES (beta)
-  - Vocals: the star power strip in the vocalist's panel may stay empty.
   - Practice mode can crash after playing a song. Please send Logs\debug.txt (Documents\My Games\Guitar Hero
     World Tour Definitive Edition\Logs) after it happens, before starting the game again (each launch overwrites it).
   If something else breaks, please send wor_hud_fixes.log (game folder) and a screenshot.

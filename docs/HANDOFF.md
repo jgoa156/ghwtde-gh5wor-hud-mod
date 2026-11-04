@@ -464,7 +464,26 @@ played by WoR_HUD_star_burst in star_flame (plugin 1.87 swaps Star_Meter_Sparks0
 balls at LEAD_SCALE (1.7, 1.3). The FC_GLOW constant flicker was NOT added (user turned the fire glow down 2026-10-07).
 Unverified in game: burst position / size / z (z 13.5 in star_flame), 0.3 s delay, ball size.
 
-Installed: plugin 1.87 + mod (star burst, tip balls; 2026-10-31). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
+2026-11-03: user confirmed again that the 6th star works in quickplay single player (band still unchecked). README:
+the vocalist's star power strip is no longer a known issue (1.86, seen filling in the 10-30 1v / band runs).
+Phrase end in the DE (found 11-03, DE tb.pak scripts/guitar/vocals_highway_fx.qb): script ddb4a0e3 runs at every
+phrase end with `quality` 0..1 and `player`; it calls vocals_score_percent_to_text (vocal_phrase_qualities: min 0 /
+0.2 / 0.4 / 0.6 / 0.8 = SLOPPY red / ROUGH orange / AVERAGE white / SOLID yellow / EXCELLENT green, the same as WoR's
+table), then vocals_message (our swap hides it) and vocals_end_phrase (comet + border flash). The DE has NO live phrase
+progress (no phrase_progress key in tb or the exe): the phrase box can only change at phrase ends. WoR's grade flip
+(guitar_highway_hud vocal_highway_hud_animate_feedback_spawned): multiplier and phrase box fold to scale y 0 in 0.1 s,
+the word grows in 0.1 s, holds 0.4 s, folds, the meters grow back.
+INSTALLED 11-03 after the user approved mock v2 (verify/mock_vocal_grade_v2.jpg; user: "font used should be the WOR
+font" -> word on the phrase box only, 20 tall, tight, squeezed to its width, as in WOR_microphone_gameplay 73.5 s;
+NOT seen in game yet). WoR's own box fills LIVE while singing; ours only at phrase ends (no DE value). Plugin 1.88 swaps
+ddb4a0e3 -> WoR_HUD_vocal_phrase_end (wor_vocals.grade_scripts): the DE body runs, then WoR_HUD_vocal_grade finds the
+panel (player_meter of the player's v1, as WoR_HUD_vocal_health) and WoR_HUD_vocal_grade_flip drives our desc props
+(WoR_nixie_scale, WoR_pp_tube_scale, WoR_pp_fill_*, WoR_word_*) in 1/30 s steps; the phrase box comes back filled to
+the quality (white / yellow / green) and keeps it to the next phrase end. Grade words + fill texture in the UI pak.
+Charged plasma top (5n item 3): the 10-28 1.81 frames (band-20261028-184136 t038-t044, 2x zoom) show a smooth soft top
+since the 1.79 ellipses; nothing left to do unless the user sees steps.
+
+Installed: plugin 1.88 + mod (vocal grade flip + phrase box; 2026-11-03). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

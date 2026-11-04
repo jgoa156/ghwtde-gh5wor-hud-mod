@@ -463,7 +463,7 @@ def main():
     for name, im in wor_vocals.textures().items():    # vocalist meter panel, multiplier images
         out = os.path.join(work, name + '.png')
         im.save(out)
-        pngs.append(out)
+        (ui_pngs if name in wor_vocals.UI_TEX else pngs).append(out)     # grade words + phrase fill: the UI pak
     sources.update(wor_vocals.sources())
     # (the multiplayer tubes are copies of the 1-player tube since 2026-10-22: no WoR_HUD_vsseg / vs_sptube any more)
     p = os.path.join(work, NONE + '.png')          # transparent placeholder (hides sprites)
@@ -513,7 +513,7 @@ def main():
             '\t:i endfunction\n]\n')
 
     # Scripts first: the compiler was seen to silently drop a Script placed after the large desc sections.
-    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, wor_star_burst.script(), PRACTICE_GUARD_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, themes2, choices2, *layouts,
+    src = '\n\n'.join(['Unknown [GHWT_HEADER]', load, CAREER_METER_SCRIPT, SIXTH_STAR_SCRIPT, STAR_SPARKS_SCRIPT, wor_star_burst.script(), PRACTICE_GUARD_SCRIPT, TEST_AUTOLAUNCH_SCRIPT, SP_HIGHWAY_SCRIPTS, wor_ui.SCRIPTS, wor_menus.SCRIPTS, wor_yourock.scripts(), wor_battle.scripts(), wor_modes.SCRIPTS, wor_versus.SCRIPTS, wor_mp.SCRIPTS, wor_band.SCRIPTS, wor_vocals.SCRIPTS, wor_vocals.grade_scripts(), themes2, choices2, *layouts,
                        *descs, *dark_secs, sp_highway_colours(), wor_ui.pill_theme_struct(), wor_ui.loading_desc(), wor_battle.layout_struct(),
                        *wor_menus.sections(ui_wtde), wor_vocals.global_sections(vocals_fx), 'SectionInteger WoR_HUD_sp_sfx_set 0']) + '\n'
     open(os.path.join(OUT, f'{MOD_NAME}.txt'), 'w', encoding='utf-8').write(src)

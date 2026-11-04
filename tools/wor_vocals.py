@@ -42,6 +42,7 @@ ART = {
     'WoR_HUD_v_combo': (UI, 'HUD_meter_combovocal'),
     'WoR_HUD_v_tube': (UI, 'vocal_starpower_tube'),
     'WoR_HUD_v_cap': (UI, 'vocals_meter_cap'),
+    'WoR_HUD_v_ppfill': (UI, 'vocal_starpower_fill'),
 }
 SP_FILL = 'WoR_HUD_v_spfill'                 # vocals_meter_cap tinted WoR's star power blue, turned for the segments
 SP_RGB = (0, 166, 255)                       # vocals_star_power_meter vocal_starpower_fill rgba
@@ -76,6 +77,24 @@ SHEEN = (148, 462, 236, 475)
 COMBO = (241, 463, 279, 487)
 MULT_BOX = (241, 465, 281, 485)              # the "xN" image (40 x 20 canvas = 128 x 64 texels)
 PHRASE = (285, 465, 378, 487)
+# phrase end (2026-11-03): the DE has no live phrase progress, only the phrase's quality 0..1 when it ends (its script
+# ddb4a0e3, plugin swap -> WoR_HUD_vocal_phrase_end). WoR's grade flip (vocal_highway_hud_animate_feedback_spawned):
+# the multiplier and the phrase box fold away (scale y -> 0, 0.1 s), the grade word unfolds over both, holds 0.4 s,
+# folds, and the meters unfold again; here the phrase box comes back filled to the phrase's quality in WoR's
+# vocal_phrase_progress_fill colours (white < 0.6 <= yellow < 0.8 <= green) and keeps it until the next phrase end.
+GRADES = [('SLOPPY!', (225, 30, 30)), ('ROUGH', (255, 140, 0)), ('AVERAGE', (255, 255, 255)),
+          ('SOLID', (255, 255, 0)), ('EXCELLENT!', (0, 255, 0))]          # WoR vocal_phrase_qualities (vocals.qb)
+GRADE_MIN = (0.0, 0.2, 0.4, 0.6, 0.8)
+GRADE_TEX = [f'WoR_HUD_vgrade_{i}' for i in range(len(GRADES))]
+# WoR footage (WOR_microphone_gameplay, 11-03): the word sits on the phrase box only (canvas 285..378 x 466..486), ~20 tall,
+# tight letters, squeezed to the box's width; the multiplier box folds away beside it
+WORD_BOX = (PHRASE[0], 464.0, PHRASE[2], 488.0)
+WORD_H = 20.0                                                            # cap height of the word, canvas units
+PP_RGB = ((200, 200, 200), (245, 255, 0), (0, 255, 0))
+PP_STEPS = (0.6, 0.8)
+FLIP_STEPS = 3                                                           # 0.1 s folds in 3 frames of 1/30 s
+# these ride in the always-loaded UI pak (no 4 MiB cap; the theme pak was at 3.68 MB), like the menu popups' art
+UI_TEX = GRADE_TEX + ['WoR_HUD_v_ppfill']
 # star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
 # mark 5 wide, drawn over the highway's top line
 SP_CAP = (145, 493.0, 383, 501.0)                 # user 2026-10-27: 1 smaller, 2 down
@@ -217,15 +236,36 @@ def health_desc():
     return desc(HEALTH_NAME, root, props)
 
 
+def _centred(e):
+    """The same sprite with just (0, 0) at its rectangle's centre, so a y scale folds it about its middle."""
+    e.pos = (e.pos[0] + e.dims[0] / 2, e.pos[1] + e.dims[1] / 2)
+    e.just = (0, 0)
+    return e
+
+
+PP_FILL_BOX = (PHRASE[0] + 1.0, PHRASE[1] + 1.0, PHRASE[2] - 1.0, PHRASE[3] - 1.0)   # inside the tube's glass
+
+
 def mult_desc():
+    cx, cy = _centre(COMBO)
+    fill = _fit('phrase_fill', 'WoR_HUD_v_ppfill', PP_FILL_BOX, 0.135, blend='Add', alpha=0.0)
+    # scale x = the phrase's quality from the fill's left end, scale y folds it about the middle
+    fill.pos, fill.just = (fill.pos[0], fill.pos[1] + fill.dims[1] / 2), (-1, 0)
+    fill.scale = (0.0, 1.0)
+    # the desc starts on the theme pak's blank: the real textures (UI pak) are set by name at the phrase end
+    fill.extra['texture'] = 'WoR_HUD_blank'
+    wx, wy = _centre(WORD_BOX)
     kids = [_fit('backing', 'WoR_HUD_v_backing', BACKING, 0.10),
             _fit('stripe', 'WoR_HUD_v_stripe', STRIPE, 0.12, rgba=FRAME_BLUE + (255,)),
             *[_fit(f'div{i}', 'WoR_HUD_v_div', (x - 2.5, 461, x + 2.5, 489), 0.11) for i, x in enumerate(DIVIDERS)],
             # the box is baked into the "xN" images (MULT_STYLE): the combo art only under them
             _fit('combo', 'WoR_HUD_v_combo', COMBO, 0.13, alpha=0.0),
-            E('nixie', 'SpriteElement', pos=COMBO[:2], dims=(COMBO[2] - COMBO[0], COMBO[3] - COMBO[1]),
-              just=(-1, -1), z=0.2, texture=MULT_TEX[1]),
-            _fit('phrase_tube', 'WoR_HUD_v_tube', PHRASE, 0.13),
+            E('nixie', 'SpriteElement', pos=(cx, cy), dims=(COMBO[2] - COMBO[0], COMBO[3] - COMBO[1]),
+              just=(0, 0), z=0.2, texture=MULT_TEX[1]),
+            _centred(_fit('phrase_tube', 'WoR_HUD_v_tube', PHRASE, 0.13)),
+            fill,
+            E('grade_word', 'SpriteElement', pos=(wx, wy), dims=(WORD_BOX[2] - WORD_BOX[0], WORD_BOX[3] - WORD_BOX[1]),
+              just=(0, 0), z=0.3, alpha=0.0, scale=(1.0, 0.0), texture='WoR_HUD_blank'),
             _sink('nixie_rgba_sink'), _sink('mult_bg_sink')]
     sinks = [_sink(f'light{i}_sink') for i in range(5)]
     kids += sinks + [_sink('streak_text_sink', 'SpriteElement')]
@@ -233,6 +273,12 @@ def mult_desc():
     props = [('nixie_texture', 'nixie', 'texture'), ('nixie_rgba', 'nixie_rgba_sink', 'rgba'),
              ('mult_bg_alpha', 'mult_bg_sink', 'alpha')]
     props += [(f'light{i}_texture', f'light{i}_sink', 'texture') for i in range(5)]
+    # ours, set by WoR_HUD_vocal_grade at each phrase end
+    props += [('WoR_nixie_scale', 'nixie', 'Scale'), ('WoR_pp_tube_scale', 'phrase_tube', 'Scale'),
+              ('WoR_pp_fill_scale', 'phrase_fill', 'Scale'), ('WoR_pp_fill_rgba', 'phrase_fill', 'rgba'),
+              ('WoR_pp_fill_alpha', 'phrase_fill', 'alpha'), ('WoR_pp_fill_texture', 'phrase_fill', 'texture'),
+              ('WoR_word_texture', 'grade_word', 'texture'),
+              ('WoR_word_scale', 'grade_word', 'Scale'), ('WoR_word_alpha', 'grade_word', 'alpha')]
     return desc(MULT_NAME, root, props)
 
 
@@ -308,6 +354,49 @@ def _mult_image(n, style):
     out.alpha_composite(dg, (dx, dy))
     out.alpha_composite(x, (2 * S, H - x.height - 3 * S))
     return out.resize((256, 128), Image.LANCZOS)
+
+
+def _spaced(font, s, h, rgb, gap=0.10):
+    """A word drawn glyph by glyph (the strip renderer runs the letters together), gap x h between glyphs, h tall."""
+    import mock_fail_popup as fonts
+    parts = []
+    for ch in s:
+        t = fonts.text(font, ch, 160, rgb)
+        bb = t.getbbox()
+        parts.append(t.crop((bb[0], 0, bb[2], t.height)))
+    g = round(gap * 160)
+    out = Image.new('RGBA', (sum(p.width for p in parts) + g * (len(parts) - 1), max(p.height for p in parts)), (0, 0, 0, 0))
+    x = 0
+    for p in parts:
+        out.alpha_composite(p, (x, 0))
+        x += p.width + g
+    out = out.crop(out.getbbox())
+    return out.resize((max(1, round(out.width * h / out.height)), h), Image.LANCZOS)
+
+
+def _grade_image(i):
+    """The grade word (WoR's vocals_word_compliment: fontgrid_text_a1 in the grade's colour, grey_dk shadow 1 unit down
+    right), centred in WORD_BOX at 6 texels per canvas unit."""
+    from PIL import ImageFilter
+    word, rgb = GRADES[i]
+    S = 6
+    W, H = round((WORD_BOX[2] - WORD_BOX[0]) * S), round((WORD_BOX[3] - WORD_BOX[1]) * S)
+    t = _spaced(_font('fontgrid_text_a1'), word, round(WORD_H * S), rgb)
+    if t.width > W - 2 * S:                                  # squeezed to the box's width like WoR's (height kept)
+        t = t.resize((W - 2 * S, t.height), Image.LANCZOS)
+    x, y = (W - t.width) // 2, (H - t.height) // 2
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    sh = Image.new('L', (W, H), 0)
+    sh.paste(t.getchannel('A'), (x + S, y + S))
+    sh = sh.filter(ImageFilter.GaussianBlur(S * 0.4))
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', (W, H), 40)] * 3 + [sh]))
+    out.alpha_composite(t, (x, y))
+    return out.resize((256, 64), Image.LANCZOS)          # ~205 x 36 px at 1080p
+
+
+def pp_rgb(q):
+    """WoR's phrase progress fill colour for a quality 0..1."""
+    return PP_RGB[sum(q >= s for s in PP_STEPS)]
 
 
 def _lightning(core, halo, seed):
@@ -437,6 +526,7 @@ def textures():
     out[SP_BORDER_TEX] = _sp_border().resize((1024, 64), Image.LANCZOS)
     out.update({MULT_TEX[n]: _mult_image(n, n) for n in MULT_TEX})
     out.update({MULT_SP_TEX[n]: _mult_image(n, 'sp') for n in MULT_SP_TEX})
+    out.update({GRADE_TEX[i]: _grade_image(i) for i in range(len(GRADES))})
     return out
 
 
@@ -450,6 +540,8 @@ def sources():
         s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': str(n), 'box': None, 'flip': False}
     for n in MULT_SP_TEX:
         s[MULT_SP_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': 'sp', 'box': None, 'flip': False}
+    for i, (word, rgb) in enumerate(GRADES):
+        s[GRADE_TEX[i]] = {'src': 'fontgrid_text_a1', 'text': word, 'rgb': list(rgb), 'box': None, 'flip': False}
     return s
 
 
@@ -571,6 +663,80 @@ SCRIPTS = (
     'Script WoR_HUD_vocal_note_setup_orig [\n'
     '\t:i $printf$%s("WoR_HUD: vocal note setup placeholder ran, plugin swap missing")\n'
     '\t:i endfunction\n]\n')
+
+
+def _v2(x, y):
+    return f'%vec2({x:.4f},{y:.4f})'
+
+
+def grade_scripts():
+    """Phrase end (plugin swap of the DE's ddb4a0e3, which runs with quality 0..1 and player at every phrase end):
+    the DE's own body still runs (its message is hidden by our vocals_message swap, its comet / border flash stay),
+    then with our theme WoR's grade flip in the vocalist's panel (props of wor_vocal_mult_ghwor)."""
+    wait = '\t\t:i $wait$%f(0.0333)$seconds$\n'
+    fold = [1.0 - (k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]           # 0.67, 0.33, 0
+    grow = [(k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]                 # 0.33, 0.67, 1
+    set_ = '\t\t:i %GLOBAL%$meter_id$.$se_setprops$'
+    out = ('Script WoR_HUD_vocal_phrase_end [\n'
+           '\t:i $WoR_HUD_vocal_phrase_end_orig$ isNull\n'
+           '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+           '\t\t:i if NOT $GotParam$$quality$\n'
+           '\t\t\t:i $quality$ = %f(1.0)\n'
+           '\t\t:i endif\n'
+           '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_vocal_grade$\n'
+           '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_grade$$id$ = $WoR_HUD_vocal_grade$'
+           '$params$ = :s{$player$ = %GLOBAL%$player$$quality$ = %GLOBAL%$quality$:s}\n'
+           '\t:i endif\n'
+           '\t:i endfunction\n]\n\n'
+           'Script WoR_HUD_vocal_phrase_end_orig [\n'
+           '\t:i $printf$%s("WoR_HUD: vocal phrase end placeholder ran, plugin swap missing")\n'
+           '\t:i endfunction\n]\n\n'
+           # the vocalist's panel: player_meter of the player's v1 container (as WoR_HUD_vocal_health finds it)
+           'Script WoR_HUD_vocal_grade [\n'
+           '\t:i $getplayerinfo$%GLOBAL%$player$$hud_parent$\n'
+           '\t:i if $ScreenElementExists$$id$ = $hud_root$\n'
+           '\t\t:i if $hud_root$.$desc_resolvealias$$name$ = %GLOBAL%$hud_parent$$param$ = $parent_id$\n'
+           '\t\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$parent_id$$child$ = $player_meter$:s}\n'
+           '\t\t\t\t:i $ResolveScreenElementID$$id$ = :s{%GLOBAL%$parent_id$$child$ = $player_meter$:s}$param$ = $meter_id$\n'
+           '\t\t\t\t:i $WoR_HUD_vocal_grade_flip$$meter_id$ = %GLOBAL%$meter_id$$quality$ = %GLOBAL%$quality$\n'
+           '\t\t\t:i endif\n'
+           '\t\t:i endif\n'
+           '\t:i endif\n'
+           '\t:i endfunction\n]\n\n'
+           'Script WoR_HUD_vocal_grade_flip [\n'
+           '\t:i $q$ = %GLOBAL%$quality$\n'
+           '\t:i if (%GLOBAL%$q$ < %f(0.0))\n\t\t:i $q$ = %f(0.0)\n\t:i endif\n'
+           '\t:i if (%GLOBAL%$q$ > %f(1.0))\n\t\t:i $q$ = %f(1.0)\n\t:i endif\n'
+           '\t:i $WoR_i$ = %i(0)\n')
+    for i, m in enumerate(GRADE_MIN[1:], 1):
+        out += f'\t:i if (%GLOBAL%$q$ >= %f({m:.2f}))\n\t\t:i $WoR_i$ = %i({i})\n\t:i endif\n'
+    out += ('\t:i $WoR_grades$ = :a{' + ''.join(f'${t}$' for t in GRADE_TEX) + ':a}\n'
+            '\t:i $WoR_tex$ = (%GLOBAL%$WoR_grades$:a{%GLOBAL%$WoR_i$:a})\n'
+            f'\t:i $WoR_rgba$ = {_qb_rgba(PP_RGB[0] + (255,))}\n')
+    for s, c in zip(PP_STEPS, PP_RGB[1:]):
+        out += f'\t:i if (%GLOBAL%$q$ >= %f({s:.2f}))\n\t\t:i $WoR_rgba$ = {_qb_rgba(c + (255,))}\n\t:i endif\n'
+    out += '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$meter_id$\n'
+    # 1. the multiplier and the phrase box fold away (the old fill fades with them)
+    for s in fold:
+        out += f'{set_}$WoR_nixie_scale$ = {_v2(1, s)}$WoR_pp_tube_scale$ = {_v2(1, s)}$WoR_pp_fill_alpha$ = %f({s:.4f})\n{wait}'
+    # 2. the grade word unfolds, holds 0.4 s, folds
+    out += f'{set_}$WoR_word_texture$ = %GLOBAL%$WoR_tex$$WoR_word_alpha$ = %f(1.0)\n'
+    for s in grow:
+        out += f'{set_}$WoR_word_scale$ = {_v2(1, s)}\n{wait}'
+    out += '\t\t:i $wait$%f(0.4)$seconds$\n'
+    for s in fold:
+        out += f'{set_}$WoR_word_scale$ = {_v2(1, s)}\n{wait}'
+    out += f'{set_}$WoR_word_alpha$ = %f(0.0)\n'
+    # 3. the meters unfold, the phrase box filled to this phrase's quality in its colour (kept to the next phrase end)
+    out += (f'{set_}$WoR_pp_fill_texture$ = $WoR_HUD_v_ppfill$$WoR_pp_fill_rgba$ = %GLOBAL%$WoR_rgba$'
+            '$WoR_pp_fill_alpha$ = %f(1.0)\n')
+    for s in grow:
+        out += (f'{set_}$WoR_nixie_scale$ = {_v2(1, s)}$WoR_pp_tube_scale$ = {_v2(1, s)}'
+                f'$WoR_pp_fill_scale$ = ((%vec2(1.0,0.0) * %GLOBAL%$q$) + {_v2(0, s)})\n')
+        if s < 1.0:
+            out += wait
+    out += '\t:i endif\n\t:i endfunction\n]\n'
+    return out
 
 
 def _panel_in_v1(d, dy):

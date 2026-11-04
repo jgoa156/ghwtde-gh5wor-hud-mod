@@ -1028,6 +1028,10 @@ namespace
 		// (tools/wor_star_burst.py; the band's sparks above end up here too)
 		{ 0x815d0bdf /* Star_Meter_Sparks01 */, 0xce1c7b67 /* wor_hud_star_burst */, 0x3ef30b70 /* _orig */,
 		  "star earned: Star_Meter_Sparks01 wrapped (WoR's burst with the WoR theme)" },
+		// 1.88 (2026-11-03): the DE's phrase end (vocals_highway_fx ddb4a0e3: quality 0..1, player) also runs WoR's grade
+		// flip in the vocalist's panel and fills its phrase box (tools/wor_vocals.py grade_scripts)
+		{ 0xddb4a0e3 /* vocal phrase end */, 0x041477f9 /* wor_hud_vocal_phrase_end */, 0x251543c5 /* _orig */,
+		  "vocals: phrase end wrapped (WoR's grade flip and phrase box with the WoR theme)" },
 		// 1.42: test harness (build.py TEST_AUTOLAUNCH_SCRIPT): with [WoR_HUD] TestAutoLaunch=1 the title screen runs the
 		// DE's AutoLaunch setup (tests/capture_band.py); stock title screen otherwise
 		{ 0x7ebab753 /* ui_create_boot_iis */, 0x4829489f /* wor_hud_ui_create_boot_iis */, 0xeb505f15 /* _orig */,
@@ -2359,7 +2363,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.87 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.88 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])

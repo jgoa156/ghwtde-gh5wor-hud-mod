@@ -2,6 +2,11 @@
 
 ## Next (unreleased)
 
+Plugin `wor_hud_fixes.asi` 1.88:
+- **Vocals:** at the end of each phrase the panel shows WoR's grade flip (the multiplier and phrase box fold away and
+  SLOPPY! / ROUGH / AVERAGE / SOLID / EXCELLENT! shows on the phrase box in WoR's font and colours for 0.4 s), then the
+  phrase box shows how well the phrase went (white / yellow / green, WoR's colours) until the next phrase ends.
+
 Plugin `wor_hud_fixes.asi` 1.87:
 - **Star meter:** earning a star plays WoR's burst on the star (orange sparks, a white-gold flash with light streaks,
   falling sparkles) instead of the game's four flame bursts; the tip balls on the star bar and song line are WoR's size.

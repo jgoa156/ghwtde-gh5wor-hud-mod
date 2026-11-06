@@ -1,10 +1,53 @@
-# GH5 / WoR HUD mod: session handoff (2026-10-21, 0.49 released, 0.50 WIP)
+# GH5 / WoR HUD mod: session handoff (2026-11-06, plugin 1.89 installed, 0.51 released)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-10-29 evening): HANDOFF GUIDE: plugin 1.84, section 5p first (releases 0.51 + Ultrawide Fix 1.2, what the user confirmed, the ranked open list in 6), then 5o / 5n
+## START HERE (2026-11-06): plugin 1.89 installed, NOT committed, vocals corrections not yet seen by the user
+
+### Where things stand
+- **Installed (2026-11-06 ~01:40):** plugin `wor_hud_fixes.asi` 1.89 + the mod built from the working tree (offline
+  tests 25/25). The user is playing on it now.
+- **Uncommitted** (main == origin/main at 22c1152 + these): build.py, docs/HANDOFF.md, docs/RELEASE_NOTES.md,
+  plugin/src/names.h, plugin/src/wor_hud_fixes.cpp, tools/gen_plugin_names.py, tools/wor_vocals.py. Commit once the
+  user has seen 1.89 (or when asked); release notes already have a "Plugin 1.89" item under Next (unreleased).
+- **Game state:** clean. The 01:40 test run (band-20261106-014032) was interrupted; GHWTDE.ini, GHWTDE.sav and
+  Profiles were restored from its backups and verified by hash (the save was never touched).
+
+### What 1.89 does (vocals, WoR theme) and what is verified
+Details and RE notes: the 2026-11-04 / 11-06 entries at the end of the "5p" section below (search "plugin 1.89").
+| Change | Status |
+|---|---|
+| Star power strip: no border, opaque WoR fill over the gloss, white tip at the fill end, mark 1.33 units thinner | Seen in the 11-06 bot run (border gone, fill + tip show). Check that the bright band is at the TOP (else `_sp_fill` ROTATE_90) |
+| Now line: sprite at 0.35 of its width, 8 bolts per colour, a new one every 1/60 s | 0.55 seen in the run; user asked "even thinner" -> 0.35, not seen |
+| Ball: the DE's singing sparks, small, no drift, only while singing | Seen working in the run |
+| No trace line; sung parts of the notes FILLED (sprite paint: `vocal_enable_material_paint` 0 with our theme, `vocals_create_paint` swapped to `WoR_HUD_vocal_create_paint`) | NOT seen. Risks: the flag may be read before our globals script runs (then the old thin trace stays); the engine may resize the paint sprite's height |
+| Live phrase box: hits / ticks so far x phrase elapsed, white / yellow / green at 0.6 / 0.8, empty after each grade | NOT seen. First hook (0x4727d0) never ran for the bot; now hooked at the common caller 0x474390. Log: "vocals: phrase tracker <ptr>" and "vocals: phrase box ..." in wor_hud_fixes.log |
+| Grade flip: 6 steps of `wait 1 gameframe` per fold | Not seen at 6 steps (3-step 1.88 flip worked) |
+| Pitch trace material in WoR colours (setup / SP on / SP off swaps) | Works (cyan line in SP in the run), but superseded by sprite paint with our theme |
+
+### Next steps
+1. Ask the user how 1.89 looks (filled notes, live box, now line width, strip top/bottom). If the box doesn't move,
+   ask for `D:\Games\Guitar Hero World Tour\wor_hud_fixes.log` (look for "phrase tracker").
+2. Fix what they report, then commit + push.
+3. Open items (unchanged): vocals purple freeform fill (needs a mock; no freeform capture), star power phrase notes'
+   blue blur, practice crash (needs Logs\debug.txt right after it), optional FC_GLOW star flicker (WoR's star glows /
+   flickers while no note is missed), release 0.52 with plugins 1.86-1.89.
+4. Dropped: 6th star in band (user: works in single player, same path; not an open item).
+
+### Rules (user, in force)
+- **No game launches unless the user asks**; when asked, at most 30 s of gameplay per run (`tests/capture_band.py
+  --play 30`; battle: `--from 25 --until 70`). Never launch while the user may be playing.
+- **If a run is interrupted or the user says "disable debugging mode, i want to play": immediately** kill
+  GHWT_Definitive and restore GHWTDE.ini + the save from that run's `GHWTDE.ini.backup` / `save-backup`, verify,
+  report. Do not investigate first.
+- **Mock before any HUD / shader change** (calibrated on a capture, approved by the user).
+- Theme pak (`hud_ghwor.pak.xen`) has a 4 MiB cap (now ~3.62 MB); extra textures the plugin or scripts set by name go
+  in the UI pak (`wor_vocals.UI_TEX`).
+- Don't run offline tests while a build runs (they race on build\WoR_HUD). Builds take ~10 min.
+
+## OLDER GUIDE (2026-10-29 evening): plugin 1.84, section 5p first (releases 0.51 + Ultrawide Fix 1.2, what the user confirmed, the ranked open list in 6), then 5o / 5n
 
 Everything after this section is older history; read it only for a detail.
 
@@ -483,7 +526,53 @@ the quality (white / yellow / green) and keeps it to the next phrase end. Grade 
 Charged plasma top (5n item 3): the 10-28 1.81 frames (band-20261028-184136 t038-t044, 2x zoom) show a smooth soft top
 since the 1.79 ellipses; nothing left to do unless the user sees steps.
 
-Installed: plugin 1.88 + mod (vocal grade flip + phrase box; 2026-11-03). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
+2026-11-04: bot runs on the user's request ("run tests, remember the time limit" = --play 30, the 10-28 rule), 1.88:
+- 1v (band-20261104-025738, --play 30 --native --video; sheets flip_a.png / flip_b.png): WORKS. Six phrase ends; each
+  folds the multiplier + phrase box, "EXCELLENT!" in green on the box ~0.6 s, unfolds, the box filled green. The bot
+  sings every phrase perfectly: only EXCELLENT seen (the other grades and the white / yellow fill unchecked).
+- 1g (band-20261104-030012; burst.png): star burst WORKS (orange flames, white-gold flash with streaks, sparkles,
+  ~0.8 s at 18.7 s of the video); tip balls on the star bar. The game paused once (lost focus) near the end.
+- battle (band-20261104-030151, no --play: --from 25 --until 70; fly12.png / fly37.png / needle.png): the new card
+  slides from the strike line into its slot along the red-white bolt (fades ~0.6 s) WORKS; the rock needle at full
+  health sits at the top of the green under the cap WORKS.
+- Not covered (need more than 30 s): YOU ROCK sound (song end), charged look at 25% (--sp-states), multiplayer.
+- ffmpeg gdigrab records BOTH screens (2560x2160, the game on the lower one: add 1080 to y when cropping).
+
+2026-11-04, user corrections after the runs (WoR screenshots in the session), mock verify/mock_vocal_fix_v1.jpg
+approved ("Build all"), plugin 1.89:
+- Star power strip: border gone (SP_BORDER removed), opaque fill over the tube's gloss at the tube's inner height in
+  WoR's measured colours (SP_PROFILE), a white tip the plugin moves to the fill's end (tip{i}, kVSpTip), mark 1.33 units
+  thinner. RISK: the fill texture is turned ROTATE_270 so the strip's bright top lands on top (child (x, y) -> screen
+  (y, -x)); if the bright band shows at the bottom in game, turn it ROTATE_90 in _sp_fill.
+- Orange line = the DE's pitch trace (ekgelement, Waveform_UI, vocals_setup_paint_material). Plugin swaps the setup and
+  vocals_paint_star_power_on / _off to WoR_HUD_vocal_paint_* (paint_scripts): the DE body, then WoR's m_psColors0..7
+  (yellow; cyan in star power) with the WoR theme. WoR's own material uses technique linear (the DE: default), not
+  copied. Unverified: that the DE's Waveform_UI fills the note like WoR's with those values.
+- Ball: WoR's fireball sprite is invisible (vocal_fireball_color alpha 0); its ball = the singing sparks. The DE's
+  "base" sparks (they only run while singing; "miss" stays invisible) back at 0.5 -> 0.3, orange-yellow, velocity 0,
+  0.2 s life (no trail). Every HUD theme (the table is global).
+- Now line: sprite at 0.55 of its width; 8 bolts per colour (4..7 in the UI pak), a new one every 1/60 s, scrambled.
+- Flip: 6 steps of one gameframe (`wait 1 gameframe`) per 0.1 s fold.
+- Live phrase box (RE, GHWT_Definitive.exe): vocal player object (this of 0x4727d0, hooked: kVocalTick, 5 bytes):
+  [+c7f4] now, [+c7f8] / [+c7fc] the current phrase's start / end (ints, compared in 0x4727d0); [+c80c] += 1 per note
+  tick (0x472898), [+c808] += per tick on pitch (0x471ff0); phrase end 0x473560: quality = c808 / c80c mapped through the
+  difficulty table (0xadc486b3 / 0x314116cb), then both = 0 (0x473aba). 'quality' (0x834df4ef) is pushed only there.
+  Box = c808 / c80c x (now - start) / (end - start), white / yellow / green at 0.6 / 0.8 (WoR footage: the box grows
+  roughly linearly through the phrase, f258..f276 of micf, colour by the current level, empty after the flip). The
+  plugin finds the fill by z 0.1357 (kVPpFillZ), sets texture / scale x / SetRGBA (0x5a1af0, thiscall, ret 8); the
+  flip script only folds it (scale y). Log lines: "vocals: phrase tracker", "vocals: phrase box". One object (the last
+  that updated): with two vocalists both boxes follow the same one. Not seen in game yet.
+- 1v run 2026-11-06 (band-20261106-012004, 1.89 first build): border-less strip, thinner now line, ball only while
+  singing WORK; the trace was still a thin line (WoR colours, cyan in star power) and the box never moved: the hook at
+  0x4727d0 never ran for the bot (its ticks go through 0x4725f0 / 0x473c60). User: "the green strikeline should be even
+  thinner, the line behind it shouldn't exist, FILL the rectangles in the parts the player got correct". Second build:
+  hook moved to the common caller 0x474390 (vtable, SEH prologue, 6 bytes); NOW_W_SCALE 0.35; with the WoR theme
+  vocal_enable_material_paint 0 (read per highway at creation, 0x4711f0: no Waveform_UI trace) and the plugin swaps
+  vocals_create_paint (0xc17842d5) to WoR_HUD_vocal_create_paint: hit segments a solid PAINT_H-tall fill (yellow, cyan
+  in star power), misses invisible.
+- 6th star in band: the user considers it done (works in quickplay single player, same code path); not an open item.
+
+Installed: plugin 1.89 + mod (vocal corrections: strip, now line, ball, filled notes, live phrase box; 2026-11-06, NOT committed). Released: 0.51 (plugin 1.82) and Ultrawide Fix 1.2 on GitHub.
 
 ## Session log 2026-10-23 (details behind the guide above)
 

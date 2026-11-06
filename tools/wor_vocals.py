@@ -44,7 +44,7 @@ ART = {
     'WoR_HUD_v_cap': (UI, 'vocals_meter_cap'),
     'WoR_HUD_v_ppfill': (UI, 'vocal_starpower_fill'),
 }
-SP_FILL = 'WoR_HUD_v_spfill'                 # vocals_meter_cap tinted WoR's star power blue, turned for the segments
+SP_FILL = 'WoR_HUD_v_spfill'                 # WoR's star power fill colours (SP_PROFILE), turned for the segments
 SP_RGB = (0, 166, 255)                       # vocals_star_power_meter vocal_starpower_fill rgba
 FRAME_BLUE = (77, 95, 153)                   # vocals_hud_rgba[band 1]: the colour stripe
 # multiplier colours (vocals_multiplier, secombolights): x1..x4, and star power
@@ -92,16 +92,22 @@ WORD_BOX = (PHRASE[0], 464.0, PHRASE[2], 488.0)
 WORD_H = 20.0                                                            # cap height of the word, canvas units
 PP_RGB = ((200, 200, 200), (245, 255, 0), (0, 255, 0))
 PP_STEPS = (0.6, 0.8)
-FLIP_STEPS = 3                                                           # 0.1 s folds in 3 frames of 1/30 s
+FLIP_STEPS = 6                                                           # 0.1 s folds, a step per frame at 60 fps
+# (user 2026-11-04: the flip must be smoother; 1.88 waited 1/30 s between 3 steps)
 # these ride in the always-loaded UI pak (no 4 MiB cap; the theme pak was at 3.68 MB), like the menu popups' art
 UI_TEX = GRADE_TEX + ['WoR_HUD_v_ppfill']
 # star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
 # mark 5 wide, drawn over the highway's top line
 SP_CAP = (145, 493.0, 383, 501.0)                 # user 2026-10-27: 1 smaller, 2 down
-SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (495.0, 499.0)
-SP_MARK = (262.0, 493.0, 267.0, 501.0)       # the strip's 50 % mark
-SP_BORDER = (144, 492.0, 384, 502.0)
-SP_BORDER_TEX = 'WoR_HUD_v_spborder'
+# 2026-11-04 (user, WoR screenshot vs ours; mock verify/mock_vocal_fix_v1.jpg): no border at all, the fill over the
+# tube's gloss at the tube's whole inner height, WoR's shinier colours (SP_PROFILE, rows measured top to bottom on the
+# WoR frame), a white tip at the fill's end, the 50 % mark 2 px (1.33 canvas units) thinner
+SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (493.6, 500.4)
+SP_MARK = (262.67, 493.0, 266.33, 501.0)     # the strip's 50 % mark
+SP_PROFILE = [(48, 88, 97), (105, 176, 178), (165, 255, 255), (171, 255, 255), (151, 255, 255), (111, 212, 237),
+              (60, 148, 211), (17, 76, 108)]
+SP_TIP_TEX = 'WoR_HUD_v_sptip'
+SP_TIP_LEN = 6.5                             # canvas units along the strip
 SP_Z = 4.0                                   # above the vocal highway's lines (its outline sprites: z 2)
 # health meter (mock v5): an inner shadow (top + left) and a white gloss over the meter, and a blurred inner shadow in
 # each lamp cell
@@ -126,14 +132,25 @@ LYRICS_Y = 161.0
 NOW_BAR_DX = 12.0
 # user 2026-10-30: the orange comet (fireball_bg) and its trail must go, the green now line stays: both at scale 0
 # (was WoR's fireball_bg 0.35, the DE's 0.55; singing sparks 0.55 -> 0.2, the DE's 1.6 / 1.5 -> 0.5)
+# user 2026-11-04: WoR's orange ball shows only while the player makes noise, no trail. WoR's fireball sprite is
+# invisible too (vocal_fireball_color alpha 0); its ball is the singing sparks (the DE's own "base" emitter, which only
+# runs while singing; "miss" stays invisible). They come back small, orange-yellow, without velocity (no trail) and
+# short-lived, so they stay a ball at the now line
 COMET_SCALE = 0.0
-COMET_SPARK = (0.0, 0.0)                     # singing sparks' start / end scale
+COMET_SPARK = (0.5, 0.3)                     # singing sparks' start / end scale (the DE's 1.6 / 1.5 -> 0.5)
+COMET_SPARK_RGBA = ((255, 200, 60, 255), (255, 90, 0, 0))
+COMET_SPARK_TIME = 0.2
 # the now line (mock v3, user 2026-10-26): WoR's green crackling lightning, cyan in star power; ours rides in
 # pitch_area (x centre 10) from the top line to the bottom one (now_bar y 30 + pitch_area y 18 = 48 below the root;
 # the lines' centres at root y 35 / 137). NOW_FRAMES bolts per colour, the plugin (1.58) steps through them.
-NOW_FRAMES = 4
+# user 2026-11-04: WoR's line is thinner and animates at least 3x faster: the sprite at NOW_W_SCALE of its width (bolt
+# and halo together, mock verify/mock_vocal_fix_v1.jpg) and a new bolt every frame (plugin 1.89, 60 a second) out of 8;
+# frames 4..7 ride in the UI pak (the theme pak is near its cap; the plugin sets them by name)
+NOW_FRAMES = 8
+NOW_W_SCALE = 0.35                           # user 2026-11-06: even thinner (1.89's first build: 0.55)
 NOW_TEX = [f'WoR_HUD_vnow_g{i}' for i in range(NOW_FRAMES)]
 NOW_SP_TEX = [f'WoR_HUD_vnow_c{i}' for i in range(NOW_FRAMES)]
+UI_TEX += NOW_TEX[4:] + NOW_SP_TEX[4:]
 NOW_GLOW, NOW_CORE = (20, 200, 20), (190, 255, 150)
 NOW_SP_GLOW, NOW_SP_CORE = (0, 190, 255), (210, 255, 255)
 NOW_BOX = (10.0, 35.0 - 48.0, 28.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
@@ -244,15 +261,19 @@ def _centred(e):
 
 
 PP_FILL_BOX = (PHRASE[0] + 1.0, PHRASE[1] + 1.0, PHRASE[2] - 1.0, PHRASE[3] - 1.0)   # inside the tube's glass
+# 1.89 (user 2026-11-04: the box must register while singing): the plugin drives the fill every frame from the DE's
+# vocal player object (hits / ticks so far x the phrase's elapsed part), WoR's white / yellow / green (PP_RGB at
+# PP_STEPS) by its level, empty again after each grade flip as in WoR; it finds the fill by this z (unique)
+PP_FILL_Z = 0.1357
 
 
 def mult_desc():
     cx, cy = _centre(COMBO)
-    fill = _fit('phrase_fill', 'WoR_HUD_v_ppfill', PP_FILL_BOX, 0.135, blend='Add', alpha=0.0)
-    # scale x = the phrase's quality from the fill's left end, scale y folds it about the middle
+    fill = _fit('phrase_fill', 'WoR_HUD_v_ppfill', PP_FILL_BOX, PP_FILL_Z, blend='Add')
+    # scale x = the live level from the fill's left end (plugin), scale y folds it about the middle (the grade flip)
     fill.pos, fill.just = (fill.pos[0], fill.pos[1] + fill.dims[1] / 2), (-1, 0)
     fill.scale = (0.0, 1.0)
-    # the desc starts on the theme pak's blank: the real textures (UI pak) are set by name at the phrase end
+    # the desc starts on the theme pak's blank: the plugin sets the real texture (UI pak) by name
     fill.extra['texture'] = 'WoR_HUD_blank'
     wx, wy = _centre(WORD_BOX)
     kids = [_fit('backing', 'WoR_HUD_v_backing', BACKING, 0.10),
@@ -275,8 +296,7 @@ def mult_desc():
     props += [(f'light{i}_texture', f'light{i}_sink', 'texture') for i in range(5)]
     # ours, set by WoR_HUD_vocal_grade at each phrase end
     props += [('WoR_nixie_scale', 'nixie', 'Scale'), ('WoR_pp_tube_scale', 'phrase_tube', 'Scale'),
-              ('WoR_pp_fill_scale', 'phrase_fill', 'Scale'), ('WoR_pp_fill_rgba', 'phrase_fill', 'rgba'),
-              ('WoR_pp_fill_alpha', 'phrase_fill', 'alpha'), ('WoR_pp_fill_texture', 'phrase_fill', 'texture'),
+              ('WoR_pp_fill_scale', 'phrase_fill', 'Scale'),
               ('WoR_word_texture', 'grade_word', 'texture'),
               ('WoR_word_scale', 'grade_word', 'Scale'), ('WoR_word_alpha', 'grade_word', 'alpha')]
     return desc(MULT_NAME, root, props)
@@ -288,20 +308,22 @@ def sp_desc():
     seg = (x1 - x0) / SP_SEGS
     kids = [_fit('cap', 'WoR_HUD_v_cap', SP_CAP, 0.12),
             E('mark', 'SpriteElement', pos=SP_MARK[:2], dims=(SP_MARK[2] - SP_MARK[0], SP_MARK[3] - SP_MARK[1]),
-              just=(-1, -1), z=0.16, rgba=(20, 20, 24, 255), texture='WoR_HUD_v_cap'),
-            E('border', 'SpriteElement', pos=SP_BORDER[:2], dims=(SP_BORDER[2] - SP_BORDER[0], SP_BORDER[3] - SP_BORDER[1]),
-              just=(-1, -1), z=0.17, texture=SP_BORDER_TEX)]
+              just=(-1, -1), z=0.16, rgba=(20, 20, 24, 255), texture='WoR_HUD_v_cap')]
     for i in range(SP_SEGS):
-        # child (x, y) -> screen (y, -x): the sprite's height runs right along the strip, its width across it
+        # child (x, y) -> screen (y, -x): the sprite's height runs right along the strip, its width across it. The
+        # fill is opaque over the tube (its gloss under the fill, user 2026-11-04)
         fill = E(f'glow{i}', 'SpriteElement', pos=(0.0, 0.0), dims=(y1 - y0, seg), just=(0, -1), scale=(1.0, 0.0),
-                 z=0.14, rgba=SP_RGB + (255,), texture=SP_FILL, blend='Add')
+                 z=0.14, texture=SP_FILL)
+        # the white tip at the fill's end: the plugin moves it with the fill and shows it while the segment fills
+        tip = E(f'tip{i}', 'SpriteElement', pos=(0.0, 0.0), dims=(y1 - y0 + 2.0, SP_TIP_LEN), just=(0, 0), alpha=0.0,
+                z=0.145, texture=SP_TIP_TEX, blend='Add')
         # 2026-10-30 (1v run: the strip never moved): the DE's setubes widget scales the element behind each TEXTURE
         # prop, which was a sink, so the fill never moved. Both props now go to glow{i}_src, the fill's invisible
         # sibling (the DE's texture writes resize it, not the strip); the plugin copies its fill (scale y / x) onto
         # glow{i} every frame, like a multiplayer tube's level source
         src = E(f'glow{i}_src', 'SpriteElement', dims=(4, 4), just=(0, -1), alpha=0.0, z=0.13, texture='WoR_HUD_blank')
         kids.append(E(f'seg{i}', 'ContainerElement', pos=(x0 + i * seg, (y0 + y1) / 2), dims=(4, 4), just=(0, 0),
-                      rot=-90.0, z=0.14, children=[fill, src]))
+                      rot=-90.0, z=0.14, children=[fill, src, tip]))
     root = E('vocal_sp', 'ContainerElement', dims=(1280, 720), just=(-1, -1), children=kids)
     props = []
     for i in range(SP_SEGS):
@@ -497,24 +519,35 @@ def _shade(w, h, top, left, gloss, blur):
     return out
 
 
-def _sp_border():
-    """The star power strip's border (SP_BORDER, 8 texels per unit): a dark outer edge and a light top lip."""
-    from PIL import ImageDraw
-    S = 8
-    w, h = SP_BORDER[2] - SP_BORDER[0], SP_BORDER[3] - SP_BORDER[1]
-    im = Image.new('RGBA', (round(w * S), round(h * S)), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle((0, 0, im.width - 1, im.height - 1), 3 * S, outline=(20, 20, 24, 255), width=S)
-    d.line((2 * S, S + S // 2, im.width - 2 * S, S + S // 2), fill=(150, 150, 158, 255), width=S)
+def _sp_fill():
+    """The vocalist's star power fill: WoR's colours across the strip (SP_PROFILE, top to bottom), the same along it;
+    opaque. Laid out for the turned segments: texture rows run along the strip, columns across it (top of the strip on
+    the right: child (x, y) -> screen (y, -x))."""
+    import numpy as np
+    prof = np.array(SP_PROFILE, np.float32)
+    h, w = 32, 64                                              # across, along (before turning)
+    ys = np.linspace(0, len(prof) - 1, h)
+    rows = np.stack([[np.interp(y, range(len(prof)), prof[:, c]) for c in range(3)] for y in ys])
+    rgb = np.repeat(rows[:, None, :], w, 1)
+    im = Image.fromarray(np.dstack([rgb, np.full((h, w), 255.0)]).astype(np.uint8), 'RGBA')
+    return im.transpose(Image.ROTATE_270)                      # strip top -> texture right column
+
+
+def _sp_tip():
+    """A soft white blob for the fill's end."""
+    from PIL import ImageDraw, ImageFilter
+    im = Image.new('RGBA', (64, 64), (255, 255, 255, 0))
+    a = Image.new('L', (64, 64), 0)
+    ImageDraw.Draw(a).ellipse((14, 14, 50, 50), fill=255)
+    im.putalpha(a.filter(ImageFilter.GaussianBlur(6)))
     return im
 
 
 def textures():
     out = {name: _png(name) for name in ART}
-    cap = _png('WoR_HUD_v_cap')
-    r, g, b, a = cap.split()
-    tinted = Image.merge('RGBA', [c.point(lambda v, m=m: v * m // 255) for c, m in zip((r, g, b), (255, 255, 255))] + [a])
-    out[SP_FILL] = tinted.transpose(Image.ROTATE_90)
+    out[SP_FILL] = _sp_fill()
+    out[SP_TIP_TEX] = _sp_tip()
+    out[PAINT_TEX] = _paint_tex()
     for i in range(NOW_FRAMES):
         out[NOW_TEX[i]] = _lightning(NOW_CORE, NOW_GLOW, 11 + i)
         out[NOW_SP_TEX[i]] = _lightning(NOW_SP_CORE, NOW_SP_GLOW, 11 + i)
@@ -523,7 +556,6 @@ def textures():
     out.update({NOTE_TEX[i]: _note(i) for i in range(len(NOTE_TEX))})
     out[METER_SHADE] = _shade(HEALTH[2] - HEALTH[0], HEALTH[3] - HEALTH[1], 1.0, 1.0, True, 1.2).resize((512, 128), Image.LANCZOS)
     out[LAMP_SHADE] = _shade(GREEN[2] - GREEN[0], GREEN[3] - GREEN[1], 2.5, 1.0, False, 2.6).resize((128, 128), Image.LANCZOS)
-    out[SP_BORDER_TEX] = _sp_border().resize((1024, 64), Image.LANCZOS)
     out.update({MULT_TEX[n]: _mult_image(n, n) for n in MULT_TEX})
     out.update({MULT_SP_TEX[n]: _mult_image(n, 'sp') for n in MULT_SP_TEX})
     out.update({GRADE_TEX[i]: _grade_image(i) for i in range(len(GRADES))})
@@ -532,9 +564,8 @@ def textures():
 
 def sources():
     s = {name: {'src': os.path.join(d, n + '.png'), 'box': None, 'flip': False} for name, (d, n) in ART.items()}
-    s[SP_FILL] = {'src': os.path.join(UI, 'vocals_meter_cap.png'), 'rotated': 90, 'box': None, 'flip': False}
     for name in NOW_TEX + NOW_SP_TEX + list(SPIKE_TEX.values()) + NOTE_TEX + [SP_GLOW_TEX, METER_SHADE, LAMP_SHADE,
-                                                                              SP_BORDER_TEX]:
+                                                                              SP_FILL, SP_TIP_TEX, PAINT_TEX]:
         s[name] = {'src': 'generated (tools/wor_vocals.py)', 'box': None, 'flip': False}
     for n in MULT_TEX:
         s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': str(n), 'box': None, 'flip': False}
@@ -587,11 +618,21 @@ def global_sections(fx_text):
     def base(m):
         nonlocal n_base
         n_base += 1
-        blk = re.sub(r'(ArrayInteger\s*\[\s*)255(\s+)128(\s+)0(\s+)255', r'\g<1>255\g<2>225\g<3>70\g<4>255', m.group(0), count=1)
+        (s0, e0) = COMET_SPARK_RGBA
+        # the QB text takes one array value per line (2026-11-04: "255 200 60 255" on one line compiled to [0])
+        def arr(c):
+            return '\n' + ''.join(f'\t\t\t\t\t\t\t{v}\n' for v in c) + '\t\t\t\t\t\t'
+        blk = re.sub(r'(StructArray start_color\s*\{\s*ArrayInteger\s*\[)[^\]]*(\])', lambda mm: mm.group(1) + arr(s0) + mm.group(2), m.group(0), count=1)
+        blk = re.sub(r'(StructArray end_color\s*\{\s*ArrayInteger\s*\[)[^\]]*(\])', lambda mm: mm.group(1) + arr(e0) + mm.group(2), blk, count=1)
         blk = re.sub(r'(StructFloatX2 start_scale\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{COMET_SPARK[0]:.5f}, {COMET_SPARK[0]:.5f}\g<2>', blk, count=1)
-        return re.sub(r'(StructFloatX2 end_scale\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{COMET_SPARK[1]:.5f}, {COMET_SPARK[1]:.5f}\g<2>', blk, count=1)
+        blk = re.sub(r'(StructFloatX2 end_scale\s*\{\s*Floats \[)[^\]]*(\])', rf'\g<1>{COMET_SPARK[1]:.5f}, {COMET_SPARK[1]:.5f}\g<2>', blk, count=1)
+        blk, nv = re.subn(r'StructFloat velocity = [-\d.]+', 'StructFloat velocity = 0.00', blk, count=1)
+        blk, nt = re.subn(r'StructFloat time = [-\d.]+', f'StructFloat time = {COMET_SPARK_TIME:.2f}', blk, count=1)
+        assert nv == nt == 1, (nv, nt)
+        return blk
+    # each base block from its material to its time (the last field)
     wor = re.sub(r'StructQBKey material = sys_Particle_Spark01_sys_Particle_Spark01\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*255\s+128\s+0\s+255\s*\]\s*\}'
-                 r'(?:(?!StructQBKey material).)*?StructFloatX2 end_scale\s*\{[^}]*\}', base, wor, flags=re.S)
+                 r'(?:(?!StructQBKey material).)*?StructFloat time = [-\d.]+', base, wor, flags=re.S)
     assert n_base == 2, n_base
     return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n'])
 
@@ -605,6 +646,10 @@ def _globals_body(ours):
             f'\t\t:i $change$$vocal_scrolling_lyric_rgba$ = {_qb_rgba(col["upcoming"])}\n'
             f'\t\t:i $change$$vocal_scrolling_word_highlight$ = {_qb_rgba(col["current"])}\n'
             f'\t\t:i $change$$vocal_scrolling_lyric_after$ = {_qb_rgba(col["sung"])}\n'
+            # 1.89 (user 2026-11-06: no line behind the now line, the sung parts of the notes FILLED as in WoR): the
+            # DE's sprite paint (read per highway at its creation, 0x4711f0) instead of the Waveform_UI trace; the
+            # segments are ours (WoR_HUD_vocal_create_paint)
+            f'\t\t:i $change$$vocal_enable_material_paint$ = %i({0 if ours else 1})\n'
             )   # NOT changed: vocal_gem_colors / vocals_comet_particle_effects (copying them with ~ crashed vocals_create_highway, 2026-10-27)
 
 
@@ -673,9 +718,9 @@ def grade_scripts():
     """Phrase end (plugin swap of the DE's ddb4a0e3, which runs with quality 0..1 and player at every phrase end):
     the DE's own body still runs (its message is hidden by our vocals_message swap, its comet / border flash stay),
     then with our theme WoR's grade flip in the vocalist's panel (props of wor_vocal_mult_ghwor)."""
-    wait = '\t\t:i $wait$%f(0.0333)$seconds$\n'
-    fold = [1.0 - (k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]           # 0.67, 0.33, 0
-    grow = [(k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]                 # 0.33, 0.67, 1
+    wait = '\t\t:i $wait$%i(1)$gameframe$\n'
+    fold = [1.0 - (k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]           # 5/6 .. 0
+    grow = [(k + 1) / FLIP_STEPS for k in range(FLIP_STEPS)]                 # 1/6 .. 1
     set_ = '\t\t:i %GLOBAL%$meter_id$.$se_setprops$'
     out = ('Script WoR_HUD_vocal_phrase_end [\n'
            '\t:i $WoR_HUD_vocal_phrase_end_orig$ isNull\n'
@@ -711,14 +756,12 @@ def grade_scripts():
     for i, m in enumerate(GRADE_MIN[1:], 1):
         out += f'\t:i if (%GLOBAL%$q$ >= %f({m:.2f}))\n\t\t:i $WoR_i$ = %i({i})\n\t:i endif\n'
     out += ('\t:i $WoR_grades$ = :a{' + ''.join(f'${t}$' for t in GRADE_TEX) + ':a}\n'
-            '\t:i $WoR_tex$ = (%GLOBAL%$WoR_grades$:a{%GLOBAL%$WoR_i$:a})\n'
-            f'\t:i $WoR_rgba$ = {_qb_rgba(PP_RGB[0] + (255,))}\n')
-    for s, c in zip(PP_STEPS, PP_RGB[1:]):
-        out += f'\t:i if (%GLOBAL%$q$ >= %f({s:.2f}))\n\t\t:i $WoR_rgba$ = {_qb_rgba(c + (255,))}\n\t:i endif\n'
+            '\t:i $WoR_tex$ = (%GLOBAL%$WoR_grades$:a{%GLOBAL%$WoR_i$:a})\n')
     out += '\t:i if $ScreenElementExists$$id$ = %GLOBAL%$meter_id$\n'
-    # 1. the multiplier and the phrase box fold away (the old fill fades with them)
+    # 1. the multiplier and the phrase box fold away (the fill folds with the box; its level is the plugin's)
     for s in fold:
-        out += f'{set_}$WoR_nixie_scale$ = {_v2(1, s)}$WoR_pp_tube_scale$ = {_v2(1, s)}$WoR_pp_fill_alpha$ = %f({s:.4f})\n{wait}'
+        out += (f'{set_}$WoR_nixie_scale$ = {_v2(1, s)}$WoR_pp_tube_scale$ = {_v2(1, s)}'
+                f'$WoR_pp_fill_scale$ = {_v2(0, s)}\n{wait}')
     # 2. the grade word unfolds, holds 0.4 s, folds
     out += f'{set_}$WoR_word_texture$ = %GLOBAL%$WoR_tex$$WoR_word_alpha$ = %f(1.0)\n'
     for s in grow:
@@ -727,16 +770,108 @@ def grade_scripts():
     for s in fold:
         out += f'{set_}$WoR_word_scale$ = {_v2(1, s)}\n{wait}'
     out += f'{set_}$WoR_word_alpha$ = %f(0.0)\n'
-    # 3. the meters unfold, the phrase box filled to this phrase's quality in its colour (kept to the next phrase end)
-    out += (f'{set_}$WoR_pp_fill_texture$ = $WoR_HUD_v_ppfill$$WoR_pp_fill_rgba$ = %GLOBAL%$WoR_rgba$'
-            '$WoR_pp_fill_alpha$ = %f(1.0)\n')
+    # 3. the meters unfold; the box starts empty and fills live through the next phrase (WoR)
     for s in grow:
         out += (f'{set_}$WoR_nixie_scale$ = {_v2(1, s)}$WoR_pp_tube_scale$ = {_v2(1, s)}'
-                f'$WoR_pp_fill_scale$ = ((%vec2(1.0,0.0) * %GLOBAL%$q$) + {_v2(0, s)})\n')
+                f'$WoR_pp_fill_scale$ = {_v2(0, s)}\n')
         if s < 1.0:
             out += wait
     out += '\t:i endif\n\t:i endfunction\n]\n'
     return out
+
+
+# The pitch trace (the DE's ekgelement, a Waveform_UI material made by vocals_setup_paint_material): the DE paints it
+# orange (user 2026-11-04: "an orange trail behind the green plasma line"); WoR's same script and its star power
+# on / off set yellow (cyan in star power), which fills the sung parts of the notes. m_psColors0..7 (x, y, z, w), from
+# WoR's vocals_highway_fx (setup = star power off).
+PAINT_WOR = {
+    'off': [(0.99, 0.91, 0.21, 0.0), (0.99, 0.99, 0.26, 1.5), (1.0, 0.75, 0.12, 0.0), (0.0, 0.0, 0.0, 0.0),
+            (2.0, 1.0, 0.0, 0.0), (0.0, 0.0, 0.1, 0.0), (1.0, 0.6, 0.2, 0.0), (1.0, 1.0, 0.3, 0.0)],
+    'on': [(0.26, 1.0, 0.99, 0.0), (0.26, 1.0, 0.99, 1.0), (0.12, 0.75, 1.0, 0.0), (0.0, 0.0, 0.0, 0.0),
+           (0.0, 1.4, 1.4, 0.0), (0.0, 0.0, 0.1, 0.0), (0.2, 0.6, 1.0, 0.0), (0.3, 1.0, 1.0, 0.0)],
+}
+# the plugin swaps (kScriptSwaps): DE script -> ours; the DE body moves to the _orig placeholder
+# sung-note fill (sprite paint, WoR_HUD_vocal_create_paint): texture, height in the note container (notes 15 tall with
+# 3-unit outlines), WoR's yellow / star power cyan
+PAINT_TEX = 'WoR_HUD_vpaint'
+PAINT_H = 11.0
+PAINT_RGB, PAINT_SP_RGB = (255, 236, 60), (120, 255, 255)
+PAINT_SWAPS = [('vocals_setup_paint_material', 'WoR_HUD_vocal_paint_setup', 'off'),
+               ('vocals_paint_star_power_on', 'WoR_HUD_vocal_paint_sp_on', 'on'),
+               ('vocals_paint_star_power_off', 'WoR_HUD_vocal_paint_sp_off', 'off')]
+
+
+def paint_scripts():
+    out = ''
+    for de, ours, state in PAINT_SWAPS:
+        out += (f'Script {ours} [\n'
+                '\t:i if NOT $GotParam$$player$\n\t\t:i $player$ = %i(1)\n\t:i endif\n'
+                f'\t:i ${ours}_orig$$player$ = %GLOBAL%$player$\n'
+                '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
+                f'\t\t:i $WoR_HUD_vocal_paint_colours$$player$ = %GLOBAL%$player$$state$ = ${state}$\n'
+                '\t:i endif\n'
+                '\t:i endfunction\n]\n\n'
+                f'Script {ours}_orig [\n'
+                f'\t:i $printf$%s("WoR_HUD: {ours} placeholder ran, plugin swap missing")\n'
+                '\t:i endfunction\n]\n\n')
+    out += ('Script WoR_HUD_vocal_paint_colours [\n'
+            '\t:i $VocalsHighway_GetId$$player$ = %GLOBAL%$player$\n'
+            '\t:i if NOT $ScreenElementExists$$id$ = :s{%GLOBAL%$vocals_highway_id$$child$ = $ekgelement$:s}\n'
+            '\t\t:i return\n\t:i endif\n'
+            '\t:i $VocalsHighway_GetMaterial$$player$ = %GLOBAL%$player$\n')
+    for k, state in enumerate(('on', 'off')):
+        out += f'\t:i {"if" if k == 0 else "else"} {"(%GLOBAL%$state$ = $on$)" if k == 0 else ""}\n'.replace('else \n', 'else \n')
+        for i, (x, y, z, w) in enumerate(PAINT_WOR[state]):
+            out += ('\t\t:i $SetMaterialProperty$$mat$ = %GLOBAL%$vocals_highway_material_text$'
+                    f'$prop$ = %s("m_psColors{i}")$x$ = %f({x})$y$ = %f({y})$z$ = %f({z})$w$ = %f({w})\n')
+    out += '\t:i endif\n\t:i endfunction\n]\n\n'
+    # sprite paint (the engine runs vocals_create_paint for each sung segment, hit = paint_hit / paint_miss /
+    # paint_default, at the sung pitch, and stretches the returned stretch_id along it): with the WoR theme a hit
+    # segment is a solid fill inside the note (yellow, cyan in star power), misses invisible
+    cy, sp = PAINT_RGB, PAINT_SP_RGB
+    out += ('Script WoR_HUD_vocal_create_paint [\n'
+            '\t:i if NOT ($[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$)\n'
+            '\t\t:i $WoR_HUD_vocal_create_paint_orig$ isNull\n'
+            '\t\t:i return$id$ = %GLOBAL%$id$$stretch_id$ = %GLOBAL%$stretch_id$\n'
+            '\t:i endif\n'
+            '\t:i $VocalsHighway_GetId$$player$ = %GLOBAL%$player$\n'
+            '\t:i %GLOBAL%$vocals_highway_id$.$desc_resolvealias$$name$ = $alias_note_scale$$param$ = $note_scale$\n'
+            f'\t:i $WoR_rgba$ = {_qb_rgba(cy + (0,))}\n'
+            '\t:i if (%GLOBAL%$hit$ = $paint_hit$)\n'
+            f'\t\t:i $WoR_rgba$ = {_qb_rgba(cy + (255,))}\n'
+            '\t\t:i if (~$WoR_HUD_vocal_sp$ = %i(1))\n'
+            f'\t\t\t:i $WoR_rgba$ = {_qb_rgba(sp + (255,))}\n'
+            '\t\t:i endif\n'
+            '\t:i endif\n'
+            '\t:i $CreateScreenElement$:s{$parent$ = %GLOBAL%$note_scale$$type$ = $ContainerElement$'
+            '$just$ = :a{$left$$center$:a}$Pos$ = %GLOBAL%$Pos$$z_priority$ = %i(6):s}\n'
+            '\t:i $container_id$ = %GLOBAL%$id$\n'
+            '\t:i $CreateScreenElement$:s{$parent$ = %GLOBAL%$container_id$$local_id$ = $note_left$$type$ = $SpriteElement$'
+            '$just$ = :a{$left$$center$:a}$texture$ = $WoR_HUD_blank$$dims$ = %vec2(1.0,1.0)$alpha$ = %f(0.0):s}\n'
+            '\t:i $CreateScreenElement$:s{$parent$ = %GLOBAL%$container_id$$local_id$ = $note_middle$$type$ = $SpriteElement$'
+            f'$just$ = :a{{$left$$center$:a}}$texture$ = ${PAINT_TEX}$$dims$ = %vec2(1.0,{PAINT_H:.1f})'
+            '$rgba$ = %GLOBAL%$WoR_rgba$:s}\n'
+            '\t:i $middle_id$ = %GLOBAL%$id$\n'
+            '\t:i $CreateScreenElement$:s{$parent$ = %GLOBAL%$container_id$$local_id$ = $note_right$$type$ = $SpriteElement$'
+            '$just$ = :a{$left$$center$:a}$texture$ = $WoR_HUD_blank$$dims$ = %vec2(1.0,1.0)$alpha$ = %f(0.0):s}\n'
+            '\t:i return$id$ = %GLOBAL%$container_id$$stretch_id$ = %GLOBAL%$middle_id$\n'
+            '\t:i endfunction\n]\n\n'
+            'Script WoR_HUD_vocal_create_paint_orig [\n'
+            '\t:i $printf$%s("WoR_HUD: vocal create paint placeholder ran, plugin swap missing")\n'
+            '\t:i endfunction\n]\n')
+    return out
+
+
+def _paint_tex():
+    """The fill of a sung note segment: white (tinted by the segment's rgba), soft top and bottom edges."""
+    import numpy as np
+    h, w = 32, 16
+    y = np.abs(np.linspace(-1, 1, h))
+    a = np.clip((1.0 - y) / 0.25, 0, 1)                       # the outer eighth fades
+    v = 1.0 - 0.18 * y ** 2                                    # a little brighter in the middle
+    rgb = np.repeat((v * 255)[:, None], w, 1)
+    al = np.repeat((a * 255)[:, None], w, 1)
+    return Image.fromarray(np.dstack([rgb, rgb, rgb, al]).astype(np.uint8), 'RGBA')
 
 
 def _panel_in_v1(d, dy):
@@ -796,7 +931,7 @@ def vocal_highway_desc(de_text):
                                                texture='WoR_HUD_blank').render(0)])
     # the now line (the plugin steps through the frames, green or cyan by WoR_HUD_vocal_sp) and the arrowheads
     xc, top, w, h = NOW_BOX
-    kids = [E('WoR_now_line', 'SpriteElement', pos=(xc, top), dims=(w, h), just=(0, -1), z=0.5, texture=NOW_TEX[0],
+    kids = [E('WoR_now_line', 'SpriteElement', pos=(xc, top), dims=(w * NOW_W_SCALE, h), just=(0, -1), z=0.5, texture=NOW_TEX[0],
               blend='Add').render(0),
             E('WoR_spike_top', 'SpriteElement', pos=(xc, top - 1.0), dims=(SPIKE_W, SPIKE_H), just=(0, -1), z=0.6,
               texture=SPIKE_TEX['down']).render(0),

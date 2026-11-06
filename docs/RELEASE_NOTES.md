@@ -2,6 +2,15 @@
 
 ## Next (unreleased)
 
+Plugin `wor_hud_fixes.asi` 1.89:
+- **Vocals:**
+  - The phrase box fills while you sing, as in WoR, and turns yellow then green as it fills. It's empty again after each grade.
+  - Sung notes fill yellow where you hit them; the orange line behind the now line is gone.
+  - A small orange ball shows at the now line only while you sing, with no trail.
+  - The now line is thinner and animates 3x faster.
+  - The star power strip has no border and a shinier WoR fill with a white tip; its middle mark is thinner.
+  - The grade flip is smoother.
+
 Plugin `wor_hud_fixes.asi` 1.88:
 - **Vocals:** at the end of each phrase the panel shows WoR's grade flip (the multiplier and phrase box fold away and
   SLOPPY! / ROUGH / AVERAGE / SOLID / EXCELLENT! shows on the phrase box in WoR's font and colours for 0.4 s), then the

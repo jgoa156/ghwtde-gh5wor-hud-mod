@@ -76,6 +76,9 @@ namespace
 	constexpr uint32_t kFontTable = 0xeecd60;        // original table (32 entries of 0x1c bytes)
 	constexpr uint32_t kFontEntry = 0x1c;
 	constexpr uintptr_t kTubeUpdate = 0x478630;      // void __thiscall (widget, value*, event*)
+	constexpr uintptr_t kVocalTick = 0x474390;       // void __thiscall (vocal player): per update (vtable), sets the phrase
+	                                                 // window and runs the tick counters (0x473c60 / 0x4727d0 / 0x4725f0)
+	constexpr uintptr_t kSetRgba = 0x5a1af0;         // void __thiscall (element, rgba, int now)
 	constexpr uintptr_t kSetPos = 0x5a0fd0;          // void __thiscall (element, x, y, int)
 	constexpr uintptr_t kSetScale = 0x5a17e0;        // void __thiscall (element, x, y, int, int)
 	constexpr uintptr_t kSetDims = 0x5a1290;         // void __thiscall (element, w, h, int) (0x5a14e0 is SetJust)
@@ -130,6 +133,11 @@ namespace
 		{ 0x640414, { 0x8B, 0x14, 0x8D }, 3, "font unload slot read" },
 		{ 0x64041b, { 0x8D, 0x34, 0x8D }, 3, "font unload slot address" },
 		{ kTubeUpdate, { 0x51, 0x53, 0x56, 0x8B, 0xF1, 0x80, 0x7E, 0x28, 0x00 }, 9, "SP tube update prologue" },
+		{ kVocalTick, { 0x64, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x6A, 0xFF, 0x68, 0x58, 0x5C, 0x96, 0x00 }, 13, "vocal update prologue" },
+		{ 0x4743f0, { 0x89, 0x86, 0xF4, 0xC7, 0x00, 0x00 }, 6, "vocal update: now store" },
+		{ 0x472898, { 0x83, 0x86, 0x0C, 0xC8, 0x00, 0x00, 0x01 }, 7, "vocal phrase tick: note ticks counter" },
+		{ 0x4735cd, { 0x8B, 0x8F, 0x08, 0xC8, 0x00, 0x00 }, 6, "vocal phrase end: hit ticks read" },
+		{ kSetRgba, { 0x53, 0x8B, 0x5C, 0x24, 0x08, 0x56, 0x8B, 0xF1, 0x8B, 0x86, 0x18, 0x01, 0x00, 0x00 }, 14, "SetRGBA prologue" },
 		{ 0x4786ff, { 0x8B, 0x4E, 0x1C }, 3, "SP tube segment vector" },
 		{ kSetPos, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0xEC, 0x00, 0x00, 0x00 }, 11, "SetPos prologue" },
 		{ kSetScale, { 0x56, 0x8B, 0xF1, 0xF3, 0x0F, 0x10, 0x86, 0x04, 0x01, 0x00, 0x00 }, 11, "SetScale prologue" },
@@ -535,6 +543,9 @@ namespace
 	using SetScaleFn = void(__fastcall *)(void *element, void *edx, float x, float y, int a, int b);
 	using SetDimsFn = void(__fastcall *)(void *element, void *edx, float w, float h, int flag);
 	TubeUpdateFn g_tube_update = nullptr;
+	using VocalTickFn = void(__fastcall *)(void *vocal, void *edx);
+	VocalTickFn g_vocal_tick = nullptr;
+	using SetRgbaFn = void(__fastcall *)(void *element, void *edx, uint32_t rgba, int now);
 	ElementUpdateFn g_element_update = nullptr;
 	bool g_tube_logged = false;
 
@@ -1032,6 +1043,19 @@ namespace
 		// flip in the vocalist's panel and fills its phrase box (tools/wor_vocals.py grade_scripts)
 		{ 0xddb4a0e3 /* vocal phrase end */, 0x041477f9 /* wor_hud_vocal_phrase_end */, 0x251543c5 /* _orig */,
 		  "vocals: phrase end wrapped (WoR's grade flip and phrase box with the WoR theme)" },
+		// 1.89 (user 2026-11-04: "an orange trail behind the green plasma line"): the pitch trace (ekgelement, Waveform_UI)
+		// gets WoR's colours with the WoR theme: yellow on the sung parts, cyan in star power (tools/wor_vocals.py
+		// paint_scripts)
+		{ 0x3904fa2f /* vocals_setup_paint_material */, 0xb9df17cf /* wor_hud_vocal_paint_setup */, 0xfcc350b4 /* _orig */,
+		  "vocals: pitch trace setup wrapped (WoR's yellow with the WoR theme)" },
+		{ 0x3624a295 /* vocals_paint_star_power_on */, 0xa022dedb /* wor_hud_vocal_paint_sp_on */, 0x44fa89e1 /* _orig */,
+		  "vocals: pitch trace star power on wrapped (WoR's cyan)" },
+		{ 0xec5b0d0c /* vocals_paint_star_power_off */, 0x7da967e7 /* wor_hud_vocal_paint_sp_off */, 0x99a79245 /* _orig */,
+		  "vocals: pitch trace star power off wrapped (WoR's yellow)" },
+		// 1.89 (user 2026-11-06: no line behind the now line, the sung parts of the notes filled): with the WoR theme the
+		// DE's sprite paint (vocal_enable_material_paint 0); its segments are WoR's solid note fills
+		{ 0xc17842d5 /* vocals_create_paint */, 0xa7dae24f /* wor_hud_vocal_create_paint */, 0x2e17fb87 /* _orig */,
+		  "vocals: sung-note paint wrapped (WoR's filled notes with the WoR theme)" },
 		// 1.42: test harness (build.py TEST_AUTOLAUNCH_SCRIPT): with [WoR_HUD] TestAutoLaunch=1 the title screen runs the
 		// DE's AutoLaunch setup (tests/capture_band.py); stock title screen otherwise
 		{ 0x7ebab753 /* ui_create_boot_iis */, 0x4829489f /* wor_hud_ui_create_boot_iis */, 0xeb505f15 /* _orig */,
@@ -1515,11 +1539,14 @@ namespace
 			set_texture_keep_dims(e, kVNote[band]);
 	}
 
-	// the now line: green lightning, cyan in star power, a new bolt every 1/20 s
+	// the now line: green lightning, cyan in star power, a new bolt every 1/60 s (1.89, user 2026-11-04: WoR's animates
+	// at least 3x faster than the 1/20 s of 1.58), in a scrambled order so no bolt follows itself
 	void vocal_now(void *e, uint32_t tex)
 	{
 		constexpr int frames = sizeof(kVNow[0]) / sizeof(kVNow[0][0]);
-		const uint32_t want = kVNow[vocal_sp() ? 1 : 0][static_cast<int>(now() * 20.0) % frames];
+		static const int order[8] = { 0, 5, 2, 7, 4, 1, 6, 3 };
+		const int tick = static_cast<int>(now() * 60.0);
+		const uint32_t want = kVNow[vocal_sp() ? 1 : 0][frames == 8 ? order[tick % 8] : tick % frames];
 		if (want != tex)
 			set_texture_keep_dims(e, want);
 	}
@@ -1549,18 +1576,39 @@ namespace
 	void vocal_sp_segment(void *e)
 	{
 		// 1.86: the fill follows its level source (glow<i>_src, the sibling the DE's widget scales: fill = scale y / x)
+		// 1.89: the segment's white tip (texture kVSpTip, a sibling) sits at the fill's end while it fills
 		void *parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		void *tip = nullptr;
+		float level = -1.0f;
 		for (void *s = parent ? *reinterpret_cast<void **>(field(parent, kElementFirstChild)) : nullptr; s;
 		     s = *reinterpret_cast<void **>(field(s, kElementNextSibling)))
 		{
 			if (s == e)
+				continue;
+			if (texture_of(s) == kVSpTip)
+			{
+				tip = s;
+				continue;
+			}
+			if (level >= 0.0f)
 				continue;
 			const float ssx = f32(s, kElementScale), ssy = f32(s, kElementScale + 4);
 			float f = ssx > 1e-4f ? ssy / ssx : 0.0f;
 			f = f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
 			if (fabsf(f32(e, kElementScale + 4) - f) > 1e-3f || fabsf(f32(e, kElementScale) - 1.0f) > 1e-3f)
 				reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, 1.0f, f, 0, 0);
-			break;
+			level = f;
+		}
+		if (tip && level >= 0.0f)
+		{
+			const bool show = level > 0.02f && level < 0.98f;
+			set_alpha(tip, show ? 1.0f : 0.0f);
+			if (show)
+			{
+				const float y = f32(e, kElementPos + 4) + f32(e, kElementDims + 4) * level;
+				if (fabsf(f32(tip, kElementPos + 4) - y) > 0.01f)
+					reinterpret_cast<SetPosFn>(kSetPos)(tip, nullptr, f32(e, kElementPos), y, 1);
+			}
 		}
 		const float sx = f32(e, kElementScale), sy = f32(e, kElementScale + 4), a = f32(e, kElementAlpha);
 		for (int i = 0; i < g_vsp_n; ++i)
@@ -1575,6 +1623,72 @@ namespace
 		log("vocal sp segment %p: scale %.3f x %.3f, alpha %.2f, dims %.1f x %.1f, rot %.1f deg, parent rot %.1f deg", e, sx, sy, a,
 		    f32(e, kElementDims), f32(e, kElementDims + 4), f32(e, kElementRot) * 57.2957795f,
 		    f32(*reinterpret_cast<void **>(field(e, kElementParent)), kElementRot) * 57.2957795f);
+	}
+
+	// 1.89 (user 2026-11-04: the phrase box "isn't registering anything"): the DE keeps no script value for a phrase's
+	// progress, but its vocal player object has it (GHWT_Definitive.exe, found 2026-11-04):
+	//   0x474390 (per update, thiscall, vtable): [+c7f4] = now, [+c7f8] / [+c7fc] = the current phrase's start / end,
+	//     then one of 0x473c60 / 0x4727d0 / 0x4725f0: in a phrase they count [+c80c] += 1 per note tick (0x472898,
+	//     0x47274c); 0x471ff0 counts [+c808] per tick sung on pitch
+	//   0x473560 (phrase end): quality = [+c808] / [+c80c] through the difficulty table, then both back to 0
+	// WoR's box grows through the phrase to its result: here hits / ticks so far x the phrase's elapsed part. The object
+	// is taken from the update hook, read only while it keeps updating (no stale reads after the song).
+	void *g_vocal_obj = nullptr;
+	double g_vocal_obj_t = 0.0;
+	int g_vocal_logs = 0;
+
+	void __fastcall vocal_tick_hook(void *vocal, void *edx)
+	{
+		if (vocal != g_vocal_obj && g_vocal_logs < 8)
+		{
+			++g_vocal_logs;
+			log("vocals: phrase tracker %p (was %p)", vocal, g_vocal_obj);
+		}
+		g_vocal_obj = vocal;
+		g_vocal_obj_t = now();
+		g_vocal_tick(vocal, edx);
+	}
+
+	float vocal_phrase_level()
+	{
+		if (!g_vocal_obj || now() - g_vocal_obj_t > 0.25)
+			return 0.0f;
+		const int32_t t = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f4));
+		const int32_t t0 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8));
+		const int32_t t1 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc));
+		const uint32_t hit = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808));
+		const uint32_t ticks = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c));
+		if (t1 <= t0 || t < t0 || t >= t1 || ticks == 0)
+			return 0.0f;
+		float q = static_cast<float>(hit) / static_cast<float>(ticks) * static_cast<float>(t - t0) / static_cast<float>(t1 - t0);
+		return q < 0.0f ? 0.0f : q > 1.0f ? 1.0f : q;
+	}
+
+	int g_vpp_logs = 0;
+
+	void vocal_pp_fill(void *e)
+	{
+		if (texture_of(e) != kVPpFill)
+			set_texture_keep_dims(e, kVPpFill);
+		const float q = vocal_phrase_level();
+		if (fabsf(f32(e, kElementScale) - q) > 1e-3f)
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, q, f32(e, kElementScale + 4), 0, 0);
+		const uint32_t rgba = kVPpRgba[q >= kVPpSteps[1] ? 2 : q >= kVPpSteps[0] ? 1 : 0];
+		if (*reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget)) != rgba)
+			reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, rgba, 1);
+		if (q > 0.0f && g_vpp_logs < 12)
+		{
+			static float last = -1.0f;
+			if (q - last > 0.25f || q < last)
+			{
+				last = q;
+				++g_vpp_logs;
+				log("vocals: phrase box %.2f (hits %u / ticks %u, time %d in %d..%d)", q,
+				    *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808)), *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c)),
+				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f4)), *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8)),
+				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc)));
+			}
+		}
 	}
 
 	// the star power glow bands: fade in / out with the flag
@@ -1595,6 +1709,8 @@ namespace
 			needle_remap(element);
 			if (fabsf(f32(element, kElementZ) - kMpSrcZ) < 1e-4f)
 				mp_tube_source(element);
+			else if (fabsf(f32(element, kElementZ) - kVPpFillZ) < 1e-5f)
+				vocal_pp_fill(element);
 			vs_streak_size(element);
 			const uint32_t tex = texture_of(element);
 			if (tex == kVsNeedleTex)
@@ -2363,7 +2479,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.88 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.89 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])
@@ -2385,6 +2501,10 @@ namespace
 		// push ecx; push ebx; push esi; mov esi, ecx = 5 bytes of whole instructions
 		g_tube_update = reinterpret_cast<TubeUpdateFn>(install_jmp(kTubeUpdate, 5, reinterpret_cast<void *>(&tube_update_hook)));
 		log(g_tube_update ? "star power fill: smooth fill hooked" : "star power fill: smooth fill hook failed");
+		// mov eax, fs:[0] = 6 bytes, one whole instruction (1.89 test run: the bot's ticks go through 0x4725f0 / 0x473c60,
+		// not the 0x4727d0 first hooked, so the hook sits on their common caller)
+		g_vocal_tick = reinterpret_cast<VocalTickFn>(install_jmp(kVocalTick, 6, reinterpret_cast<void *>(&vocal_tick_hook)));
+		log(g_vocal_tick ? "vocals: phrase tracker hooked (live phrase box)" : "vocals: phrase tracker hook failed");
 		// push esi; mov esi, ecx; mov eax, [esi+8] = 6 bytes of whole instructions
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));

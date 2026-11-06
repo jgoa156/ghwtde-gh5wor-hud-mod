@@ -143,6 +143,13 @@ def main():
             f'static const uint32_t kVSpGlow = 0x{qbkey(wor_vocals.SP_GLOW_TEX):08x};',
             f'static const uint32_t kVocalSpFlag = 0x{qbkey("WoR_HUD_vocal_sp"):08x};',
             f'static const uint32_t kVSpFill = 0x{qbkey(wor_vocals.SP_FILL):08x};   // the vocalist\'s star power strip segments',
+            f'static const uint32_t kVSpTip = 0x{qbkey(wor_vocals.SP_TIP_TEX):08x};   // the white tip at a segment\'s fill end',
+            '// 1.89: the vocalist\'s phrase box, filled live (found by its z): texture, colours (r | g << 8 | b << 16 | a << 24)',
+            '// and the levels where they change',
+            f'static const uint32_t kVPpFill = 0x{qbkey("WoR_HUD_v_ppfill"):08x};',
+            f'static const float kVPpFillZ = {wor_vocals.PP_FILL_Z}f;',
+            'static const uint32_t kVPpRgba[3] = { ' + ', '.join(f'0x{(255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]:08x}' for c in wor_vocals.PP_RGB) + ' };',
+            'static const float kVPpSteps[2] = { ' + ', '.join(f'{s}f' for s in wor_vocals.PP_STEPS) + ' };',
             'static const uint32_t kHighwayIcons[4] = { ' + ', '.join(f'0x{qbkey("higway_icon_" + n):08x}' for n in ('guitar', 'bass', 'drum', 'mic')) + ' };   // sic (DE names)',
             '']
     p = os.path.join(paths.REPO, 'plugin', 'src', 'names.h')

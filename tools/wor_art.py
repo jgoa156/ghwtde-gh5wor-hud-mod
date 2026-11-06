@@ -215,7 +215,8 @@ def plasma_frames(fill_png, glow_png, noise_png, n, base, hot, dark, contrast=1.
     return frames
 
 
-def add_arc(img, k, png, rows, center, frames=16, every=3, width=0.8, strength=1.0, blur=0.7):
+def add_arc(img, k, png, rows, center, frames=16, every=3, width=0.8, strength=1.0, blur=0.7, tile=None, overlap=6,
+            glow_rgb=None):
     """WoR's ready tube lightning (Tesla needle, Mat_Lightning_Arc_Anim02: Lightining_arc_anim01, 16 frames at 20 fps)
     drawn into plasma frame k: arc frame (k // every) % frames, turned to run along the tube's centre line
     (texture x = center[0] + center[1] * y over rows), `width` of the fill's width, added in white inside the fill."""
@@ -231,8 +232,25 @@ def add_arc(img, k, png, rows, center, frames=16, every=3, width=0.8, strength=1
     span = [int(rows[0]), int(rows[1])]
     xs = np.where(inside[(span[0] + span[1]) // 2] > 0.5)[0]
     ww = max(4, int(round((xs[-1] - xs[0] + 1) * width))) if len(xs) else 12
-    wire = wire.resize((ww, span[1] - span[0]), Image.BICUBIC).filter(ImageFilter.MaxFilter(3))   # keep the bolt's weight
-    wire = np.asarray(wire).astype(float) / 255.0
+    L = span[1] - span[0]
+    if tile:   # 2026-11-06 (user: "more junctions, like in the original"): the bolt tiled down the tube near its own
+        # 4:1 aspect (tile = rows per bolt), a different frame per tile, neighbours cross-faded over `overlap` rows
+        acc = np.zeros((L, ww))
+        n_t = max(1, int(round(L / tile)))
+        step = L / n_t
+        for i in range(n_t):
+            fr = (f + i * 5) % frames
+            cell = sheet.crop((0, fr * fh, sheet.size[0], (fr + 1) * fh)).transpose(Image.ROTATE_90)
+            if i % 2:
+                cell = cell.transpose(Image.FLIP_TOP_BOTTOM)          # ends meet: each bolt starts where the last ended
+            t0, t1 = int(round(i * step - (overlap if i else 0))), int(round((i + 1) * step + (overlap if i < n_t - 1 else 0)))
+            t0, t1 = max(0, t0), min(L, t1)
+            c = np.asarray(cell.resize((ww, t1 - t0), Image.BICUBIC).filter(ImageFilter.MaxFilter(3))).astype(float) / 255.0
+            acc[t0:t1] = np.maximum(acc[t0:t1], c)
+        wire = acc
+    else:
+        wire = wire.resize((ww, L), Image.BICUBIC).filter(ImageFilter.MaxFilter(3))   # keep the bolt's weight
+        wire = np.asarray(wire).astype(float) / 255.0
     lum = np.zeros((h, w))
     for i, y in enumerate(range(span[0], span[1])):
         row = np.where(inside[y] > 0.5)[0]          # follow the fill's own centre (the art is slanted)
@@ -245,6 +263,13 @@ def add_arc(img, k, png, rows, center, frames=16, every=3, width=0.8, strength=1
         src = Image.fromarray((np.clip(lum, 0, 1) * 255).astype('uint8'))
         core = np.asarray(src.filter(ImageFilter.GaussianBlur(blur))).astype(float) / 255.0
         halo = np.asarray(src.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(blur * 3))).astype(float) / 255.0
+        if glow_rgb is not None:   # 2026-11-06: WoR's bolt is a white core in a cyan glow, not white all through
+            core_l = np.clip(core * 1.3, 0, 1) * strength * inside
+            halo_l = np.clip(halo * 0.9, 0, 1) * strength * inside
+            g = np.array(glow_rgb, float)[None, None]
+            a[..., :3] = a[..., :3] + (g - a[..., :3]) * np.clip(halo_l, 0, 1)[..., None] * (g.max() > 0)
+            a[..., :3] = a[..., :3] + (255.0 - a[..., :3]) * core_l[..., None]
+            return Image.fromarray(np.clip(a + 0.5, 0, 255).astype('uint8'), 'RGBA')
         lum = np.clip(core * 1.3 + halo * 0.7, 0, 1)
     a[..., :3] = a[..., :3] + (255.0 - a[..., :3]) * (lum * strength * inside)[..., None]
     return Image.fromarray(np.clip(a + 0.5, 0, 255).astype('uint8'), 'RGBA')

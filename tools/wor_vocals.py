@@ -96,6 +96,11 @@ FLIP_STEPS = 6                                                           # 0.1 s
 # (user 2026-11-04: the flip must be smoother; 1.88 waited 1/30 s between 3 steps)
 # these ride in the always-loaded UI pak (no 4 MiB cap; the theme pak was at 3.68 MB), like the menu popups' art
 UI_TEX = GRADE_TEX + ['WoR_HUD_v_ppfill']
+# WoR's "Get Ready!" on the vocal highway (user 2026-11-06: abruptly, 5 s before the first vocal note, for 3 s, centred)
+GET_READY_TEXT, GET_READY_TEX = 'Get Ready!', 'WoR_HUD_v_getready'
+GET_READY_LEAD, GET_READY_SHOW = 5000, 3000                 # ms
+GET_READY_DIMS = (430.0, 46.0)                              # canvas units (WoR footage: ~46 units tall)
+# (in the theme pak: a desc names it, tests/run_offline.py integrity_textures_in_theme_pak)
 # star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
 # mark 5 wide, drawn over the highway's top line
 SP_CAP = (145, 493.0, 383, 501.0)                 # user 2026-10-27: 1 smaller, 2 down
@@ -147,7 +152,7 @@ COMET_SPARK_TIME = 0.2
 # and halo together, mock verify/mock_vocal_fix_v1.jpg) and a new bolt every frame (plugin 1.89, 60 a second) out of 8;
 # frames 4..7 ride in the UI pak (the theme pak is near its cap; the plugin sets them by name)
 NOW_FRAMES = 8
-NOW_W_SCALE = 0.35                           # user 2026-11-06: even thinner (1.89's first build: 0.55)
+NOW_W_SCALE = 0.22                           # user 2026-11-06: thinner again (0.55 -> 0.35 -> 0.22; WoR's is a hairline)
 NOW_TEX = [f'WoR_HUD_vnow_g{i}' for i in range(NOW_FRAMES)]
 NOW_SP_TEX = [f'WoR_HUD_vnow_c{i}' for i in range(NOW_FRAMES)]
 UI_TEX += NOW_TEX[4:] + NOW_SP_TEX[4:]
@@ -156,7 +161,9 @@ NOW_SP_GLOW, NOW_SP_CORE = (0, 190, 255), (210, 255, 255)
 NOW_BOX = (10.0, 35.0 - 48.0, 28.0, 137.0 - 35.0)   # (x centre, top, width, height) in pitch_area
 # white arrowheads on both lines at the now line (mock v4: 10 x 13, on the lines, over the lightning)
 SPIKE_TEX = {'down': 'WoR_HUD_vspike_down', 'up': 'WoR_HUD_vspike_up'}
-SPIKE_W, SPIKE_H = 13.0, 17.0
+SPIKE_PAD = (4, 6)                           # texels of shadow room: each side, the tip (2026-11-06)
+SPIKE_SHADOW_OFF, SPIKE_SHADOW_BLUR, SPIKE_SHADOW_A = (1, 2), 2.2, 0.62
+SPIKE_W, SPIKE_H = 13.0 * (40 + 2 * SPIKE_PAD[0]) / 40, 17.0 * (52 + SPIKE_PAD[1]) / 52   # the arrow stays 13 x 17
 # star power (mock v3): a cyan glow band on the top line and along the lyric band's bottom edge, in the root (the top
 # line spans root x -221..880; the lyric band's bottom edge is at root y 157)
 SP_GLOW_TEX = 'WoR_HUD_vsp_glow'
@@ -383,6 +390,9 @@ def _spaced(font, s, h, rgb, gap=0.10):
     import mock_fail_popup as fonts
     parts = []
     for ch in s:
+        if ch == ' ':   # (2026-11-06, "Get Ready!") the font has no space glyph: a gap of 0.35 x h
+            parts.append(Image.new('RGBA', (round(0.35 * 160), 1), (0, 0, 0, 0)))
+            continue
         t = fonts.text(font, ch, 160, rgb)
         bb = t.getbbox()
         parts.append(t.crop((bb[0], 0, bb[2], t.height)))
@@ -416,6 +426,25 @@ def _grade_image(i):
     return out.resize((256, 64), Image.LANCZOS)          # ~205 x 36 px at 1080p
 
 
+def _get_ready_image():
+    """WoR's "Get Ready!" on the vocal highway: fontgrid_title_a1 in white with the grade words' dark soft shadow,
+    filling GET_READY_DIMS (512 x 64 texture)."""
+    from PIL import ImageFilter
+    S = 4
+    W, H = round(GET_READY_DIMS[0] * S / 3), round(GET_READY_DIMS[1] * S / 3)
+    t = _spaced(_font('fontgrid_title_a1'), GET_READY_TEXT, round(H * 0.78), (255, 255, 255))   # WoR's brush title font
+    if t.width > W - 2 * S:
+        t = t.resize((W - 2 * S, t.height), Image.LANCZOS)
+    x, y = (W - t.width) // 2, (H - t.height) // 2
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    sh = Image.new('L', (W, H), 0)
+    sh.paste(t.getchannel('A'), (x + S // 2, y + S // 2))
+    sh = sh.filter(ImageFilter.GaussianBlur(S * 0.5))
+    out.alpha_composite(Image.merge('RGBA', [Image.new('L', (W, H), 30)] * 3 + [sh]))
+    out.alpha_composite(t, (x, y))
+    return out.resize((512, 64), Image.LANCZOS)
+
+
 def pp_rgb(q):
     """WoR's phrase progress fill colour for a quality 0..1."""
     return PP_RGB[sum(q >= s for s in PP_STEPS)]
@@ -446,13 +475,22 @@ def _lightning(core, halo, seed):
 
 
 def _spike(direction):
-    """WoR's white arrowhead (vocal_health_meter_needle's shape), 40 x 52 texels, pointing down or up."""
-    from PIL import ImageDraw
+    """WoR's white arrowhead (vocal_health_meter_needle's shape), 40 x 52 texels, pointing down or up, over a soft dark
+    drop shadow (user 2026-11-06: "the spikes need slightly more shadow"). The texture is padded SPIKE_PAD texels on
+    the sides and at the tip for the shadow (SPIKE_W / SPIKE_H grow by the same share, so the arrow keeps its size)."""
+    from PIL import ImageChops, ImageDraw, ImageFilter
     w, h = 40, 52
-    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
-    d.polygon(((0, 0), (w, 0), (w / 2, h)), fill=(150, 150, 155, 255))
-    d.polygon(((8, 0), (w - 8, 0), (w / 2, h - 12)), fill=(255, 255, 255, 255))
+    px, pt = SPIKE_PAD
+    W, H = w + 2 * px, h + pt
+    sh = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(sh).polygon(((px - 1, 0), (px + w + 1, 0), (px + w / 2, h + 3)), fill=255)
+    sh = ImageChops.offset(sh, *SPIKE_SHADOW_OFF).filter(ImageFilter.GaussianBlur(SPIKE_SHADOW_BLUR))
+    im = Image.merge('RGBA', [Image.new('L', (W, H), 0)] * 3 + [sh.point(lambda v: int(v * SPIKE_SHADOW_A))])
+    arrow = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(arrow)
+    d.polygon(((px, 0), (px + w, 0), (px + w / 2, h)), fill=(150, 150, 155, 255))
+    d.polygon(((px + 8, 0), (px + w - 8, 0), (px + w / 2, h - 12)), fill=(255, 255, 255, 255))
+    im.alpha_composite(arrow)
     return im if direction == 'down' else im.transpose(Image.FLIP_TOP_BOTTOM)
 
 
@@ -559,6 +597,7 @@ def textures():
     out.update({MULT_TEX[n]: _mult_image(n, n) for n in MULT_TEX})
     out.update({MULT_SP_TEX[n]: _mult_image(n, 'sp') for n in MULT_SP_TEX})
     out.update({GRADE_TEX[i]: _grade_image(i) for i in range(len(GRADES))})
+    out[GET_READY_TEX] = _get_ready_image()
     return out
 
 
@@ -571,6 +610,7 @@ def sources():
         s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': str(n), 'box': None, 'flip': False}
     for n in MULT_SP_TEX:
         s[MULT_SP_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': 'sp', 'box': None, 'flip': False}
+    s[GET_READY_TEX] = {'src': 'fontgrid_title_a1', 'text': GET_READY_TEXT, 'box': None, 'flip': False}
     for i, (word, rgb) in enumerate(GRADES):
         s[GRADE_TEX[i]] = {'src': 'fontgrid_text_a1', 'text': word, 'rgb': list(rgb), 'box': None, 'flip': False}
     return s
@@ -676,7 +716,50 @@ SCRIPTS = (
     '\t:i if $[4c1beb8d]$$value$ = $WoR_HUD_sp_highway$\n'
     '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_vocal_health$\n'
     '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_health$$id$ = $WoR_HUD_vocal_health$\n'
+    '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_vocal_get_ready$\n'
+    '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_get_ready$$id$ = $WoR_HUD_vocal_get_ready$\n'
     '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    # WoR's "Get Ready!" (user 2026-11-06: it appears abruptly 5 s before the first vocal note and stays 3 s, centred
+    # on the vocal highway): the song's <prefix>_song_vocals array (time, length, pitch per note, ms) gives the first
+    # note; one wait to GET_READY_LEAD before it, the text on every vocalist's highway, GET_READY_SHOW later off again
+    'Script WoR_HUD_vocal_get_ready [\n'
+    '\t:i $wait$%f(0.5)$seconds$\n'
+    '\t:i $get_song_prefix$$song$ = (~$current_song$)\n'
+    '\t:i $FormatText$$checksumname$ = $WoR_notes$%s("%s_song_vocals")$s$ = %GLOBAL%$song_prefix$$addtostringlookup$\n'
+    '\t:i if NOT $GlobalExists$$name$ = %GLOBAL%$WoR_notes$$type$ = $array$\n'
+    '\t\t:i $printf$%s("WoR_HUD: get ready: no %s")$s$ = %GLOBAL%$WoR_notes$\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $GetArraySize$~%GLOBAL%$WoR_notes$\n'
+    '\t:i if (%GLOBAL%$array_size$ < %i(1))\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $getsongtimems$\n'
+    f'\t:i $WoR_delay$ = (((~%GLOBAL%$WoR_notes$:a{{%i(0):a}}) - %i({GET_READY_LEAD}) - %GLOBAL%$time$) / %f(1000.0))\n'
+    '\t:i $printf$%s("WoR_HUD: get ready in %d s, first vocal note %n ms, song time %t ms")$d$ = %GLOBAL%$WoR_delay$'
+    '$n$ = (~%GLOBAL%$WoR_notes$:a{%i(0):a})$t$ = %GLOBAL%$time$\n'
+    '\t:i if (%GLOBAL%$WoR_delay$ > %f(0.0))\n'
+    '\t\t:i $wait$%GLOBAL%$WoR_delay$$seconds$\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_vocal_get_ready_alpha$$alpha$ = %i(1)\n'
+    f'\t:i $wait$%f({GET_READY_SHOW / 1000:.1f})$seconds$\n'
+    '\t:i $WoR_HUD_vocal_get_ready_alpha$$alpha$ = %i(0)\n'
+    '\t:i endfunction\n]\n\n'
+    'Script WoR_HUD_vocal_get_ready_alpha [\n'
+    '\t:i $GameMode_GetNumPlayersShown$\n'
+    '\t:i $p$ = %i(1)\n'
+    '\t:i while \n'
+    '\t\t:i $getplayerinfo$%GLOBAL%$p$$part$\n'
+    '\t\t:i if (%GLOBAL%$part$ = $Vocals$)\n'
+    '\t\t\t:i $VocalsHighway_GetId$$player$ = %GLOBAL%$p$\n'
+    '\t\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$vocals_highway_id$$child$ = $WoR_get_ready$:s}\n'
+    '\t\t\t\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$vocals_highway_id$$child$ = $WoR_get_ready$:s}'
+    '$alpha$ = %GLOBAL%$alpha$\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i endif\n'
+    '\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
+    '\t:i loop_to %GLOBAL%$num_players_shown$\n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_vocal_health [\n'
     '\t:i $wait$%f(1.0)$seconds$\n'
@@ -942,6 +1025,9 @@ def vocal_highway_desc(de_text):
     glows = [E(f'WoR_sp_glow_{i}', 'SpriteElement', pos=(SP_GLOW_X[0], y), dims=(SP_GLOW_X[1] - SP_GLOW_X[0], SP_GLOW_H),
                just=(-1, 0), z=2.5, alpha=0.0, texture=SP_GLOW_TEX, blend='Add').render(0)
              for i, y in enumerate(SP_GLOW_Y)]
+    # WoR's "Get Ready!" (hidden; WoR_HUD_vocal_get_ready shows it), centred on screen between the highway's lines
+    glows.append(E('WoR_get_ready', 'SpriteElement', pos=(640.0 - x, (SP_GLOW_Y[0] + SP_GLOW_Y[1]) / 2), dims=GET_READY_DIMS,
+                   just=(0, 0), z=3.0, alpha=0.0, texture=GET_READY_TEX).render(0))
     return wor_mp._append_children(d, 'root', glows)
 
 

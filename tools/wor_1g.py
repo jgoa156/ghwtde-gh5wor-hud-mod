@@ -355,6 +355,8 @@ SP_PLASMA_NAMES = [f'WoR_HUD_spplasma_{i:03d}' for i in range(SP_PLASMA_FRAMES)]
 SP_TEX_SS, SP_PLASMA_SS = 1, 1
 SP_SS_NAMES = ('WoR_HUD_sp_base', 'WoR_HUD_spfull', 'WoR_HUD_spfull_b', 'WoR_HUD_spneon_bottom', 'WoR_HUD_spneon_w',
                'WoR_HUD_spneon_c')
+SP_ARC = dict(tile=55, overlap=6, glow_rgb=(110, 255, 235))   # 2026-11-06 (user: the charged lightning needs more
+# junctions, like WoR's, and its colours): WoR's bolt tiled near its 4:1 aspect, a white core in a cyan glow
 SP_PLASMA_COLOURS = dict(base=(2, 113, 94), hot=(4, 129, 94), dark=(1, 84, 84))   # x1.09: charged fill (88,165,157) vs WoR (96,180,171)   # calibration 2026-10-28: WoR's teal (was light blue)
 #   # lighter blue, less white wash:
 SP_PLASMA_CORE_K = 0.15                      # the white lightning stands out (user 2026-10-09, mock B verify/mock_sp_tube_v3.png)
@@ -367,7 +369,8 @@ SP_NEON_CORE_BLUR = (1.2, 2.3)               # 1.70: WoR's charged top / bottom 
 SP_TOP_EDGE = True                            # 2026-10-28: sp_glow_bottom (never visible) becomes the charging fill's soft top edge
 SP_EDGE_PROFILE = [[-9.5, 67, 114, 110], [-9.0, 76, 146, 140], [-8.5, 88, 157, 148], [-8.0, 97, 188, 177], [-7.5, 96, 190, 180], [-7.0, 95, 192, 182], [-6.5, 81, 178, 167], [-6.0, 66, 154, 147], [-5.5, 58, 142, 136], [-5.0, 52, 132, 127], [-4.5, 48, 124, 118], [-4.0, 48, 119, 114], [-3.5, 46, 118, 111], [-3.0, 44, 116, 108], [-2.5, 42, 110, 106], [-2.0, 41, 107, 103], [-1.5, 41, 105, 100], [-1.0, 38, 104, 96], [-0.5, 37, 103, 95], [0.0, 36, 103, 94], [0.5, 36, 101, 95], [1.0, 35, 101, 94], [1.5, 38, 103, 99], [2.0, 42, 107, 104], [2.5, 42, 110, 103], [3.0, 45, 115, 108], [3.5, 47, 119, 111], [4.0, 50, 120, 113], [4.5, 50, 123, 117], [5.0, 51, 125, 118], [5.5, 53, 125, 120], [6.0, 51, 124, 119], [6.5, 52, 125, 121], [7.0, 54, 128, 123], [7.5, 57, 128, 124], [8.0, 94, 167, 163], [8.5, 70, 139, 136], [9.0, 84, 151, 148], [9.5, 128, 175, 175]]   # (canvas units across the tube from its axis, r, g, b): the charging fill's on-screen colour, 1.81 run (user 2026-10-28: the edge's flat colour read as another arc)
 SP_EDGE_RGB = (53, 128, 120)                  # the charging fill's on-screen colour (compare_wor, 1.79 run)
-SP_EDGE_GEOM = dict(width=19.0, wall_soft=0.8, fade_in=2.5, solid=2.8, fade_out=2.5, slope_deg=2.0, dome=1.8)   # dome: the ends sit this much lower (user 2026-10-28: 'too straight'; WoR's top is rounded)   # canvas units
+SP_EDGE_GEOM = dict(width=21.0,   # 2026-11-06: the glass interior is 22.0 wide (sp_wall_width)
+ wall_soft=0.8, fade_in=2.5, solid=2.8, fade_out=2.5, slope_deg=2.0, dome=1.8)   # dome: the ends sit this much lower (user 2026-10-28: 'too straight'; WoR's top is rounded)   # canvas units
 SP_CAP_ROT = 6.5                              # 2026-10-28: the top glow lies along WoR's fill-top slope (was the needle's 37)
 SP_CAP_CORE_SIZE = (12, 3)   # user 2026-10-28: top arc ~2 px thinner (was 4 / 8)
 #                   # top glow ellipses (texels; the sprite's x scale is k * SP_NEON_X_K)
@@ -567,7 +570,24 @@ def plugin_geometry():
     x, y, w, h = sp_clip_rect()
     return {'kClipX': x, 'kClipY': y, 'kClipW': w, 'kClipH': h,
             'kFillX': RIGHT.pos[0], 'kFillY': RIGHT.pos[1], 'kFillSX': RIGHT.sx, 'kFillSY': RAIL_SY,
-            'kLevel0': sp_level_points()[0], 'kLevel50': sp_level_points()[1], 'kLevel100': sp_level_points()[2]}
+            'kLevel0': sp_level_points()[0], 'kLevel50': sp_level_points()[1], 'kLevel100': sp_level_points()[2],
+            **dict(zip(('kEdgeX0', 'kEdgeY0', 'kEdgeSlope'), sp_wall_line()))}
+
+
+def sp_wall_line():
+    """(x0, y0, dx/dy) of the glass interior's centre line on screen (the texture column between SP_GLASS_X through
+    RIGHT): the fill's walls run parallel to it. 2026-11-06 (user: the top edge and the fill looked like 'two rectangles
+    together, unaligned'): the edge sprite rode the level path, which slants 0.556 against the walls' 0.505."""
+    c = (SP_GLASS_X[0] + SP_GLASS_X[1]) / 2
+    p0, p1 = RIGHT.tex((c, 60.0)), RIGHT.tex((c, 220.0))
+    return p0[0], p0[1], (p1[0] - p0[0]) / (p1[1] - p0[1])
+
+
+def sp_wall_width():
+    """Horizontal width of the glass interior on screen (canvas units)."""
+    s = sp_wall_line()[2]
+    l, r = RIGHT.tex((SP_GLASS_X[0], 150.0)), RIGHT.tex((SP_GLASS_X[1], 150.0))
+    return abs((r[0] - l[0]) - (r[1] - l[1]) * s)
 
 
 def sp_segments():
@@ -1094,8 +1114,7 @@ def edge_texture(out_png):
     g = SP_EDGE_GEOM
     k = RAIL_SX * 1.1 * SP_MARKER_K
     sx, sy = k * SP_NEON_X_K, k
-    a0, a1 = sp_level_point(0.4), sp_level_point(0.6)
-    axis = (a1[0] - a0[0]) / (a1[1] - a0[1])          # x shift per unit y along the tube
+    axis = sp_wall_line()[2]                          # x shift per unit y along the glass walls (2026-11-06)
     tn = math.tan(math.radians(g['slope_deg']))
     ys, xs = np.mgrid[0:64, 0:64].astype(float)
     dx, dy = (xs + 0.5 - 32) * sx, (ys + 0.5 - 32) * sy

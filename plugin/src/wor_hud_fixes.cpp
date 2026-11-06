@@ -961,8 +961,10 @@ namespace
 		// (tools/wor_1g.py edge_texture, normal blend over the fill): centred on the tube axis at the level, charging only
 		// (the charged plasma moves, the top glow covers that edge)
 		const bool edge = shown && !g_sp.ready && g_sp.level < 0.999f;
+		// 1.90 (user 2026-11-06: "two rectangles together, unaligned"): on the glass walls' centre line at the level's
+		// height (the level path slants 0.556 against the walls' 0.505, up to 6 units off at the top)
 		if (edge)
-			set_pos(g_sp.glow[0], nullptr, x, y, 1);
+			set_pos(g_sp.glow[0], nullptr, kEdgeX0 + (y - kEdgeY0) * kEdgeSlope, y, 1);
 		set_alpha(g_sp.glow[0], edge ? 1.0f : 0.0f);
 		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
 		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
@@ -1510,6 +1512,8 @@ namespace
 	uint32_t g_vnote_rgba[24] = {};
 	int g_vnote_nw = 0, g_vnote_nc = 0;
 
+	void vnote_remember(void *e);
+
 	void vocal_note(void *e, uint32_t tex)
 	{
 		const float w = screen_width(e);
@@ -1537,6 +1541,61 @@ namespace
 		}
 		if (kVNote[band] != tex)
 			set_texture_keep_dims(e, kVNote[band]);
+		vnote_remember(e);
+	}
+
+	// 1.90 (user 2026-11-06: "fill the rectangles exactly where they're hit"): the engine places each sung segment's
+	// paint (WoR_HUD_vocal_create_paint: a container in note_scale holding our WoR_HUD_vpaint sprite) at the SUNG pitch,
+	// so a hit sits off the note by the pitch tolerance. The notes the plugin updates are remembered (parent, local
+	// x span and y, kept 0.2 s); each paint sprite's container takes the y of the note under its x in the same parent.
+	struct VNoteRec
+	{
+		void *parent;
+		float x, y, w;
+		double t;
+	};
+	VNoteRec g_vnotes[128] = {};
+	int g_vnote_next = 0, g_vpaint_logs = 0;
+
+	void vnote_remember(void *e)
+	{
+		VNoteRec &r = g_vnotes[g_vnote_next++ % 128];
+		r.parent = *reinterpret_cast<void **>(field(e, kElementParent));
+		r.x = f32(e, kElementPos);
+		r.y = f32(e, kElementPos + 4);
+		r.w = fabsf(f32(e, kElementDims) * f32(e, kElementScale));
+		r.t = now();
+	}
+
+	void vocal_paint(void *e)
+	{
+		void *box = *reinterpret_cast<void **>(field(e, kElementParent));
+		if (!box)
+			return;
+		void *scale = *reinterpret_cast<void **>(field(box, kElementParent));
+		const float px = f32(box, kElementPos), py = f32(box, kElementPos + 4);
+		const double t = now();
+		const VNoteRec *best = nullptr;
+		float best_d = 1e9f;
+		for (const VNoteRec &r : g_vnotes)
+		{
+			if (!r.parent || r.parent != scale || t - r.t > 0.2)
+				continue;
+			// the paint's left end lies within the note (both left-justified; a little slack at the ends)
+			if (px < r.x - 2.0f || px > r.x + r.w + 2.0f)
+				continue;
+			const float d = fabsf(r.y - py);
+			if (d < best_d)
+				best_d = d, best = &r;
+		}
+		if (g_vpaint_logs < 6)
+		{
+			++g_vpaint_logs;
+			log("vocals: paint at (%.1f, %.1f) in %p -> %s (note y %.1f, %.1f off)", px, py, scale,
+			    best ? "snapped" : "no note under it", best ? best->y : 0.0f, best ? best_d : 0.0f);
+		}
+		if (best && best_d > 0.01f)
+			reinterpret_cast<SetPosFn>(kSetPos)(box, nullptr, px, best->y, 1);
 	}
 
 	// the now line: green lightning, cyan in star power, a new bolt every 1/60 s (1.89, user 2026-11-04: WoR's animates
@@ -1725,6 +1784,8 @@ namespace
 				vocal_sp_glow(element);
 			else if (tex == kVSpFill)
 				vocal_sp_segment(element);
+			else if (tex == kVPaint)
+				vocal_paint(element);
 			for (const Grow &g : g_grow)
 				if (g.e == element && g.t0 > 0.0)
 				{
@@ -2479,7 +2540,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.89 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.90 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])

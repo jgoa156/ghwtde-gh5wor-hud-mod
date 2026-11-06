@@ -138,6 +138,7 @@ def main():
             '// power cyan), the star power glow bands, the vocalist star power flag (a QB global set by the SP wrappers)',
             f'static const uint32_t kVNote[{len(wor_vocals.NOTE_TEX)}] = {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOTE_TEX) + ' };',
             f'static const float kVNoteBand[{len(wor_vocals.NOTE_BANDS)}] = {{ ' + ', '.join(f'{b:.3f}f' for b in wor_vocals.NOTE_BANDS) + ' };',
+        f'static const uint32_t kVPaint = 0x{qbkey(wor_vocals.PAINT_TEX):08x};   // {wor_vocals.PAINT_TEX}: sung-note paint (1.90 snaps it to the note)',
             f'static const uint32_t kVNow[2][{wor_vocals.NOW_FRAMES}] = {{ {{ ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_TEX)
             + ' }, { ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_SP_TEX) + ' } };',
             f'static const uint32_t kVSpGlow = 0x{qbkey(wor_vocals.SP_GLOW_TEX):08x};',

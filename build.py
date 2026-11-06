@@ -343,7 +343,7 @@ def main():
     frames = wor_art.plasma_frames(full, glow02, noise, wor_1g.SP_PLASMA_FRAMES, **wor_1g.SP_PLASMA_COLOURS,
                                    core_k=wor_1g.SP_PLASMA_CORE_K,
                                    arc=dict(png=arc_src, rows=wor_1g.SP_FILL_ROWS, center=wor_1g.TEX_CENTER,
-                                            every=round(wor_1g.SP_PLASMA_FPS / 20)))
+                                            every=round(wor_1g.SP_PLASMA_FPS / 20), **wor_1g.SP_ARC))
     # the fill and the plasma kept inside the glass down to its end's arch (user 2026-10-27: a corner leaked out at the
     # bottom left, then the fill ended flat above the arch)
     # 2026-10-27 (user: the top and bottom arcs "angled EXACTLY like the middle needle"): the bottom ring is the half

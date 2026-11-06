@@ -46,6 +46,9 @@ static const float kFillSY = 0.7000f;
 static const float kLevel0 = 607.6238f;
 static const float kLevel50 = 528.0000f;
 static const float kLevel100 = 471.1043f;
+static const float kEdgeX0 = 840.3499f;
+static const float kEdgeY0 = 497.2265f;
+static const float kEdgeSlope = 0.5051f;
 
 // GH5 star power lifecycle (tools/wor_1g.py, docs/GH5_STAR_POWER_REFERENCE.md)
 static const float kPlasmaFps = 60.0f;
@@ -171,6 +174,7 @@ static const float kBulbFromScale = 0.5000f, kBulbPopupTime = 0.3000f;
 // power cyan), the star power glow bands, the vocalist star power flag (a QB global set by the SP wrappers)
 static const uint32_t kVNote[12] = { 0x9b1e3230, 0xec1902a6, 0x7510531c, 0x0217638a, 0x9c73f629, 0xeb74c6bf, 0x727d9705, 0x057aa793, 0x95c5ba02, 0xe2c28a94, 0x19802f73, 0x6e871fe5 };
 static const float kVNoteBand[12] = { 12.000f, 16.971f, 24.000f, 33.941f, 48.000f, 67.882f, 96.000f, 135.765f, 192.000f, 271.529f, 384.000f, 543.058f };
+static const uint32_t kVPaint = 0x1e49ce88;   // WoR_HUD_vpaint: sung-note paint (1.90 snaps it to the note)
 static const uint32_t kVNow[2][8] = { { 0xb7c84163, 0xc0cf71f5, 0x59c6204f, 0x2ec110d9, 0xb0a5857a, 0xc7a2b5ec, 0x5eabe456, 0x29acd4c0 }, { 0xd3a48467, 0xa4a3b4f1, 0x3daae54b, 0x4aadd5dd, 0xd4c9407e, 0xa3ce70e8, 0x3ac72152, 0x4dc011c4 } };
 static const uint32_t kVSpGlow = 0x1bbc4b8d;
 static const uint32_t kVocalSpFlag = 0xa9aedfd3;

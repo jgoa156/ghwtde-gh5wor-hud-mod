@@ -150,7 +150,14 @@ def main():
             f'static const uint32_t kPaintSpRgba = 0x{(255 << 24) | (wor_vocals.PAINT_SP_RGB[2] << 16) | (wor_vocals.PAINT_SP_RGB[1] << 8) | wor_vocals.PAINT_SP_RGB[0]:08x};',
             f'static const uint32_t kVFill = 0x{qbkey(wor_vocals.FILL_TEX):08x};   // {wor_vocals.FILL_TEX}: 1.92 sung-note fill pool',
             f'static const float kVNowRootX = {wor_vocals.now_line_root_x():.3f}f;   // 1.93: the visible now line, highway root x',
-            f'static const float kVNowSnap = {wor_vocals.NOW_BAR_DX + 2.0:.2f}f;   // 1.93: a fill starting this far in starts at the note',
+            f'static const float kVLineL = {wor_vocals.SP_GLOW_X[0]:.2f}f, kVLineR = {wor_vocals.SP_GLOW_X[1]:.2f}f;   // the highway lines\' ends (root x)',
+            # the vocal panel's "xN" box: z 0.2 (wor_vocals.mult_desc, unique) at the COMBO size
+            f'static const float kVNixieZ = 0.2f, kVNixieW = {wor_vocals.COMBO[2] - wor_vocals.COMBO[0]:.2f}f, '
+            f'kVNixieH = {wor_vocals.COMBO[3] - wor_vocals.COMBO[1]:.2f}f;',
+            # the vocal panel's "xN" textures, x1 first (1.93: the vocalist's band x1 is higway_icon_mic otherwise)
+            f'static const uint32_t kVMultTex[{4 + len(wor_vocals.MULT_SP_TEX)}] = {{ '
+            + ', '.join(f'0x{qbkey(t):08x}' for t in [wor_vocals.MULT_TEX[n] for n in (1, 2, 3, 4)] + list(wor_vocals.MULT_SP_TEX.values())) + ' };',
+            f'static const float kVNowSnap ={wor_vocals.NOW_BAR_DX + 2.0:.2f}f;   // 1.93: a fill starting this far in starts at the note',
             f'static const uint32_t kPhraseStart = 0x{qbkey("WoR_HUD_phrase_start"):08x};   // 1.93: WoR_HUD_vocal_phrase_watch',
             f'static const uint32_t kPhraseEnd = 0x{qbkey("WoR_HUD_phrase_end"):08x};',
             f'static const uint32_t kPhraseMs = 0x{qbkey("WoR_HUD_phrase_ms"):08x};',

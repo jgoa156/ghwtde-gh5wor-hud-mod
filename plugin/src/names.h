@@ -184,7 +184,10 @@ static const uint32_t kPaintRgba = 0xff3cecff;   // r, g, b, a bytes
 static const uint32_t kPaintSpRgba = 0xffffff78;
 static const uint32_t kVFill = 0xa0242c74;   // WoR_HUD_vfill: 1.92 sung-note fill pool
 static const float kVNowRootX = 118.000f;   // 1.93: the visible now line, highway root x
-static const float kVNowSnap = 14.00f;   // 1.93: a fill starting this far in starts at the note
+static const float kVLineL = -221.00f, kVLineR = 880.00f;   // the highway lines' ends (root x)
+static const float kVNixieZ = 0.2f, kVNixieW = 38.00f, kVNixieH = 24.00f;
+static const uint32_t kVMultTex[8] = { 0xc894491c, 0x519d18a6, 0x269a2830, 0xb8febd93, 0x7d811d25, 0x94e2b810, 0x7aecd93c, 0x9d54f43b };
+static const float kVNowSnap =14.00f;   // 1.93: a fill starting this far in starts at the note
 static const uint32_t kPhraseStart = 0x5abfea6f;   // 1.93: WoR_HUD_vocal_phrase_watch
 static const uint32_t kPhraseEnd = 0x3dae5e10;
 static const uint32_t kPhraseMs = 0xdd1421d0;

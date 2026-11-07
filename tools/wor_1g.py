@@ -722,7 +722,10 @@ def band_meter():
     s_box = add(sm(8.209, 75.272), STREAK_SHIFT)      # streak sprite centre (scale 0.9 in the frame)
     segs = sp_segments()
     sk = K0 * 0.9                                      # streak sprite scale on the canvas
-    streak = E('streak', 'ContainerElement', just=(-1, -1), z=3.0, children=[
+    # the note streak shows from 10 on (user 2026-11-06): hidden here, WoR_HUD_HUD_attach_widget_band_meter (wor_band.py)
+    # attaches a conditional widget on the DE's streak value that sets streak_alpha 1 from 10 (vocals: 100, the DE
+    # counts a vocalist's streak x10)
+    streak = E('streak', 'ContainerElement', just=(-1, -1), z=3.0, alpha=0.0, children=[
         E('streak_box', 'SpriteElement', pos=s_box, dims=(256, 64), scale=(sk, sk), z=3.0,
           rgba=STREAK_TINT, texture='WoR_HUD_streak'),
         E('streak_number', 'TextBlockElement', pos=add(s_box, scale((STREAK_RIGHT, STREAK_TEXT_Y), sk)), dims=(300, 100),
@@ -818,7 +821,8 @@ def band_meter():
     props = [('score_text', 'Score', 'text'), ('needle_rot_angle', 'Needle', 'rot_angle'),
              ('Needle_pos', 'Needle', 'Pos'),
              ('green_light_alpha', 'green_light', 'alpha'), ('yellow_light_alpha', 'yellow_light', 'alpha'),
-             ('red_light_alpha', 'red_light', 'alpha'), ('streak_number_text', 'streak_number', 'text')]
+             ('red_light_alpha', 'red_light', 'alpha'), ('streak_number_text', 'streak_number', 'text'),
+             ('streak_alpha', 'streak', 'alpha')]
     props += [(f'glow{i}_texture', f'sp_seg{i}', 'texture') for i in range(SP_SEGMENTS)]
     props += [(f'glow{i}_scale', f'sp_seg{i}', 'Scale') for i in range(SP_SEGMENTS)]
     props += [('hud_meter_green_bg_alpha', 'HUD_meter_green_bg', 'alpha'),

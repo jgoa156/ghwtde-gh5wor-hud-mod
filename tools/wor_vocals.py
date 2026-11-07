@@ -154,7 +154,7 @@ COMET_SPARK_TIME = 0.2
 # and halo together, mock verify/mock_vocal_fix_v1.jpg) and a new bolt every frame (plugin 1.89, 60 a second) out of 8;
 # frames 4..7 ride in the UI pak (the theme pak is near its cap; the plugin sets them by name)
 NOW_FRAMES = 8
-NOW_W_SCALE = 0.32   # user 2026-11-06 (later): 0.22 too thin, 'turn it up to 28'; 2026-11-07: "slightly thicker"
+NOW_W_SCALE = 0.40   # user 2026-11-06 (later): 0.22 too thin, 'turn it up to 28'; 2026-11-07: "slightly thicker", then 40
 #                          # user 2026-11-06: thinner again (0.55 -> 0.35 -> 0.22; WoR's is a hairline)
 NOW_TEX = [f'WoR_HUD_vnow_g{i}' for i in range(NOW_FRAMES)]
 NOW_SP_TEX = [f'WoR_HUD_vnow_c{i}' for i in range(NOW_FRAMES)]
@@ -270,7 +270,10 @@ def _centred(e):
     return e
 
 
-PP_FILL_BOX = (PHRASE[0] + 1.0, PHRASE[1] + 1.0, PHRASE[2] - 1.0, PHRASE[3] - 1.0)   # inside the tube's glass
+# inside the tube's glass; 2026-11-07 (user: "the fill of the precision bar needs to go right by some pixels, it's not
+# aligned with its bar"): the visible glass is canvas ~289..374 (1v frames, 5x zoom), the fill started at 286 and would
+# run past the glass's right end when full
+PP_FILL_BOX = (PHRASE[0] + 3.5, PHRASE[1] + 1.0, PHRASE[2] - 3.0, PHRASE[3] - 1.0)
 # 1.89 (user 2026-11-04: the box must register while singing): the plugin drives the fill every frame from the DE's
 # vocal player object (hits / ticks so far x the phrase's elapsed part), WoR's white / yellow / green (PP_RGB at
 # PP_STEPS) by its level, empty again after each grade flip as in WoR; it finds the fill by this z (unique)
@@ -748,6 +751,7 @@ SCRIPTS = (
     '\t:i endif\n'
     '\t:i $GetArraySize$~%GLOBAL%$WoR_notes$\n'
     '\t:i $WoR_nsize$ = %GLOBAL%$array_size$\n'
+    '\t:i $printf$%s("WoR_HUD: phrase watch on")\n'
     '\t:i $GetArraySize$~%GLOBAL%$WoR_phr$\n'
     '\t:i $WoR_psize$ = %GLOBAL%$array_size$\n'
     '\t:i if (%GLOBAL%$WoR_psize$ < %i(2))\n'

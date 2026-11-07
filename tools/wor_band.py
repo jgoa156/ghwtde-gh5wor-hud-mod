@@ -175,6 +175,23 @@ def edit_layout(config, d):
     return d[:a] + blk + d[b:]
 
 
+def _streak_widget(ind, obj, value, lo):
+    """A conditional widget: the DE's streak value (value, of obj if given) -> our streak_alpha, 1 from lo on."""
+    i2, i3 = ind + '\t', ind + '\t\t'
+    return (f'{ind}:i $AttachHudWidget$:s{{\n'
+            f'{i2}:i $Input$ = :s{{\n'
+            + (f'{i3}:i {obj}\n' if obj else '') +
+            f'{i3}:i $value$ = ${value}$\n'
+            f'{i2}:i :s}}\n'
+            f'{i2}:i $output$ = :s{{\n'
+            f'{i3}:i $type$ = $screenelementconditionalfloat$\n'
+            f'{i3}:i $desc_id$ = %GLOBAL%$WoR_HUD_bm_id$\n'
+            f'{i3}:i $property$ = $streak_alpha$\n'
+            f'{i3}:i $value_range$ = :a{{%f({lo:.1f})%f(1000000.0):a}}\n'
+            f'{i2}:i :s}}\n'
+            f'{ind}:i :s}}\n')
+
+
 # the DE's HUD_attach_widget_band_meter, wrapped (plugin swap with _orig): on our score group, the bulb texture by
 # the band multiplier
 SCRIPTS = (
@@ -182,6 +199,23 @@ SCRIPTS = (
     '\t:i $WoR_HUD_HUD_attach_widget_band_meter_orig$ isNull\n'
     '\t:i if $GotParam$$parent$\n'
     '\t\t:i if $ResolveScreenElementID$$id$ = %GLOBAL%$parent$$param$ = $WoR_HUD_bm_id$\n'
+    # the note streak from 10 on (user 2026-11-06/07): the DE's own streak value (as its streak_number_text widget:
+    # player1_status note_streak alone, x10 for a vocalist; band1_streak in a band) through a conditional widget into
+    # our streak_alpha (wor_1g: the streak container, hidden by default)
+    # (literal ranges only: the first build put a variable in the value_range array and the 4-player band hung at HUD
+    # setup, 2026-11-07)
+    '\t\t\t:i $printf$%s("WoR_HUD: streak widget, players %n")$n$ = (~$current_num_players$)\n'
+    '\t\t\t:i if (~$current_num_players$ = %i(1))\n'
+    '\t\t\t\t:i $getplayerinfo$%i(1)$part$\n'
+    '\t\t\t\t:i if (%GLOBAL%$part$ = $Vocals$)\n'
+    + _streak_widget('\t\t\t\t\t', '$object$ = $player1_status$', 'note_streak', 100.0) +
+    '\t\t\t\t:i else \n'
+    + _streak_widget('\t\t\t\t\t', '$object$ = $player1_status$', 'note_streak', 10.0) +
+    '\t\t\t\t:i endif\n'
+    '\t\t\t:i else \n'
+    + _streak_widget('\t\t\t\t', None, 'band1_streak', 10.0) +
+    '\t\t\t:i endif\n'
+    '\t\t\t:i $printf$%s("WoR_HUD: streak widget attached")\n'
     f'\t\t\t:i if $ScreenElementExists$$id$ = :s{{%GLOBAL%$WoR_HUD_bm_id$$child$ = ${ROOT_ID}$:s}}\n'
     '\t\t\t\t:i $AttachHudWidget$:s{\n'
     '\t\t\t\t\t:i $Input$ = :s{\n'

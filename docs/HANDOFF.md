@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-11-06 evening, plugin 1.91 installed + committed, 0.51 released)
+# GH5 / WoR HUD mod: session handoff (2026-11-07 ~05:10, plugin 1.93 + later fixes, partly uncommitted)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -11,8 +11,62 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   AND FIX IT", fixed, then launched a new run on its own: wrong. After a kill, the next run needs a fresh go-ahead.
 - Every run: at most 30 s of gameplay, save + GHWTDE.ini backed up and restored (the harness does it; on an
   interrupted run restore by hand from the run folder's GHWTDE.ini.backup and save-backup\, verify by hash).
+- Runs are muted (the harness does it). The user said "this time we're gonna do a full band run": band = `--lineup 3g1v`.
+- `tests/results/capture_band.done` blocks a second run: delete it before each run you are allowed to make.
 
-## START HERE (2026-11-07 ~04:10): plugin 1.93 installed + committed; vocal fill WORKS (seen in muted 1v runs)
+## START HERE (2026-11-07 ~05:10): where things stand
+
+### How to build, install, test (PowerShell; never while GHWT_Definitive runs)
+```
+cd E:\Dev\ghwt\ghwt-wor-hud
+python build.py --install          # descs/QB/textures -> D:\Games\Guitar Hero World Tour\DATA\MODS\WoR_HUD + DATA\PAK
+python tools\gen_plugin_names.py   # names.h (after build.py, before the plugin build)
+cmd /c plugin\build.bat            # plugin\build\wor_hud_fixes.asi
+python tests\run_offline.py        # 25 tests, ~5-8 min (slower when another session uses the CPU)
+copy plugin\build\wor_hud_fixes.asi "D:\Games\Guitar Hero World Tour\wor_hud_fixes.asi"   # verify by hash
+del tests\results\capture_band.done
+cd tests; python capture_band.py --lineup 3g1v --play 30 --until 150 --every 1 --sp-states   # or --lineup 1v
+```
+The game's log of our QB printfs: the run folder's `<lineup>_debug.txt`; the plugin's: `<lineup>_wor_hud_fixes.log`.
+Frames are 2560x1080 (canvas x = (px - 320) / 1.5, y = px / 1.5). Frames where the game lost focus show the desktop.
+
+### State of the working tree
+- **Committed + pushed:** `60a142d` (plugin 1.93: vocal fill, phrase-wide box, line 0.32, SP tube up, harness mute),
+  then the commit after it (everything below, partly unverified in game).
+- **Installed in the game:** the mod data of 04:54 and plugin build 04:54. The latest plugin build (05:01: lyric
+  fade under note_scale + the microphone fix) is built and offline-tested but **NOT installed** yet: copy it first.
+- **The items below** (offline 25/25; seen in band run `band-20261107-045835` unless noted):
+  - Now line NOW_W_SCALE **0.40** (user: "turn it to 40").
+  - **Note streak from 10:** the `streak` container in wor_1g starts at alpha 0 (prop `streak_alpha`); the wrapper
+    `WoR_HUD_HUD_attach_widget_band_meter` (wor_band.py `_streak_widget`) attaches a `screenelementconditionalfloat`
+    widget on the DE's own value (1 player: `player1_status.note_streak`, range 10.. (vocals 100.., the DE counts a
+    vocalist x10); band: `band1_streak`, 10..). The plugin's z-matched alpha (1.92) is GONE (the DE re-showed it).
+    Seen: "WoR_HUD: streak widget, players 4 / attached" in the debug log, streak hidden early; NOT yet seen showing
+    at 10+. **Never put a variable inside a QB array literal** (`:a{%GLOBAL%$x$ ...:a}`): the first build did that in
+    the value_range and the 4-player band HUNG on the loading screen (2026-11-07 04:32).
+  - **Edge fade** (user: "any elements outside 1080p range should fade"): the window clips the vocal notes/lyrics at
+    the 16:9 edges (root -290 / 990), past the highway lines' ends (root kVLineL -221 / kVLineR 880). Plugin
+    `vocal_edge_fade` (per element per frame, before the engine update): notes by their centre through their RGBA
+    ALPHA BYTE (the notes ignore the element alpha), fills likewise (set_alpha works on them). Notes fade: SEEN.
+    Lyrics: not seen fading yet. They are not under the window outside note_scale (two runs matched nothing); the
+    latest build (not yet run) also takes text elements (texture 0) under note_scale and logs "vocals: lyric
+    element ..." (depth, pos, rgba). If still nothing logs: the lyrics may be drawn by the vocal highway's text
+    material, not as elements; ask before trying overlays (they would darken the venue).
+  - **Precision bar fill** (user: "needs to go right by some pixels"): PP_FILL_BOX = PHRASE + (3.5, 1, -3, -1), inside
+    the tube's visible glass (canvas ~289..374). Built, not yet checked in a frame.
+  - **No microphone in the vocal panel's "xN" box** (user: "vocals must NOT show the vocal icon in the streak meter";
+    seen at x1 in band run 045835): in band scoring the DE puts `higway_icon_mic` in the vocalist's x1 slot. Latest
+    build (not yet run): the hook finds the box by z 0.2 (unique) + its COMBO size (kVNixieZ/W/H) and sets the vocal
+    x1 (`kVMultTex[0]`). (The set_texture_hook path keyed on the box's current texture never fired.)
+- **Next:** one muted band run to check lyric fade, the x1 box and the precision bar; then commit + push.
+
+### User feedback this session (latest first)
+- "LOOKING GOOD" after the band run; then the precision bar + microphone items above.
+- Green line: 0.28 -> "slightly thicker" (0.32) -> "40".
+- "boxes still not quite there" -> fixed: fill drawn [pos - s, pos] when scaled, x anchor not centred, hit counter.
+- Star power tube (vocal strip) "visibly needs to go up a bit": SP_DY -2 (done, in 60a142d).
+
+## (earlier) 2026-11-07 ~04:10: plugin 1.93 installed + committed; vocal fill WORKS (seen in muted 1v runs)
 
 ### Done and seen (1v runs band-20261107-040316 etc., muted: capture_band.py mutes the game's own audio session)
 - **Sung-note fill:** pool of 24 `WoR_fill_*` sprites in the vocal highway ROOT (z 2.2, 1 wide in the desc). The plugin
@@ -29,12 +83,10 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - **Harness:** refuses to launch over a full-screen app; mutes the game (MuteStreams=1 in the run's ini + the
   game's Windows audio session, unmuted before the kill).
 
-### Open
-- **Note streak "from 10 on":** kStreakNumZ fixed (13.2013 = STREAK_NUM_Z + HUD_Z; 1.92 never matched), the hook finds
-  the text and its box, but in 1v the "4" still shows: something re-shows it after our alpha 0 (a DE script?), and
-  in 1v no streak is reported (set_lights is instrument-only), so the rule has no value to test. Needs the DE script
-  that sets streak_number_text, or hide by scale.
+### Open (as of 04:10; the streak item is solved above by a DE widget)
 - Long notes the bot sings off pitch fill in pieces (matches the engine's own hit counts: correct behaviour).
+- Other open items from earlier sessions: vocals purple freeform fill, SP phrase notes' blue blur, practice crash,
+  release 0.52, orange "band moment" lines (parked), score panel size mock (WoR's is smaller).
 
 ## (previous) START HERE (2026-11-06 evening): plugin 1.91 installed and committed; user away, bot runs done by Claude
 

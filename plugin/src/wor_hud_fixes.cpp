@@ -1,4 +1,4 @@
-﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -1649,6 +1649,21 @@ namespace
 
 	float g_fill_hscale = 1.0f;   // the notes' vertical scale in the root (the fill's height follows it)
 	float g_win_left = -1e9f;     // the window's left edge in the root (the notes are clipped there)
+	float g_win_right = 1e9f;     // and its right edge
+	void *g_vwin = nullptr, *g_vns = nullptr;   // the vocal highway's window and note_scale, from live notes
+	double g_vwin_t = 0.0;
+
+	// 1.93 (user 2026-11-07: "any elements outside 1080p range should fade"): the window clips the notes and lyrics at
+	// the 16:9 edges (root -290 / 990), well past the highway lines' ends (root kVLineL / kVLineR): from the lines' ends
+	// to the clip edges they fade out instead of being sliced
+	float edge_alpha(float x)
+	{
+		const float dl = kVLineL - g_win_left, dr = g_win_right - kVLineR;
+		const float al = dl > 1.0f ? (x - g_win_left) / dl : 1.0f;
+		const float ar = dr > 1.0f ? (g_win_right - x) / dr : 1.0f;
+		const float a = al < ar ? al : ar;
+		return a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
+	}
 
 	// the engine's paint: hidden; the newest segment's alpha is the hit state
 	void vocal_paint(void *e)
@@ -1824,7 +1839,7 @@ namespace
 		if (fabsf(f32(e, kElementScale) - len) > 1e-3f || fabsf(f32(e, kElementScale + 4) - g_fill_hscale) > 1e-3f)
 			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, len, g_fill_hscale, 0, 0);
 		reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, f->sp ? kPaintSpRgba : kPaintRgba, 1);
-		set_alpha(e, 1.0f);
+		set_alpha(e, edge_alpha(left + 0.5f * w));   // as its note
 		// 1.93 diagnostics (user 2026-11-06: the 1.92 fill never showed): what the pool sprite holds after the setters
 		static int draw_logs = 0;
 		static double last_log = 0.0;
@@ -2030,6 +2045,74 @@ namespace
 		}
 	}
 
+	// per element, every frame: notes (by their centre) and lyrics (the window's other child's children, by their x) fade
+	// toward the window's clip edges (edge_alpha)
+	void vocal_edge_fade(void *e)
+	{
+		if (is_vocal_note(texture_of(e)))
+		{
+			void *ns = *reinterpret_cast<void **>(field(e, kElementParent));
+			void *win = ns ? *reinterpret_cast<void **>(field(ns, kElementParent)) : nullptr;
+			if (!win)
+				return;
+			g_vns = ns, g_vwin = win, g_vwin_t = now();
+			g_win_left = f32(win, kElementPos);
+			g_win_right = g_win_left + f32(win, kElementDims) * f32(win, kElementScale);
+			float l, w, c;
+			if (note_root(e, l, w, c))
+			{
+				// the notes ignore the element alpha (band run 044314: full bright at the clip edge); their rgba's alpha
+				// byte is what draws: scaled here (the engine's colour changes reset it, re-applied the next frame)
+				const uint32_t rgba = *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget));
+				const uint32_t a = static_cast<uint32_t>(edge_alpha(l + 0.5f * w) * 255.0f + 0.5f);
+				if ((rgba >> 24) != a)
+					reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, (rgba & 0x00ffffffu) | (a << 24), 1);
+				set_alpha(e, 1.0f);
+			}
+			return;
+		}
+		if (!g_vwin || now() - g_vwin_t > 0.5)
+			return;
+		// lyrics: anything under the window but outside note_scale, up to 5 levels down; x = the window's left edge + the
+		// positions on the way (band run 044314: not direct children of the lyrics container, the first try matched none)
+		// (band run 045835: still none matched outside note_scale; the words scroll with the notes, so they are text
+		// elements under note_scale: those are taken too, text only (the notes there have textures))
+		float x = f32(e, kElementPos);
+		int depth = 1;
+		bool in_notes = false;
+		void *p = *reinterpret_cast<void **>(field(e, kElementParent));
+		while (p && p != g_vwin && depth < 6)
+		{
+			in_notes |= p == g_vns;
+			x += f32(p, kElementPos);
+			p = *reinterpret_cast<void **>(field(p, kElementParent));
+			++depth;
+		}
+		if (p != g_vwin)
+			return;
+		if (in_notes ? texture_of(e) != 0 : depth < 3)   // depth 1-2 outside note_scale: the window's own containers
+			return;
+		x += g_win_left;
+		const float a = edge_alpha(x);
+		set_alpha(e, a);
+		const uint32_t rgba = *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget));
+		const uint32_t ab = static_cast<uint32_t>(a * 255.0f + 0.5f);
+		if (texture_of(e) == 0 && (rgba >> 24) != ab && (rgba >> 24) != 0)   // text: by its colour too (as the notes)
+			reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, (rgba & 0x00ffffffu) | (ab << 24), 1);
+		static void *seen[20] = {};
+		static int n = 0;
+		bool s = false;
+		for (int i = 0; i < n; ++i)
+			s = s || seen[i] == e;
+		if (!s && n < 20)
+		{
+			seen[n++] = e;
+			log("vocals: lyric element %p depth %d pos %.1f,%.1f dims %.1f x %.1f tex %08x rgba %08x -> root x %.1f, alpha %.2f", e,
+			    depth, f32(e, kElementPos), f32(e, kElementPos + 4), f32(e, kElementDims), f32(e, kElementDims + 4), texture_of(e),
+			    rgba, x, a);
+		}
+	}
+
 	// the star power glow bands: fade in / out with the flag
 	void vocal_sp_glow(void *e)
 	{
@@ -2051,40 +2134,20 @@ namespace
 			else if (fabsf(f32(element, kElementZ) - kVPpFillZ) < 1e-5f)
 				vocal_pp_fill(element);
 			vs_streak_size(element);
-			{
-				// 1.93 diagnostics (the 1v streak showed "2"): any element near the streak number's z, once each
-				static void *zseen[8] = {};
-				static int zn = 0;
-				const float z = f32(element, kElementZ);
-				if (fabsf(z - kStreakNumZ) < 0.05f && zn < 8)
-				{
-					bool s = false;
-					for (int i = 0; i < zn; ++i)
-						s = s || zseen[i] == element;
-					if (!s)
-					{
-						zseen[zn++] = element;
-						log("streak number? element %p z %.6f (want %.6f) alpha %.2f tex %08x", element, z, kStreakNumZ,
-						    f32(element, kElementAlpha), texture_of(element));
-					}
-				}
-			}
-			if (fabsf(f32(element, kElementZ) - kStreakNumZ) < 1e-5f)
-			{
-				// 1.92 (user 2026-11-06: "make sure note streak only appears from 10 and beyond"): the note streak under
-				// the score shows once the streak reaches 10. Solo: the player's streak; band: every instrument player's
-				// is 10+ (then the band's is too). Before any streak meter reports, hidden.
-				int low = -1;
-				const double t = now();
-				for (int p = 0; p < 4; ++p)   // (a meter silent for 30 s belongs to an earlier song's line-up)
-					if (g_streak_at[p] > 0.0 && t - g_streak_at[p] < 30.0 && (low < 0 || g_streak[p] < low))
-						low = g_streak[p];
-				for (int p = 0; p < 4 && low < 0; ++p)   // none fresh (a long rest): the last known values
-					if (g_streak_at[p] > 0.0)
-						low = g_streak[p];
-				set_alpha(element, low >= 10 ? 1.0f : 0.0f);
-			}
+			// (1.92/1.93's z-matched streak alpha is gone: the DE's widget re-showed it; the streak's container is now driven by a
+			// conditional widget on the DE's own streak value, wor_band.py WoR_HUD_HUD_attach_widget_band_meter)
+			vocal_edge_fade(element);
 			const uint32_t tex = texture_of(element);
+			// 1.93 (user 2026-11-07: "vocals must NOT show the vocal icon"; band run 045835: the microphone in the vocal
+			// panel's "xN" box at x1): that box (z 0.2, unique, at its desc size) gets the vocal x1 image instead
+			if (tex == kHighwayIcons[3] && fabsf(f32(element, kElementZ) - kVNixieZ) < 1e-4f &&
+			    fabsf(f32(element, kElementDims) - kVNixieW) < 0.01f && fabsf(f32(element, kElementDims + 4) - kVNixieH) < 0.01f)
+			{
+				set_texture(element, kVMultTex[0]);
+				static int mic_logs = 0;
+				if (mic_logs++ < 3)
+					log("multiplier: the vocal panel's microphone replaced by its x1");
+			}
 			if (tex == kVsNeedleTex)
 				vs_needle(element);
 			if (tex == kStarBar || tex == kProgFill)
@@ -2204,6 +2267,18 @@ namespace
 			{
 				if (icon != texture)
 					continue;
+				// 1.93 (user 2026-11-07: "vocals must NOT show the vocal icon in the streak meter"): in band scoring the
+				// vocalist's x1 is higway_icon_mic; on our vocal panel's "xN" box (one of its own textures), its x1 image
+				bool vocal_box = false;
+				for (uint32_t m : kVMultTex)
+					vocal_box |= m == texture_of(element);
+				if (vocal_box)
+				{
+					texture = kVMultTex[0];
+					if (g_icon_swaps++ < 6)
+						log("multiplier: highway icon %08x on the vocal panel replaced by its x1", icon);
+					break;
+				}
 				const uint32_t current = is_our_badge(element) ? kOurMult[0] : texture_of(element);
 				for (uint32_t m : kOurMult)
 				{

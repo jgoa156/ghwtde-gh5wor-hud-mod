@@ -4,7 +4,39 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-11-06 evening): plugin 1.91 installed and committed; user away, bot runs done by Claude
+## HARD RULES FOR TEST RUNS (user, 2026-11-06, in capitals)
+- **NEVER, EVER launch a test run (tests/capture_band.py or any game launch) while a full-screen application is on.**
+  Check first (foreground window covering the whole screen); if one is up, do not launch, tell the user.
+- **"Kill test" / "stop test" means stop and do not start another.** On 2026-11-06 Claude was told "KILL TEST NOW
+  AND FIX IT", fixed, then launched a new run on its own: wrong. After a kill, the next run needs a fresh go-ahead.
+- Every run: at most 30 s of gameplay, save + GHWTDE.ini backed up and restored (the harness does it; on an
+  interrupted run restore by hand from the run folder's GHWTDE.ini.backup and save-backup\, verify by hash).
+
+## START HERE (2026-11-07 ~04:10): plugin 1.93 installed + committed; vocal fill WORKS (seen in muted 1v runs)
+
+### Done and seen (1v runs band-20261107-040316 etc., muted: capture_band.py mutes the game's own audio session)
+- **Sung-note fill:** pool of 24 `WoR_fill_*` sprites in the vocal highway ROOT (z 2.2, 1 wide in the desc). The plugin
+  maps each note into root coords (`note_root`: note_scale in window in root, read live; notes are centre-anchored in
+  y, NOT in x), the now line is `kVNowRootX` (118, from the desc chain; 1.92 used the engine paint's x 10 = the
+  screen's left edge). On pitch = the vocal object's hit counter [+c808] rose in the last 0.06 s (the engine paint
+  flag was unreliable). Lengths by SetScale (SetDims changes the field but not the drawn quad); a sprite scaled s in x
+  draws over [pos - s, pos], so pos = the stretch's right end. Starts within kVNowSnap (14) snap to the note start
+  (our line is 12 right of the DE's). Rotated notes (slides) are skipped. A note element that jumps right = reused.
+- **Phrase box over the whole phrase:** QB `WoR_HUD_vocal_phrase_watch` publishes WoR_HUD_phrase_start/_end/_ms from
+  `<prefix>_vocals_phrases` (time, flag pairs) and `_song_vocals` (time, length, pitch); the box = hits/ticks x note ms
+  sung so far / the phrase's note ms (seen growing 0.26 / 0.51 / 0.76 through phrase 12174..13902).
+- **Now line** NOW_W_SCALE 0.32. **Vocal SP tube** 2 units up (wor_vocals.SP_DY).
+- **Harness:** refuses to launch over a full-screen app; mutes the game (MuteStreams=1 in the run's ini + the
+  game's Windows audio session, unmuted before the kill).
+
+### Open
+- **Note streak "from 10 on":** kStreakNumZ fixed (13.2013 = STREAK_NUM_Z + HUD_Z; 1.92 never matched), the hook finds
+  the text and its box, but in 1v the "4" still shows: something re-shows it after our alpha 0 (a DE script?), and
+  in 1v no streak is reported (set_lights is instrument-only), so the rule has no value to test. Needs the DE script
+  that sets streak_number_text, or hide by scale.
+- Long notes the bot sings off pitch fill in pieces (matches the engine's own hit counts: correct behaviour).
+
+## (previous) START HERE (2026-11-06 evening): plugin 1.91 installed and committed; user away, bot runs done by Claude
 
 ### Done and seen in bot runs (1v + 3g1v, 30 s each, at 2560x1080)
 - **Star power edge ("two rectangles"):** the soft top-edge sprite (glow[0]) now rides the glass walls' centre line

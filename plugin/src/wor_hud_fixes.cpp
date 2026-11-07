@@ -1,4 +1,4 @@
-// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
+﻿// wor_hud_fixes.asi: native HUD fixes for the GH5 / Warriors of Rock HUD theme (GHWT: Definitive Edition, x86).
 // Loaded by Ultimate ASI Loader (dinput8.dll). In-memory patches only; every patch site is byte-checked first and
 // the plugin stays inert on any mismatch (another game build, or other code already patching the same place).
 // Log: <game folder>\wor_hud_fixes.log. Reverse-engineering notes: docs/PLUGIN_NOTES.md.
@@ -367,12 +367,17 @@ namespace
 
 	int g_light_logs = 0;
 	int g_streak[4] = {};      // 1.48: each player's note streak, as the DE last gave it to a streak meter
+	double g_streak_at[4] = {};   // 1.92: when each player's streak meter last reported (0 = no streak meter: vocals)
+	double now();
 
 	void __fastcall set_lights_hook(void *widget, void *edx, int streak)
 	{
 		const int who = *reinterpret_cast<int *>(field(widget, 0xc)) - 1;
 		if (who >= 0 && who < 4)
+		{
 			g_streak[who] = streak;
+			g_streak_at[who] = now();
+		}
 		void **elements = reinterpret_cast<void **>(field(widget, 0x1c));
 		if (!our_meter(elements))
 		{
@@ -1544,71 +1549,299 @@ namespace
 		vnote_remember(e);
 	}
 
-	// 1.90 (user 2026-11-06: "fill the rectangles exactly where they're hit"): the engine places each sung segment's
-	// paint (WoR_HUD_vocal_create_paint: a container in note_scale holding our WoR_HUD_vpaint sprite) at the SUNG pitch,
-	// so a hit sits off the note by the pitch tolerance. The notes the plugin updates are remembered (parent, local
-	// x span and y, kept 0.2 s); each paint sprite's container takes the y of the note under its x in the same parent.
+	// 1.92 (user 2026-11-06: "rectangles still not being filled where they're hit, maybe we need a separate logic"):
+	// the engine's paint never grows (1.91 logs: its stretch sprite stays 0 wide) and isn't in the notes' places, so
+	// it only serves as the hit signal: each sung segment is one WoR_HUD_vocal_create_paint container, its sprite at
+	// full alpha for a hit (paint_hit), 0 otherwise; the newest segment is the singer's state now. The engine's paint
+	// is hidden. While on pitch, the note crossing the now line (the paint's x, kNowX in the notes' container) gets
+	// its hit stretch extended frame by frame (note-relative, so it rides along); the pool sprites (WoR_HUD_vfill in
+	// note_scale) are laid over those stretches. Notes have a NEGATIVE width (their x is the right end).
 	struct VNoteRec
 	{
-		void *parent;
-		float x, y, w;
+		void *e, *parent;
 		double t;
 	};
 	VNoteRec g_vnotes[128] = {};
-	int g_vnote_next = 0, g_vpaint_logs = 0;
+	int g_vnote_next = 0, g_vnote_geo_logs = 0;
+
+	struct VFill
+	{
+		void *note;             // the note element
+		float u0, u1;           // stretch from the note's left end (canvas units)
+		bool sp;                // star power colour
+		double last;            // last extended (0 = free)
+		float lastx;            // the note's left end last frame (notes only move left: a jump right = a reused element)
+	};
+	constexpr int kFills = 24;   // = wor_vocals.FILL_POOL
+	VFill g_fills[kFills] = {};
+	void *g_fill_sprite[kFills] = {};
+	void *g_vpaint_seen[64] = {};
+	int g_vpaint_next = 0, g_vfill_logs = 0;
+	bool g_vhit = false;
+	double g_vhit_seen = 0.0, g_vtick = 0.0;
+	void *g_vscale = nullptr;
+	float g_now_x = 10.0f;
+
+	bool vocal_counts(uint32_t &hits, uint32_t &ticks);   // the phrase counters (defined with the phrase tracker)
 
 	void vnote_remember(void *e)
 	{
+		for (VNoteRec &r : g_vnotes)
+			if (r.e == e)
+			{
+				r.t = now();
+				return;
+			}
 		VNoteRec &r = g_vnotes[g_vnote_next++ % 128];
+		r.e = e;
 		r.parent = *reinterpret_cast<void **>(field(e, kElementParent));
-		// 1.91: the DE's notes have a NEGATIVE width (dims -49.6 x 32 in the 1.90 run): x..x+w spans to the left
-		const float x = f32(e, kElementPos), w = f32(e, kElementDims) * f32(e, kElementScale);
-		r.x = w < 0.0f ? x + w : x;
-		r.y = f32(e, kElementPos + 4);
-		r.w = fabsf(w);
 		r.t = now();
+		if (g_vnote_geo_logs < 6)
+		{
+			++g_vnote_geo_logs;
+			log("vocals: note %p in %p pos %.1f,%.1f dims %.1f x %.1f scale %.2f,%.2f rot %.2f", e, r.parent,
+			    f32(e, kElementPos), f32(e, kElementPos + 4), f32(e, kElementDims), f32(e, kElementDims + 4),
+			    f32(e, kElementScale), f32(e, kElementScale + 4), f32(e, kElementRot));
+		}
 	}
 
+	// the note's left end and width (positive), from its live position, signed width and justification (just at
+	// 0x1a4/0x1a8: -1 = pos is the left/top edge); cy = its vertical centre
+	constexpr size_t kElementJust = 0x1a4;
+	void note_span(void *n, float &left, float &w, float *cy = nullptr)
+	{
+		const float x = f32(n, kElementPos), d = f32(n, kElementDims) * f32(n, kElementScale);
+		const float a = x - (f32(n, kElementJust) + 1.0f) * 0.5f * d;
+		left = d < 0.0f ? a + d : a;
+		w = fabsf(d);
+		if (cy)
+			*cy = f32(n, kElementPos + 4) - f32(n, kElementJust + 4) * 0.5f * f32(n, kElementDims + 4) * f32(n, kElementScale + 4);
+	}
+
+	// 1.93 (user 2026-11-06: "you're still not filling the boxes"), everything in the highway ROOT's coordinates:
+	// - 1.92 took the engine paint's x (10) for the now line: that is the screen's LEFT EDGE (notes spawn at 1280 = the
+	//   right edge), so every fill sat on the sliver of a note leaving the screen. The line is kVNowRootX in the root
+	//   (now_bar / pitch_area / WoR_now_line from the desc: 929 px in the 2560x1080 frames, measured 928).
+	// - the engine's notes are anchored at note_scale's CENTRE (default pos_anchor): a note at y 22.5 draws at 849.5 px
+	//   (measured), = root 48 + 37.5 + 22.5; the top-left reading put it 37.5 units too high
+	// - the 1.92 pool sprites in note_scale (created 0 wide) never drew at all (frames of the 1.93 diagnostic run: placed,
+	//   opaque, yellow, invisible): the pool is in the root now, 1 wide at creation, like Get Ready and the glows
+	// note_scale sits (just -1) in window, window (just -1) in root; positions and scales read live
+	bool note_root(void *n, float &left, float &w, float &cy)
+	{
+		void *ns = *reinterpret_cast<void **>(field(n, kElementParent));
+		void *win = ns ? *reinterpret_cast<void **>(field(ns, kElementParent)) : nullptr;
+		if (!win)
+			return false;
+		float l, ww, c;
+		note_span(n, l, ww, &c);
+		const float nsx = f32(ns, kElementScale), nsy = f32(ns, kElementScale + 4);
+		const float wsx = f32(win, kElementScale), wsy = f32(win, kElementScale + 4);
+		// x: no centre offset (1.93 test 4: with note_scale's half width added, the fills began ~15 px into each note and
+		// ran 20 px past its end); y: centre-anchored (a note at y 22.5 draws at 849.5 px, measured)
+		const float ox = f32(win, kElementPos) + wsx * f32(ns, kElementPos);
+		const float oy = f32(win, kElementPos + 4) + wsy * (f32(ns, kElementPos + 4) + nsy * 0.5f * f32(ns, kElementDims + 4));
+		left = ox + wsx * nsx * l;
+		w = wsx * nsx * ww;
+		cy = oy + wsy * nsy * c;
+		return true;
+	}
+
+	float g_fill_hscale = 1.0f;   // the notes' vertical scale in the root (the fill's height follows it)
+	float g_win_left = -1e9f;     // the window's left edge in the root (the notes are clipped there)
+
+	// the engine's paint: hidden; the newest segment's alpha is the hit state
 	void vocal_paint(void *e)
 	{
+		set_alpha(e, 0.0f);
 		void *box = *reinterpret_cast<void **>(field(e, kElementParent));
 		if (!box)
 			return;
-		void *scale = *reinterpret_cast<void **>(field(box, kElementParent));
-		const float px = f32(box, kElementPos), py = f32(box, kElementPos + 4);
-		const double t = now();
-		const VNoteRec *best = nullptr;
-		float best_d = 1e9f;
-		for (const VNoteRec &r : g_vnotes)
+		g_vscale = *reinterpret_cast<void **>(field(box, kElementParent));
+		if (g_vscale)
 		{
-			if (!r.parent || r.parent != scale || t - r.t > 0.2)
-				continue;
-			// the paint's left end lies within the note (both left-justified; a little slack at the ends)
-			if (px < r.x - 2.0f || px > r.x + r.w + 2.0f)
-				continue;
-			const float d = fabsf(r.y - py);
-			if (d < best_d)
-				best_d = d, best = &r;
+			g_now_x = kVNowRootX;
+			void *win = *reinterpret_cast<void **>(field(g_vscale, kElementParent));
+			if (win)
+			{
+				g_fill_hscale = f32(win, kElementScale + 4) * f32(g_vscale, kElementScale + 4);
+				g_win_left = f32(win, kElementPos);
+			}
+			static bool logged = false;
+			if (!logged)
+			{
+				logged = true;
+				log("vocals: now line at root x %.1f; note_scale %p (pos %.1f,%.1f dims %.1f x %.1f scale %.3f,%.3f) in window %p "
+				    "(pos %.1f,%.1f scale %.3f,%.3f)", g_now_x, g_vscale, f32(g_vscale, kElementPos), f32(g_vscale, kElementPos + 4),
+				    f32(g_vscale, kElementDims), f32(g_vscale, kElementDims + 4), f32(g_vscale, kElementScale),
+				    f32(g_vscale, kElementScale + 4), win, win ? f32(win, kElementPos) : 0.0f, win ? f32(win, kElementPos + 4) : 0.0f,
+				    win ? f32(win, kElementScale) : 0.0f, win ? f32(win, kElementScale + 4) : 0.0f);
+			}
 		}
-		if (g_vpaint_logs < 12 && (g_vpaint_logs < 3 || f32(e, kElementDims) != 1.0f))
+		bool seen = false;
+		for (void *p : g_vpaint_seen)
+			seen = seen || p == e;
+		if (!seen)
 		{
-			++g_vpaint_logs;
-			log("vocals: paint at (%.1f, %.1f) in %p -> %s (note y %.1f, %.1f off); sprite dims %.1f x %.1f scale %.2f,%.2f alpha %.2f rgba %08x",
-			    px, py, scale, best ? "snapped" : "no note under it", best ? best->y : 0.0f, best ? best_d : 0.0f,
-			    f32(e, kElementDims), f32(e, kElementDims + 4), f32(e, kElementScale), f32(e, kElementScale + 4),
-			    f32(e, kElementAlpha), *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget)));
-			int shown = 0;   // the remembered notes of this container nearest the paint's x
-			for (const VNoteRec &r : g_vnotes)
-				if (r.parent == scale && t - r.t < 0.2 && r.x < px + 60.0f && r.x + r.w > px - 60.0f && shown < 6)
-				{
-					++shown;
-					log("vocals:   note x %.1f..%.1f y %.1f", r.x, r.x + r.w, r.y);
-				}
+			g_vpaint_seen[g_vpaint_next++ % 64] = e;
+			const uint32_t rgba = *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget));
+			g_vhit = (rgba >> 24) != 0;
 		}
-		if (best && best_d > 0.01f)
-			reinterpret_cast<SetPosFn>(kSetPos)(box, nullptr, px, best->y, 1);
+		g_vhit_seen = now();
 	}
 
+	// once per frame: extend (or start) the hit stretch of the note at the now line, free stretches of notes gone
+	void vocal_fill_tick()
+	{
+		const double t = now();
+		if (t - g_vtick < 0.004)
+			return;
+		g_vtick = t;
+		for (VFill &f : g_fills)
+		{
+			if (!f.note)
+				continue;
+			bool live = false;
+			for (const VNoteRec &r : g_vnotes)
+				live = live || (r.e == f.note && t - r.t < 0.3);
+			float nl, nw, nc;
+			if (live && note_root(f.note, nl, nw, nc))
+			{
+				if (nl > f.lastx + 5.0f)   // the element now holds a new note (1.93 test 3: an old fill on an unsung note)
+					live = false;
+				f.lastx = nl;
+			}
+			if (!live)
+			{
+				static int end_logs = 0;
+				if (end_logs < 12)
+					++end_logs, log("vocals: fill ends on note %p, stretch %.1f..%.1f", f.note, f.u0, f.u1);
+				f = VFill();
+			}
+		}
+		// on pitch now: the vocal player's phrase counters (hits [+c808] count each tick sung on pitch, ticks [+c80c] every
+		// tick; both zeroed at a phrase's end). 1.93 test 4: the engine paint's hit flag split a perfectly sung 219-unit note
+		// into 3 pieces (50.8..84.5, 144.4..147.8, 182.2..215.1)
+		{
+			static uint32_t last_hits = 0, last_ticks = 0;
+			static double hit_t = 0.0, miss_t = 0.0;
+			uint32_t hits = 0, ticks = 0;
+			if (!vocal_counts(hits, ticks))
+				return;
+			if (hits < last_hits || ticks < last_ticks)
+				last_hits = last_ticks = 0;
+			if (hits > last_hits)
+				hit_t = t;
+			else if (ticks > last_ticks)
+				miss_t = t;
+			last_hits = hits, last_ticks = ticks;
+			if (t - hit_t > 0.06 || miss_t > hit_t || !g_vscale)
+				return;
+		}
+		void *note = nullptr;
+		float left = 0.0f, w = 0.0f;
+		for (const VNoteRec &r : g_vnotes)
+		{
+			if (!r.e || r.parent != g_vscale || t - r.t > 0.2)
+				continue;
+			float l, ww, c;
+			if (!note_root(r.e, l, ww, c))
+				continue;
+			// slides (the slanted links between notes) are rotated notes: a flat fill would cross the gap
+			if (fabsf(f32(r.e, kElementRot)) > 0.01f)
+				continue;
+			if (g_now_x >= l && g_now_x <= l + ww)
+			{
+				note = r.e, left = l, w = ww;
+				break;
+			}
+		}
+		if (!note)
+			return;
+		const float u = g_now_x - left;
+		for (VFill &f : g_fills)
+			if (f.note == note && t - f.last < 0.1)
+			{
+				f.u1 = u > f.u1 ? u : f.u1;
+				f.last = t;
+				return;
+			}
+		for (VFill &f : g_fills)
+			if (!f.note)
+			{
+				// our line is NOW_BAR_DX right of the DE's: the engine's timing may still be the DE's, so a note sung from
+				// its start first reports a hit when the line is up to that far in; such a start is the note's start
+				f.note = note, f.u0 = u <= kVNowSnap ? 0.0f : u, f.u1 = u, f.sp = vocal_sp(), f.last = t, f.lastx = left;
+				if (g_vfill_logs < 6)
+				{
+					++g_vfill_logs;
+					log("vocals: fill starts on note %p at %.1f of %.1f (now line x %.1f)", note, u, w, g_now_x);
+				}
+				return;
+			}
+	}
+
+	// a pool sprite: laid over its stretch (slot by first sight), hidden when free
+	void vocal_fill(void *e)
+	{
+		vocal_fill_tick();
+		int slot = -1;
+		for (int i = 0; i < kFills && slot < 0; ++i)
+			if (g_fill_sprite[i] == e)
+				slot = i;
+		for (int i = 0; i < kFills && slot < 0; ++i)
+			if (!g_fill_sprite[i])
+				g_fill_sprite[i] = e, slot = i;
+		const VFill *f = slot >= 0 && g_fills[slot].note ? &g_fills[slot] : nullptr;
+		if (!f)
+		{
+			set_alpha(e, 0.0f);
+			return;
+		}
+		float left, w, cy;
+		if (!note_root(f->note, left, w, cy))
+		{
+			set_alpha(e, 0.0f);
+			return;
+		}
+		float x0 = left + f->u0;
+		float len = f->u1 - f->u0 < 0.5f ? 0.5f : f->u1 - f->u0;
+		if (x0 < g_win_left)   // the window clips the notes there; the root doesn't clip the fill
+		{
+			len -= g_win_left - x0;
+			x0 = g_win_left;
+		}
+		if (len <= 0.0f)
+		{
+			set_alpha(e, 0.0f);
+			return;
+		}
+		// x scaled by s, this sprite draws over [pos - s, pos] (test 3 frames: just -1 at pos x0 drew [x0 - s, x0], just 0 at
+		// x0 + s/2 drew the same; 1 wide it sat on pos): the stretch's right end is the position
+		reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, x0 + len, cy, 1);
+		// the length by SCALE (the sprite is 1 wide in the desc): the 1.93 test frames showed SetDims changes the field
+		// (46.2 in the log) but not the drawn quad (1 px ticks at each sung note's start); the phrase box grows by scale too
+		if (fabsf(f32(e, kElementScale) - len) > 1e-3f || fabsf(f32(e, kElementScale + 4) - g_fill_hscale) > 1e-3f)
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, len, g_fill_hscale, 0, 0);
+		reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, f->sp ? kPaintSpRgba : kPaintRgba, 1);
+		set_alpha(e, 1.0f);
+		// 1.93 diagnostics (user 2026-11-06: the 1.92 fill never showed): what the pool sprite holds after the setters
+		static int draw_logs = 0;
+		static double last_log = 0.0;
+		const double t = now();
+		if (draw_logs < 16 && t - last_log > 0.25)
+		{
+			++draw_logs, last_log = t;
+			void *ep = *reinterpret_cast<void **>(field(e, kElementParent));
+			log("vocals: fill sprite %p slot %d parent %p (notes in %p) pos %.1f,%.1f dims %.1f x %.1f scale %.2f alpha %.2f "
+			    "rgba %08x z %.2f | note %p pos %.1f,%.1f dims %.1f x %.1f z %.2f | u %.1f..%.1f now x %.1f",
+			    e, slot, ep, g_vscale, f32(e, kElementPos), f32(e, kElementPos + 4), f32(e, kElementDims),
+			    f32(e, kElementDims + 4), f32(e, kElementScale), f32(e, kElementAlpha),
+			    *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget)), f32(e, kElementZ), f->note,
+			    f32(f->note, kElementPos), f32(f->note, kElementPos + 4), f32(f->note, kElementDims),
+			    f32(f->note, kElementDims + 4), f32(f->note, kElementZ), f->u0, f->u1, g_now_x);
+		}
+	}
 	// the now line: green lightning, cyan in star power, a new bolt every 1/60 s (1.89, user 2026-11-04: WoR's animates
 	// at least 3x faster than the 1/20 s of 1.58), in a scrambled order so no bolt follows itself
 	void vocal_now(void *e, uint32_t tex)
@@ -1719,18 +1952,53 @@ namespace
 		g_vocal_tick(vocal, edx);
 	}
 
+	// 1.93 (user 2026-11-07: "the precision bar needs to be the sum of all notes in the phrase, currently you're doing
+	// precision per word"): [+c7f8]..[+c7fc] is the current NOTE (12240..12441 = the song's first note, 201 ms), while
+	// hits / ticks run over the whole phrase (zeroed at its end). The phrase (its start, end and total note ms) comes from
+	// WoR_HUD_vocal_phrase_watch (the song's <prefix>_vocals_phrases + _song_vocals); the note ms sung so far are summed
+	// here from the notes the engine went through. Box = hits / ticks x note ms so far / the phrase's note ms: it grows
+	// through the phrase, holds between words, and ends at the phrase's accuracy.
+	bool vocal_counts(uint32_t &hits, uint32_t &ticks)
+	{
+		if (!g_vocal_obj || now() - g_vocal_obj_t > 0.25)
+			return false;
+		hits = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808));
+		ticks = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c));
+		return true;
+	}
+
+	int32_t qb_int(uint32_t key, int32_t fallback)
+	{
+		const uint8_t *g = find_symbol(key);
+		return g ? *reinterpret_cast<const int32_t *>(g + 0xc) : fallback;
+	}
+
 	float vocal_phrase_level()
 	{
 		if (!g_vocal_obj || now() - g_vocal_obj_t > 0.25)
 			return 0.0f;
 		const int32_t t = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f4));
-		const int32_t t0 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8));
-		const int32_t t1 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc));
+		const int32_t s0 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8));
+		const int32_t s1 = *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc));
 		const uint32_t hit = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808));
 		const uint32_t ticks = *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c));
-		if (t1 <= t0 || t < t0 || t >= t1 || ticks == 0)
+		const int32_t p0 = qb_int(kPhraseStart, -1), p1 = qb_int(kPhraseEnd, -1), pms = qb_int(kPhraseMs, 0);
+		// the notes passed in this phrase: each note the engine leaves adds its length
+		static int32_t acc = 0, last_s0 = -1, last_s1 = -1, last_p0 = -2;
+		if (p0 != last_p0)
+			last_p0 = p0, acc = 0, last_s0 = last_s1 = -1;
+		if (s0 != last_s0)
+		{
+			if (last_s0 >= p0 && last_s0 < p1 && last_s1 > last_s0)
+				acc += last_s1 - last_s0;
+			last_s0 = s0, last_s1 = s1;
+		}
+		if (ticks == 0 || pms <= 0 || p1 <= p0 || t < p0 || t >= p1)
 			return 0.0f;
-		float q = static_cast<float>(hit) / static_cast<float>(ticks) * static_cast<float>(t - t0) / static_cast<float>(t1 - t0);
+		int32_t cur = 0;
+		if (s0 >= p0 && s0 < p1 && t >= s0 && s1 > s0)
+			cur = (t < s1 ? t : s1) - s0;
+		float q = static_cast<float>(hit) / static_cast<float>(ticks) * static_cast<float>(acc + cur) / static_cast<float>(pms);
 		return q < 0.0f ? 0.0f : q > 1.0f ? 1.0f : q;
 	}
 
@@ -1753,10 +2021,11 @@ namespace
 			{
 				last = q;
 				++g_vpp_logs;
-				log("vocals: phrase box %.2f (hits %u / ticks %u, time %d in %d..%d)", q,
+				log("vocals: phrase box %.2f (hits %u / ticks %u, time %d, note %d..%d, phrase %d..%d, %d note ms)", q,
 				    *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808)), *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c)),
 				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f4)), *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8)),
-				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc)));
+				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc)), qb_int(kPhraseStart, -1), qb_int(kPhraseEnd, -1),
+				    qb_int(kPhraseMs, 0));
 			}
 		}
 	}
@@ -1782,6 +2051,39 @@ namespace
 			else if (fabsf(f32(element, kElementZ) - kVPpFillZ) < 1e-5f)
 				vocal_pp_fill(element);
 			vs_streak_size(element);
+			{
+				// 1.93 diagnostics (the 1v streak showed "2"): any element near the streak number's z, once each
+				static void *zseen[8] = {};
+				static int zn = 0;
+				const float z = f32(element, kElementZ);
+				if (fabsf(z - kStreakNumZ) < 0.05f && zn < 8)
+				{
+					bool s = false;
+					for (int i = 0; i < zn; ++i)
+						s = s || zseen[i] == element;
+					if (!s)
+					{
+						zseen[zn++] = element;
+						log("streak number? element %p z %.6f (want %.6f) alpha %.2f tex %08x", element, z, kStreakNumZ,
+						    f32(element, kElementAlpha), texture_of(element));
+					}
+				}
+			}
+			if (fabsf(f32(element, kElementZ) - kStreakNumZ) < 1e-5f)
+			{
+				// 1.92 (user 2026-11-06: "make sure note streak only appears from 10 and beyond"): the note streak under
+				// the score shows once the streak reaches 10. Solo: the player's streak; band: every instrument player's
+				// is 10+ (then the band's is too). Before any streak meter reports, hidden.
+				int low = -1;
+				const double t = now();
+				for (int p = 0; p < 4; ++p)   // (a meter silent for 30 s belongs to an earlier song's line-up)
+					if (g_streak_at[p] > 0.0 && t - g_streak_at[p] < 30.0 && (low < 0 || g_streak[p] < low))
+						low = g_streak[p];
+				for (int p = 0; p < 4 && low < 0; ++p)   // none fresh (a long rest): the last known values
+					if (g_streak_at[p] > 0.0)
+						low = g_streak[p];
+				set_alpha(element, low >= 10 ? 1.0f : 0.0f);
+			}
 			const uint32_t tex = texture_of(element);
 			if (tex == kVsNeedleTex)
 				vs_needle(element);
@@ -1797,6 +2099,8 @@ namespace
 				vocal_sp_segment(element);
 			else if (tex == kVPaint)
 				vocal_paint(element);
+			else if (tex == kVFill)
+				vocal_fill(element);
 			else if (tex == kVGetReady)
 			{
 				// 1.91: WoR's "Get Ready!", shown while WoR_HUD_vocal_get_ready holds WoR_HUD_get_ready at 1 (abrupt, no fade)
@@ -2557,7 +2861,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.91 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.93 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])

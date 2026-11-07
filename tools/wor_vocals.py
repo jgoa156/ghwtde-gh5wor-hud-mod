@@ -99,16 +99,18 @@ UI_TEX = GRADE_TEX + ['WoR_HUD_v_ppfill']
 # WoR's "Get Ready!" on the vocal highway (user 2026-11-06: abruptly, 5 s before the first vocal note, for 3 s, centred)
 GET_READY_TEXT, GET_READY_TEX = 'Get Ready!', 'WoR_HUD_v_getready'
 GET_READY_LEAD, GET_READY_SHOW = 5000, 3000                 # ms
+GET_READY_NUDGE = (-22.0, -18.7)                    # user 2026-11-06: centre AND middle of the vocal highway (1.91 frames: 33 px right, 28 px low)
 GET_READY_DIMS = (430.0, 46.0)                              # canvas units (WoR footage: ~46 units tall)
 # (in the theme pak: a desc names it, tests/run_offline.py integrity_textures_in_theme_pak)
 # star power strip (mock v5, user 2026-10-26): 9 tall (was 8) and 1 up, a dark border with a light top lip, the 50 %
 # mark 5 wide, drawn over the highway's top line
-SP_CAP = (145, 493.0, 383, 501.0)                 # user 2026-10-27: 1 smaller, 2 down
+SP_DY = -2.0                                      # user 2026-11-07: "the star power tube visibly needs to go up a bit"
+SP_CAP = (145, 493.0 + SP_DY, 383, 501.0 + SP_DY)  # user 2026-10-27: 1 smaller, 2 down
 # 2026-11-04 (user, WoR screenshot vs ours; mock verify/mock_vocal_fix_v1.jpg): no border at all, the fill over the
 # tube's gloss at the tube's whole inner height, WoR's shinier colours (SP_PROFILE, rows measured top to bottom on the
 # WoR frame), a white tip at the fill's end, the 50 % mark 2 px (1.33 canvas units) thinner
-SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (493.6, 500.4)
-SP_MARK = (262.67, 493.0, 266.33, 501.0)     # the strip's 50 % mark
+SP_FILL_X, SP_FILL_Y = (147.0, 381.0), (493.6 + SP_DY, 500.4 + SP_DY)
+SP_MARK = (262.67, 493.0 + SP_DY, 266.33, 501.0 + SP_DY)     # the strip's 50 % mark
 SP_PROFILE = [(48, 88, 97), (105, 176, 178), (165, 255, 255), (171, 255, 255), (151, 255, 255), (111, 212, 237),
               (60, 148, 211), (17, 76, 108)]
 SP_TIP_TEX = 'WoR_HUD_v_sptip'
@@ -152,7 +154,8 @@ COMET_SPARK_TIME = 0.2
 # and halo together, mock verify/mock_vocal_fix_v1.jpg) and a new bolt every frame (plugin 1.89, 60 a second) out of 8;
 # frames 4..7 ride in the UI pak (the theme pak is near its cap; the plugin sets them by name)
 NOW_FRAMES = 8
-NOW_W_SCALE = 0.22                           # user 2026-11-06: thinner again (0.55 -> 0.35 -> 0.22; WoR's is a hairline)
+NOW_W_SCALE = 0.32   # user 2026-11-06 (later): 0.22 too thin, 'turn it up to 28'; 2026-11-07: "slightly thicker"
+#                          # user 2026-11-06: thinner again (0.55 -> 0.35 -> 0.22; WoR's is a hairline)
 NOW_TEX = [f'WoR_HUD_vnow_g{i}' for i in range(NOW_FRAMES)]
 NOW_SP_TEX = [f'WoR_HUD_vnow_c{i}' for i in range(NOW_FRAMES)]
 UI_TEX += NOW_TEX[4:] + NOW_SP_TEX[4:]
@@ -586,6 +589,7 @@ def textures():
     out[SP_FILL] = _sp_fill()
     out[SP_TIP_TEX] = _sp_tip()
     out[PAINT_TEX] = _paint_tex()
+    out[FILL_TEX] = _paint_tex()
     for i in range(NOW_FRAMES):
         out[NOW_TEX[i]] = _lightning(NOW_CORE, NOW_GLOW, 11 + i)
         out[NOW_SP_TEX[i]] = _lightning(NOW_SP_CORE, NOW_SP_GLOW, 11 + i)
@@ -604,7 +608,7 @@ def textures():
 def sources():
     s = {name: {'src': os.path.join(d, n + '.png'), 'box': None, 'flip': False} for name, (d, n) in ART.items()}
     for name in NOW_TEX + NOW_SP_TEX + list(SPIKE_TEX.values()) + NOTE_TEX + [SP_GLOW_TEX, METER_SHADE, LAMP_SHADE,
-                                                                              SP_FILL, SP_TIP_TEX, PAINT_TEX]:
+                                                                              SP_FILL, SP_TIP_TEX, PAINT_TEX, FILL_TEX]:
         s[name] = {'src': 'generated (tools/wor_vocals.py)', 'box': None, 'flip': False}
     for n in MULT_TEX:
         s[MULT_TEX[n]] = {'src': 'fontgrid_text_a1 + fontgrid_numeral_A1_b', 'text': f'x{n}', 'style': str(n), 'box': None, 'flip': False}
@@ -674,7 +678,9 @@ def global_sections(fx_text):
     wor = re.sub(r'StructQBKey material = sys_Particle_Spark01_sys_Particle_Spark01\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*255\s+128\s+0\s+255\s*\]\s*\}'
                  r'(?:(?!StructQBKey material).)*?StructFloat time = [-\d.]+', base, wor, flags=re.S)
     assert n_base == 2, n_base
-    return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n', 'SectionInteger WoR_HUD_get_ready 0\n'])
+    return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n', 'SectionInteger WoR_HUD_get_ready 0\n',
+                      'SectionInteger WoR_HUD_phrase_start 0\n', 'SectionInteger WoR_HUD_phrase_end 0\n',
+                      'SectionInteger WoR_HUD_phrase_ms 0\n'])
 
 def _globals_body(ours):
     if os.environ.get('WOR_NO_VGLOBALS'):          # bisect switch (2026-10-27 crash at vocals_create_highway)
@@ -718,7 +724,98 @@ SCRIPTS = (
     '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_health$$id$ = $WoR_HUD_vocal_health$\n'
     '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_vocal_get_ready$\n'
     '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_get_ready$$id$ = $WoR_HUD_vocal_get_ready$\n'
+    '\t\t:i $KillSpawnedScript$$id$ = $WoR_HUD_vocal_phrase_watch$\n'
+    '\t\t:i $spawnscriptnow$$WoR_HUD_vocal_phrase_watch$$id$ = $WoR_HUD_vocal_phrase_watch$\n'
     '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    # the phrase box over the whole phrase (user 2026-11-07: "the precision bar needs to be the sum of all notes in the
+    # phrase, currently you're doing precision per word"): the song's <prefix>_vocals_phrases (time, flag pairs: the
+    # phrase boundaries, ms) gives the current phrase; its notes' total length comes from <prefix>_song_vocals (time,
+    # length, pitch), scanned 16 notes a frame from a running pointer (sorted arrays). The plugin reads
+    # WoR_HUD_phrase_start / _end / _ms (0 until the scan is done). Stops when the song's arrays are gone.
+    'Script WoR_HUD_vocal_phrase_watch [\n'
+    '\t:i $change$$WoR_HUD_phrase_start$ = %i(0)\n'
+    '\t:i $change$$WoR_HUD_phrase_end$ = %i(0)\n'
+    '\t:i $change$$WoR_HUD_phrase_ms$ = %i(0)\n'
+    '\t:i $get_song_prefix$$song$ = (~$current_song$)\n'
+    '\t:i $FormatText$$checksumname$ = $WoR_notes$%s("%s_song_vocals")$s$ = %GLOBAL%$song_prefix$$addtostringlookup$\n'
+    '\t:i $FormatText$$checksumname$ = $WoR_phr$%s("%s_vocals_phrases")$s$ = %GLOBAL%$song_prefix$$addtostringlookup$\n'
+    '\t:i if NOT $GlobalExists$$name$ = %GLOBAL%$WoR_notes$$type$ = $array$\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i if NOT $GlobalExists$$name$ = %GLOBAL%$WoR_phr$$type$ = $array$\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $GetArraySize$~%GLOBAL%$WoR_notes$\n'
+    '\t:i $WoR_nsize$ = %GLOBAL%$array_size$\n'
+    '\t:i $GetArraySize$~%GLOBAL%$WoR_phr$\n'
+    '\t:i $WoR_psize$ = %GLOBAL%$array_size$\n'
+    '\t:i if (%GLOBAL%$WoR_psize$ < %i(2))\n'
+    '\t\t:i return\n'
+    '\t:i endif\n'
+    '\t:i $WoR_pi$ = %i(0)\n'
+    '\t:i $WoR_nj$ = %i(0)\n'
+    '\t:i $WoR_ms$ = %i(0)\n'
+    '\t:i $WoR_done$ = %i(0)\n'
+    '\t:i $WoR_start$ = (~%GLOBAL%$WoR_phr$:a{%i(0):a})\n'
+    '\t:i $WoR_end$ = %i(999999999)\n'
+    '\t:i if (%GLOBAL%$WoR_psize$ > %i(2))\n'
+    '\t\t:i $WoR_end$ = (~%GLOBAL%$WoR_phr$:a{%i(2):a})\n'
+    '\t:i endif\n'
+    '\t:i $change$$WoR_HUD_phrase_start$ = %GLOBAL%$WoR_start$\n'
+    '\t:i $change$$WoR_HUD_phrase_end$ = %GLOBAL%$WoR_end$\n'
+    '\t:i while \n'
+    '\t\t:i if NOT $GlobalExists$$name$ = %GLOBAL%$WoR_notes$$type$ = $array$\n'
+    '\t\t\t:i return\n'
+    '\t\t:i endif\n'
+    '\t\t:i if NOT $GlobalExists$$name$ = %GLOBAL%$WoR_phr$$type$ = $array$\n'
+    '\t\t\t:i return\n'
+    '\t\t:i endif\n'
+    '\t\t:i $getsongtimems$\n'
+    # the next phrase (one step a frame: catches up within a few frames after a skipped lead-in)
+    '\t\t:i $WoR_pn$ = (%GLOBAL%$WoR_pi$ + %i(2))\n'
+    '\t\t:i if (%GLOBAL%$WoR_pn$ < %GLOBAL%$WoR_psize$)\n'
+    '\t\t\t:i if (%GLOBAL%$time$ >= (~%GLOBAL%$WoR_phr$:a{%GLOBAL%$WoR_pn$:a}))\n'
+    '\t\t\t\t:i $WoR_pi$ = %GLOBAL%$WoR_pn$\n'
+    '\t\t\t\t:i $WoR_start$ = (~%GLOBAL%$WoR_phr$:a{%GLOBAL%$WoR_pi$:a})\n'
+    '\t\t\t\t:i $WoR_end$ = %i(999999999)\n'
+    '\t\t\t\t:i $WoR_pn$ = (%GLOBAL%$WoR_pi$ + %i(2))\n'
+    '\t\t\t\t:i if (%GLOBAL%$WoR_pn$ < %GLOBAL%$WoR_psize$)\n'
+    '\t\t\t\t\t:i $WoR_end$ = (~%GLOBAL%$WoR_phr$:a{%GLOBAL%$WoR_pn$:a})\n'
+    '\t\t\t\t:i endif\n'
+    '\t\t\t\t:i $WoR_ms$ = %i(0)\n'
+    '\t\t\t\t:i $WoR_done$ = %i(0)\n'
+    '\t\t\t\t:i $change$$WoR_HUD_phrase_ms$ = %i(0)\n'
+    '\t\t\t\t:i $change$$WoR_HUD_phrase_start$ = %GLOBAL%$WoR_start$\n'
+    '\t\t\t\t:i $change$$WoR_HUD_phrase_end$ = %GLOBAL%$WoR_end$\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i endif\n'
+    # the phrase's notes: up to 16 a frame from the running pointer
+    '\t\t:i if (%GLOBAL%$WoR_done$ = %i(0))\n'
+    '\t\t\t:i while \n'
+    '\t\t\t\t:i if (%GLOBAL%$WoR_done$ = %i(0))\n'
+    '\t\t\t\t\t:i if (%GLOBAL%$WoR_nj$ < %GLOBAL%$WoR_nsize$)\n'
+    '\t\t\t\t\t\t:i $WoR_nt$ = (~%GLOBAL%$WoR_notes$:a{%GLOBAL%$WoR_nj$:a})\n'
+    '\t\t\t\t\t\t:i if (%GLOBAL%$WoR_nt$ < %GLOBAL%$WoR_end$)\n'
+    '\t\t\t\t\t\t\t:i if (%GLOBAL%$WoR_nt$ >= %GLOBAL%$WoR_start$)\n'
+    '\t\t\t\t\t\t\t\t:i $WoR_nl$ = (%GLOBAL%$WoR_nj$ + %i(1))\n'
+    '\t\t\t\t\t\t\t\t:i $WoR_ms$ = (%GLOBAL%$WoR_ms$ + (~%GLOBAL%$WoR_notes$:a{%GLOBAL%$WoR_nl$:a}))\n'
+    '\t\t\t\t\t\t\t:i endif\n'
+    '\t\t\t\t\t\t\t:i $WoR_nj$ = (%GLOBAL%$WoR_nj$ + %i(3))\n'
+    '\t\t\t\t\t\t:i else \n'
+    '\t\t\t\t\t\t\t:i $WoR_done$ = %i(1)\n'
+    '\t\t\t\t\t\t:i endif\n'
+    '\t\t\t\t\t:i else \n'
+    '\t\t\t\t\t\t:i $WoR_done$ = %i(1)\n'
+    '\t\t\t\t\t:i endif\n'
+    '\t\t\t\t:i endif\n'
+    '\t\t\t:i loop_to %i(16)\n'
+    '\t\t\t:i if (%GLOBAL%$WoR_done$ = %i(1))\n'
+    '\t\t\t\t:i $change$$WoR_HUD_phrase_ms$ = %GLOBAL%$WoR_ms$\n'
+    '\t\t\t:i endif\n'
+    '\t\t:i endif\n'
+    '\t\t:i $wait$%i(1)$gameframe$\n'
+    '\t:i loop_to %i(216000)\n'
     '\t:i endfunction\n]\n\n'
     # WoR's "Get Ready!" (user 2026-11-06: it appears abruptly 5 s before the first vocal note and stays 3 s, centred
     # on the vocal highway): the song's <prefix>_song_vocals array (time, length, pitch per note, ms) gives the first
@@ -868,6 +965,7 @@ PAINT_WOR = {
 # sung-note fill (sprite paint, WoR_HUD_vocal_create_paint): texture, height in the note container (notes 15 tall with
 # 3-unit outlines), WoR's yellow / star power cyan
 PAINT_TEX = 'WoR_HUD_vpaint'
+FILL_TEX, FILL_POOL = 'WoR_HUD_vfill', 24          # 1.92: the plugin's own sung-note fill (sprites in note_scale)
 PAINT_H = 11.0
 PAINT_RGB, PAINT_SP_RGB = (255, 236, 60), (120, 255, 255)
 PAINT_SWAPS = [('vocals_setup_paint_material', 'WoR_HUD_vocal_paint_setup', 'off'),
@@ -934,6 +1032,18 @@ def paint_scripts():
             '\t:i $printf$%s("WoR_HUD: vocal create paint placeholder ran, plugin swap missing")\n'
             '\t:i endfunction\n]\n')
     return out
+
+
+DE_NOW_BAR = dict(x=121.0, w=32.0)        # the DE's now_bar in the highway root: pos x, dims w (just right)
+DE_PITCH_AREA = dict(x=17.0, w=20.0)      # pitch_area in now_bar: pos x, dims w (just centre)
+
+
+def now_line_root_x():
+    """1.93: the visible now line's x in the vocal highway root (WoR_now_line's centre: now_bar's left edge + pitch_area's
+    left edge + NOW_BOX x). 118: 929 px in the 2560x1080 frames (root 288, 1.5 px a unit, 320 px bars), measured 928."""
+    bar_left = DE_NOW_BAR['x'] + NOW_BAR_DX - DE_NOW_BAR['w']
+    area_left = DE_PITCH_AREA['x'] - DE_PITCH_AREA['w'] / 2
+    return bar_left + area_left + NOW_BOX[0]
 
 
 def _paint_tex():
@@ -1016,8 +1126,16 @@ def vocal_highway_desc(de_text):
     glows = [E(f'WoR_sp_glow_{i}', 'SpriteElement', pos=(SP_GLOW_X[0], y), dims=(SP_GLOW_X[1] - SP_GLOW_X[0], SP_GLOW_H),
                just=(-1, 0), z=2.5, alpha=0.0, texture=SP_GLOW_TEX, blend='Add').render(0)
              for i, y in enumerate(SP_GLOW_Y)]
+    # sung-note fill pool (1.92, user 2026-11-06: "fill the rectangles exactly where they're hit ... a separate logic"):
+    # hidden sprites the plugin lays over the stretch of a note that crossed the now line while the singer was on
+    # pitch. 1.93: in the root (1.92's in note_scale, created 0 wide, never drew), 1 wide at creation, above the
+    # notes' window (z 1) and under the now line and comet (pitch_area, z 4)
+    # (1.93 test 3: scaled by its length in x it draws over [pos - length, pos]: the plugin puts pos at the stretch's
+    # right end; z 2.2 over the notes (z 2: at 1.5 the notes' dark inside covered it), under the SP glow bands (2.5))
+    glows += [E(f'WoR_fill_{i}', 'SpriteElement', pos=(0.0, 0.0), dims=(1.0, PAINT_H), just=(-1, 0), z=2.2, alpha=0.0,
+                rgba=PAINT_RGB + (255,), texture=FILL_TEX).render(0) for i in range(FILL_POOL)]
     # WoR's "Get Ready!" (hidden; WoR_HUD_vocal_get_ready shows it), centred on screen between the highway's lines
-    glows.append(E('WoR_get_ready', 'SpriteElement', pos=(640.0 - x, (SP_GLOW_Y[0] + SP_GLOW_Y[1]) / 2), dims=GET_READY_DIMS,
+    glows.append(E('WoR_get_ready', 'SpriteElement', pos=(640.0 - x + GET_READY_NUDGE[0], (SP_GLOW_Y[0] + SP_GLOW_Y[1]) / 2 + GET_READY_NUDGE[1]), dims=GET_READY_DIMS,
                    just=(0, 0), z=3.0, alpha=0.0, texture=GET_READY_TEX).render(0))
     return wor_mp._append_children(d, 'root', glows)
 

@@ -300,6 +300,11 @@ def _append_children(d, lid, blocks):
     """Insert element blocks at the end of element lid's children array (indices of existing children unchanged)."""
     a, b = V._element_bounds(d, lid)
     blk = d[a:b]
+    if 'StructArray children' not in blk:   # a leaf (2026-11-06: the vocal highway's note_scale): a new children array
+        end = blk.rstrip().rfind('}')
+        kids = '\n'.join(blocks)
+        blk = blk[:end] + '\tStructArray children\n\t{\n\t\tArrayStruct\n\t\t[\n' + kids + '\n\t\t]\n\t}\n' + blk[end:]
+        return d[:a] + blk + d[b:]
     k = blk.index('StructArray children')
     j = blk.index('[', k)
     depth = 0

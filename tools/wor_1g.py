@@ -87,6 +87,7 @@ RAIL_OUTSET = (-13.4, 15.7)     # horizontal canvas px from the border centre li
 # ---------------------------------------------------------------- look: tints, shadows, layering
 RAIL_TINT_L = (217, 217, 217, 255)  # rock tube art
 RAIL_TINT_R = (255, 255, 255, 255)  # star power tube art
+STREAK_NUM_Z = 3.2013   # 2026-11-06: the note streak under the score (a unique z the plugin finds it by: shown from 10 on)
 SCORE_TINT = (161, 161, 161, 255)   # score box art + glass
 STREAK_TINT = (171, 171, 171, 255)  # streak box art + front
 RAIL_SHADOW_A = 0.6                 # tube drop shadow (the tube art tinted black)
@@ -725,7 +726,7 @@ def band_meter():
         E('streak_box', 'SpriteElement', pos=s_box, dims=(256, 64), scale=(sk, sk), z=3.0,
           rgba=STREAK_TINT, texture='WoR_HUD_streak'),
         E('streak_number', 'TextBlockElement', pos=add(s_box, scale((STREAK_RIGHT, STREAK_TEXT_Y), sk)), dims=(300, 100),
-          just=(1, 0), scale=(sk * STREAK_NUM_K, sk * STREAK_NUM_K), z=3.2, rgba=(255, 128, 0, 255), font=SCORE_FONT,
+          just=(1, 0), scale=(sk * STREAK_NUM_K, sk * STREAK_NUM_K), z=STREAK_NUM_Z, rgba=(255, 128, 0, 255), font=SCORE_FONT,
           text='c6081e83', shadow=False),
         E('streak_front', 'SpriteElement', pos=add(s_box, scale((3.268, 2.816), sk)), dims=(256, 64),
           scale=(sk, sk), z=3.4, rgba=STREAK_TINT, texture='WoR_HUD_streak_front'),

@@ -160,6 +160,9 @@ def run(name, parts, a, out):
                      ('Graphics', 'ResolutionX', str(w)), ('Graphics', 'ResolutionY', str(h))]
         if getattr(a, 'sp_states', False):   # fixed star power states (build.py WoR_HUD_test_sp_states)
             sets.append(('WoR_HUD', 'TestSPStates', '1'))
+        # muted runs (user 2026-11-07: "just mute the game"): the DE's stream mute (the ini is restored afterwards)
+        # and the game's own Windows audio session muted while it runs (mute_game), nothing else on the PC
+        sets.append(('Audio', 'MuteStreams', '1'))
         for sec, k, v in sets:
             t = H.set_ini(t, sec, k, v)
         open(H.INI, 'w', encoding='utf-8', errors='surrogateescape', newline='').write(t)
@@ -198,6 +201,7 @@ def run(name, parts, a, out):
         video = None
         while time.time() < deadline and proc.poll() is None:
             time.sleep(1)
+            mute_game(proc.pid, True)
             if play and play_from is None and os.path.exists(flag):
                 play_from = time.time() + PLAY_DELAY   # the marker comes with the song's title card
                 next_shot = play_from + 1
@@ -233,6 +237,7 @@ def run(name, parts, a, out):
             print(f'[{name}] game closed (code {proc.returncode}) after {int(time.time() - t0)} s (it quits by itself after the song)', flush=True)
     finally:
         if proc is not None and proc.poll() is None:
+            mute_game(proc.pid, False)   # Windows keeps an app's mute for its next launch: unmuted before the kill
             subprocess.run(['taskkill', '/PID', str(proc.pid), '/F'], capture_output=True)
             try:
                 proc.wait(15)
@@ -249,6 +254,55 @@ def run(name, parts, a, out):
     if os.path.exists(dbg):
         shutil.copy2(dbg, os.path.join(out, f'{name}_debug.txt'))
     return got
+
+
+def mute_game(pid, on):
+    """Mute (or unmute) the game's own Windows audio sessions (pycaw); other apps are untouched. True if one was found."""
+    try:
+        from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+    except ImportError:
+        return False
+    found = False
+    try:
+        for s in AudioUtilities.GetAllSessions():
+            if s.Process and s.Process.pid == pid:
+                s._ctl.QueryInterface(ISimpleAudioVolume).SetMute(1 if on else 0, None)
+                found = True
+    except Exception:
+        pass
+    return found
+
+
+def fullscreen_app():
+    """The title of the foreground window when it covers its whole monitor (a game, a full-screen video, a
+    presentation), else ''. The desktop and the shell's own windows don't count."""
+    import ctypes
+    from ctypes import wintypes
+    u = ctypes.windll.user32
+    hwnd = u.GetForegroundWindow()
+    if not hwnd:
+        return ''
+    cls = ctypes.create_unicode_buffer(256)
+    u.GetClassNameW(hwnd, cls, 256)
+    if cls.value in ('Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd'):
+        return ''
+    r = wintypes.RECT()
+    if not u.GetWindowRect(hwnd, ctypes.byref(r)):
+        return ''
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [('cbSize', wintypes.DWORD), ('rcMonitor', wintypes.RECT), ('rcWork', wintypes.RECT),
+                    ('dwFlags', wintypes.DWORD)]
+    mi = MONITORINFO(cbSize=ctypes.sizeof(MONITORINFO))
+    u.MonitorFromWindow.restype = wintypes.HMONITOR
+    if not u.GetMonitorInfoW(u.MonitorFromWindow(hwnd, 2), ctypes.byref(mi)):
+        return ''
+    m = mi.rcMonitor
+    if r.left <= m.left and r.top <= m.top and r.right >= m.right and r.bottom >= m.bottom:
+        title = ctypes.create_unicode_buffer(256)
+        u.GetWindowTextW(hwnd, title, 256)
+        return title.value or cls.value
+    return ''
 
 
 def main():
@@ -272,6 +326,10 @@ def main():
         return 2
     if H.game_running():
         print('REFUSED: the game is already running; close it first.')
+        return 2
+    fs = fullscreen_app()
+    if fs:
+        print(f'REFUSED: a full-screen application is on ({fs}). Never launch a test over one (user 2026-11-06).')
         return 2
     out = os.path.join(H.OUT, 'band-' + time.strftime('%Y%m%d-%H%M%S'))
     os.makedirs(out, exist_ok=True)

@@ -1561,9 +1561,11 @@ namespace
 	{
 		VNoteRec &r = g_vnotes[g_vnote_next++ % 128];
 		r.parent = *reinterpret_cast<void **>(field(e, kElementParent));
-		r.x = f32(e, kElementPos);
+		// 1.91: the DE's notes have a NEGATIVE width (dims -49.6 x 32 in the 1.90 run): x..x+w spans to the left
+		const float x = f32(e, kElementPos), w = f32(e, kElementDims) * f32(e, kElementScale);
+		r.x = w < 0.0f ? x + w : x;
 		r.y = f32(e, kElementPos + 4);
-		r.w = fabsf(f32(e, kElementDims) * f32(e, kElementScale));
+		r.w = fabsf(w);
 		r.t = now();
 	}
 
@@ -1588,11 +1590,20 @@ namespace
 			if (d < best_d)
 				best_d = d, best = &r;
 		}
-		if (g_vpaint_logs < 6)
+		if (g_vpaint_logs < 12 && (g_vpaint_logs < 3 || f32(e, kElementDims) != 1.0f))
 		{
 			++g_vpaint_logs;
-			log("vocals: paint at (%.1f, %.1f) in %p -> %s (note y %.1f, %.1f off)", px, py, scale,
-			    best ? "snapped" : "no note under it", best ? best->y : 0.0f, best ? best_d : 0.0f);
+			log("vocals: paint at (%.1f, %.1f) in %p -> %s (note y %.1f, %.1f off); sprite dims %.1f x %.1f scale %.2f,%.2f alpha %.2f rgba %08x",
+			    px, py, scale, best ? "snapped" : "no note under it", best ? best->y : 0.0f, best ? best_d : 0.0f,
+			    f32(e, kElementDims), f32(e, kElementDims + 4), f32(e, kElementScale), f32(e, kElementScale + 4),
+			    f32(e, kElementAlpha), *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget)));
+			int shown = 0;   // the remembered notes of this container nearest the paint's x
+			for (const VNoteRec &r : g_vnotes)
+				if (r.parent == scale && t - r.t < 0.2 && r.x < px + 60.0f && r.x + r.w > px - 60.0f && shown < 6)
+				{
+					++shown;
+					log("vocals:   note x %.1f..%.1f y %.1f", r.x, r.x + r.w, r.y);
+				}
 		}
 		if (best && best_d > 0.01f)
 			reinterpret_cast<SetPosFn>(kSetPos)(box, nullptr, px, best->y, 1);
@@ -1786,6 +1797,12 @@ namespace
 				vocal_sp_segment(element);
 			else if (tex == kVPaint)
 				vocal_paint(element);
+			else if (tex == kVGetReady)
+			{
+				// 1.91: WoR's "Get Ready!", shown while WoR_HUD_vocal_get_ready holds WoR_HUD_get_ready at 1 (abrupt, no fade)
+				const uint8_t *g = find_symbol(kGetReadyFlag);
+				set_alpha(element, g && *reinterpret_cast<const int32_t *>(g + 0xc) != 0 ? 1.0f : 0.0f);
+			}
 			for (const Grow &g : g_grow)
 				if (g.e == element && g.t0 > 0.0)
 				{
@@ -2540,7 +2557,7 @@ namespace
 			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
 		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.90 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.91 (GH5 / WoR HUD)");
 		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
 		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
 		if (g_debug[0])

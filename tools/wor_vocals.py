@@ -674,7 +674,7 @@ def global_sections(fx_text):
     wor = re.sub(r'StructQBKey material = sys_Particle_Spark01_sys_Particle_Spark01\s*StructArray start_color\s*\{\s*ArrayInteger\s*\[\s*255\s+128\s+0\s+255\s*\]\s*\}'
                  r'(?:(?!StructQBKey material).)*?StructFloat time = [-\d.]+', base, wor, flags=re.S)
     assert n_base == 2, n_base
-    return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n'])
+    return '\n'.join([wor, 'SectionInteger WoR_HUD_vocal_sp 0\n', 'SectionInteger WoR_HUD_get_ready 0\n'])
 
 def _globals_body(ours):
     if os.environ.get('WOR_NO_VGLOBALS'):          # bisect switch (2026-10-27 crash at vocals_create_highway)
@@ -735,31 +735,22 @@ SCRIPTS = (
     '\t:i if (%GLOBAL%$array_size$ < %i(1))\n'
     '\t\t:i return\n'
     '\t:i endif\n'
-    '\t:i $getsongtimems$\n'
-    f'\t:i $WoR_delay$ = (((~%GLOBAL%$WoR_notes$:a{{%i(0):a}}) - %i({GET_READY_LEAD}) - %GLOBAL%$time$) / %f(1000.0))\n'
-    '\t:i $printf$%s("WoR_HUD: get ready in %d s, first vocal note %n ms, song time %t ms")$d$ = %GLOBAL%$WoR_delay$'
-    '$n$ = (~%GLOBAL%$WoR_notes$:a{%i(0):a})$t$ = %GLOBAL%$time$\n'
-    '\t:i if (%GLOBAL%$WoR_delay$ > %f(0.0))\n'
-    '\t\t:i $wait$%GLOBAL%$WoR_delay$$seconds$\n'
-    '\t:i endif\n'
-    '\t:i $WoR_HUD_vocal_get_ready_alpha$$alpha$ = %i(1)\n'
-    f'\t:i $wait$%f({GET_READY_SHOW / 1000:.1f})$seconds$\n'
-    '\t:i $WoR_HUD_vocal_get_ready_alpha$$alpha$ = %i(0)\n'
-    '\t:i endfunction\n]\n\n'
-    'Script WoR_HUD_vocal_get_ready_alpha [\n'
-    '\t:i $GameMode_GetNumPlayersShown$\n'
-    '\t:i $p$ = %i(1)\n'
+    # (1.90's single wait from the song time at the start was off: AutoLaunch skips the lead-in) the song time is
+    # polled every frame, up to 10 minutes; at the mark the plugin shows the sprite while WoR_HUD_get_ready is 1
+    f'\t:i $WoR_mark$ = ((~%GLOBAL%$WoR_notes$:a{{%i(0):a}}) - %i({GET_READY_LEAD}))\n'
+    '\t:i $printf$%s("WoR_HUD: get ready at song time %m ms, first vocal note %n ms")$m$ = %GLOBAL%$WoR_mark$'
+    '$n$ = (~%GLOBAL%$WoR_notes$:a{%i(0):a})\n'
     '\t:i while \n'
-    '\t\t:i $getplayerinfo$%GLOBAL%$p$$part$\n'
-    '\t\t:i if (%GLOBAL%$part$ = $Vocals$)\n'
-    '\t\t\t:i $VocalsHighway_GetId$$player$ = %GLOBAL%$p$\n'
-    '\t\t\t:i if $ScreenElementExists$$id$ = :s{%GLOBAL%$vocals_highway_id$$child$ = $WoR_get_ready$:s}\n'
-    '\t\t\t\t:i $SetScreenElementProps$$id$ = :s{%GLOBAL%$vocals_highway_id$$child$ = $WoR_get_ready$:s}'
-    '$alpha$ = %GLOBAL%$alpha$\n'
-    '\t\t\t:i endif\n'
+    '\t\t:i $getsongtimems$\n'
+    '\t\t:i if (%GLOBAL%$time$ >= %GLOBAL%$WoR_mark$)\n'
+    '\t\t\t:i $printf$%s("WoR_HUD: get ready shown at song time %t ms")$t$ = %GLOBAL%$time$\n'
+    '\t\t\t:i $change$$WoR_HUD_get_ready$ = %i(1)\n'
+    f'\t\t\t:i $wait$%f({GET_READY_SHOW / 1000:.1f})$seconds$\n'
+    '\t\t\t:i $change$$WoR_HUD_get_ready$ = %i(0)\n'
+    '\t\t\t:i return\n'
     '\t\t:i endif\n'
-    '\t\t:i %GLOBAL%$p$ = (%GLOBAL%$p$ + %i(1))\n'
-    '\t:i loop_to %GLOBAL%$num_players_shown$\n'
+    '\t\t:i $wait$%i(1)$gameframe$\n'
+    '\t:i loop_to %i(36000)\n'
     '\t:i endfunction\n]\n\n'
     'Script WoR_HUD_vocal_health [\n'
     '\t:i $wait$%f(1.0)$seconds$\n'

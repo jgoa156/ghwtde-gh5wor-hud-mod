@@ -143,6 +143,8 @@ def main():
             + ' }, { ' + ', '.join(f'0x{qbkey(n):08x}' for n in wor_vocals.NOW_SP_TEX) + ' } };',
             f'static const uint32_t kVSpGlow = 0x{qbkey(wor_vocals.SP_GLOW_TEX):08x};',
             f'static const uint32_t kVocalSpFlag = 0x{qbkey("WoR_HUD_vocal_sp"):08x};',
+            f'static const uint32_t kGetReadyFlag = 0x{qbkey("WoR_HUD_get_ready"):08x};   // 1.91: WoR_HUD_vocal_get_ready sets it for 3 s',
+            f'static const uint32_t kVGetReady = 0x{qbkey(wor_vocals.GET_READY_TEX):08x};   // {wor_vocals.GET_READY_TEX}',
             f'static const uint32_t kVSpFill = 0x{qbkey(wor_vocals.SP_FILL):08x};   // the vocalist\'s star power strip segments',
             f'static const uint32_t kVSpTip = 0x{qbkey(wor_vocals.SP_TIP_TEX):08x};   // the white tip at a segment\'s fill end',
             '// 1.89: the vocalist\'s phrase box, filled live (found by its z): texture, colours (r | g << 8 | b << 16 | a << 24)',

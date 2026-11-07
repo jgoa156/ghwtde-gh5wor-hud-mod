@@ -178,6 +178,8 @@ static const uint32_t kVPaint = 0x1e49ce88;   // WoR_HUD_vpaint: sung-note paint
 static const uint32_t kVNow[2][8] = { { 0xb7c84163, 0xc0cf71f5, 0x59c6204f, 0x2ec110d9, 0xb0a5857a, 0xc7a2b5ec, 0x5eabe456, 0x29acd4c0 }, { 0xd3a48467, 0xa4a3b4f1, 0x3daae54b, 0x4aadd5dd, 0xd4c9407e, 0xa3ce70e8, 0x3ac72152, 0x4dc011c4 } };
 static const uint32_t kVSpGlow = 0x1bbc4b8d;
 static const uint32_t kVocalSpFlag = 0xa9aedfd3;
+static const uint32_t kGetReadyFlag = 0xf192fb23;   // 1.91: WoR_HUD_vocal_get_ready sets it for 3 s
+static const uint32_t kVGetReady = 0x7447d770;   // WoR_HUD_v_getready
 static const uint32_t kVSpFill = 0xc99bedbf;   // the vocalist's star power strip segments
 static const uint32_t kVSpTip = 0x9c6e124e;   // the white tip at a segment's fill end
 // 1.89: the vocalist's phrase box, filled live (found by its z): texture, colours (r | g << 8 | b << 16 | a << 24)

@@ -1,10 +1,34 @@
-# GH5 / WoR HUD mod: session handoff (2026-11-06, plugin 1.89 installed, 0.51 released)
+# GH5 / WoR HUD mod: session handoff (2026-11-06 evening, plugin 1.91 installed + committed, 0.51 released)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
 <jgoa156@gmail.com>, SSH push works). The mod is credited to **WitchDoctoR** (Mod.ini Author, READMEs).
 
-## START HERE (2026-11-06): plugin 1.89 installed, NOT committed, vocals corrections not yet seen by the user
+## START HERE (2026-11-06 evening): plugin 1.91 installed and committed; user away, bot runs done by Claude
+
+### Done and seen in bot runs (1v + 3g1v, 30 s each, at 2560x1080)
+- **Star power edge ("two rectangles"):** the soft top-edge sprite (glow[0]) now rides the glass walls' centre line
+  (`wor_1g.sp_wall_line`, kEdgeX0/Y0/Slope in names.h) instead of the level path (slope 0.556 vs the walls' 0.505,
+  up to 6 units off). Width 21 (interior 22). Seen in band, charging frames.
+- **Charged lightning:** `wor_art.add_arc(tile=55, overlap=6, glow_rgb=(110,255,235))` (`wor_1g.SP_ARC`): WoR's bolt
+  tiled near its 4:1 aspect, a different frame per tile, white core in a cyan glow. Seen on all 3 band tubes.
+- **Vocals now line:** NOW_W_SCALE 0.22. **Spikes:** soft drop shadow (SPIKE_PAD / SPIKE_SHADOW_*).
+- **Get Ready!:** `fontgrid_title_a1` texture (theme pak), `WoR_get_ready` sprite in the vocal highway root;
+  `WoR_HUD_vocal_get_ready` reads `<prefix>_song_vocals[0]`, polls `getsongtimems` until first note - 5000 ms, sets
+  `WoR_HUD_get_ready` 1 for 3 s; the plugin shows the sprite (kVGetReady) while it is 1. Seen in 1v and band.
+- **Band check (user asked):** every highway's SP tube, rock meter, multiplier badge; vocalist panel; band bulb (lit
+  x4 in star power, hidden at x1 by design) all present.
+- **Resolution:** GHWTDE.ini had ResolutionX/Y 3840x2160 since 10-30 20:07 (not the harness) on a 2560x1080 screen:
+  the game drew off-screen. Set to 2560x1080 (backup `GHWTDE.ini.before-resolution-fix-2026-11-06` next to it).
+
+### Open
+- **Sung-note fill (user: "fill the rectangles exactly where they're hit"): NOT working.** 1.91 logs (wor_hud_fixes.log
+  "vocals: paint"): our paint container sits at (10, sung y) in note_scale, the stretched sprite gets dims 0 x 32 (the
+  engine never widens it) and no note is near x 10 in the same container (notes have NEGATIVE dims, x runs to ~730,
+  y ~ -0.8). Needs RE of how the DE drives sprite paint (vocal_enable_material_paint 0 path) before snapping can work.
+- Vocals purple freeform fill, SP phrase notes' blue blur, practice crash, release 0.52 (unchanged from below).
+
+## OLDER (2026-11-06 day): plugin 1.89
 
 ### Where things stand
 - **Installed (2026-11-06 ~01:40):** plugin `wor_hud_fixes.asi` 1.89 + the mod built from the working tree (offline

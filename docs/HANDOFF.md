@@ -14,6 +14,29 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - Runs are muted (the harness does it). The user said "this time we're gonna do a full band run": band = `--lineup 3g1v`.
 - `tests/results/capture_band.done` blocks a second run: delete it before each run you are allowed to make.
 
+## 2026-11-09 later: user answers, item 9 done, item 11 in progress
+User: 1 merge only at the end; 9 approved; 10 to the bottom; 11 yes (mock approved); 12 raise priority, right after
+vocals; 15 no release; 16 recompare against references of the same aspect ratio.
+- **Item 9 DONE:** wor_battle.SEP3 15.0, installed, band run band-20261109-031116 (save restored, verified): seams
+  match the mock (docs/mocks/run_sep3_15_seams.png: old / mock / run). Same run: SP tube 25 / 40 / 45-50% charging,
+  top edge inside the glass, no tab, no pixel (closes the 1.98 glide check).
+- **Item 11 (SP phrase notes' cyan halo):** mock approved: docs/mocks/mock_sp_note_halo_v1_cmp.png (tools/
+  mock_sp_note_halo.py: cyan (0,190,185), 0.9 at the outline fading to 0 over 8.5 canvas units, above and below
+  only; WoR keeps it on sung notes, none outside the phrase). DATA: the song pak has NO vocal star array (every item
+  of OnTheRoadAgain_song.pak's QB named: guitar/rhythm/drum/aux/coop _star exist, vocals only song_vocals /
+  vocals_freeform / vocals_phrases / vocals_note_range / lyrics / vocals_markers; the exe formats only the first
+  three `%s_vocals_*`). vocals_phrases = (time, flag) with flag 0 (no vocals) and 1 / 2 strictly alternating: looks
+  like RB-style 105/106 line markers, not star power. The vocalist DID get star power in run 031116. The phrase
+  loader (xref 0x4eed36) is obfuscated (push/ret thunks). PROBE installed (wor_vocals phrase watch, "WoR_HUD: probe
+  ..." lines in <lineup>_debug.txt): phrase flags + candidate arrays at start, each player's star_power_amount at
+  every phrase change. Next: one 1v run WITHOUT --sp-states, see which phrases raise the amount. Remove the probe after.
+  RESULT (1v run band-20261109-033829, save restored + verified): EVERY completed phrase gave the vocalist +25
+  (12174: 0 -> 25, 13902: 25 -> 50, then drains while active, +25 again after each phrase), including 13902..18211
+  where no instrument's _star array has a phrase (expert_star 11710+1594, 28494+3022, ...). The bot sings 100%
+  (hits = ticks), so whether a poorly sung phrase also pays is unknown. CONCLUSION: DE vocals have NO star power
+  phrases; nothing marks notes the way WoR does. Probe removed (build reinstalled without it). Item 11 needs the
+  user's call (drop, or a different trigger for the halo).
+
 ## 2026-11-09: 1.94-1.98 committed and pushed
 User: "read, update todo list and proceed". Offline 25/25 again, then everything below was committed on
 `fix/vocal-fill-inside-note` and the branch pushed to origin (NOT merged into main; merge / release 0.52 need the

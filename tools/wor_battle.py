@@ -118,8 +118,10 @@ GAMERTAG_TEX = 'WoR_HUD_gamertag_bg'
 # User 2026-10-22: they must touch, corrected for the thickness: the user's clip (1:15) showed a 22.5 px gap there at
 # 30, so 30 - 22.5 / 2 makes the borders meet at the bottom edge.
 SEP = 22.0                              # 19 -> 22 (user 2026-10-22): the borders, lowered (wor_1g.BORDER_DY), must not touch
-SEP3 = 12.5                             # 3 instrument highways: x_offset_p3 + this (Pos x 1.8, ~22 px each at the bottom;
+SEP3 = 15.0                             # 3 instrument highways: x_offset_p3 + this (Pos x 1.8, ~22 px each at the bottom;
                                         # capture 2026-10-22: border lines 25.5 apart vs 55.5 on the 2-player highways)
+                                        # 12.5 -> 15.0 (user approved mock_3highway_sep_v1, 2026-11-09): at 12.5 the borders
+                                        # overlapped to canvas y 711.6; at 15.0 they meet at 717.2 like 2 highways (717.1)
 RAIL_L = ((320.0, 395.0), (170.0, 700.0))           # P1 left / right rail lines (top, bottom)
 RAIL_R = ((500.0, 395.0), (652.0, 700.0))
 STRIKE_2P, TOP_2P = 633.0, 393.0                     # strikeline / top of the battle highways

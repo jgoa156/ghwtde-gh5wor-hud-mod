@@ -209,9 +209,13 @@ def run(name, parts, a, out):
                 print(f'[{name}] gameplay at T+{int(play_from - t0)} s: frames for {play} s', flush=True)
             start = (play_from and play_from - PLAY_DELAY) if play else t0 + shot_from
             if getattr(a, 'video', False) and video is None and start and time.time() >= start:
+                # the primary monitor only, as the frames (2026-11-08: the whole desktop of 3 monitors is 6400x2165, an odd
+                # height libx264 refuses: the video was empty)
+                vw, vh = ImageGrab.grab().size
                 video = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'gdigrab', '-framerate', '30',
+                                          '-offset_x', '0', '-offset_y', '0', '-video_size', f'{vw // 2 * 2}x{vh // 2 * 2}',
                                           '-i', 'desktop', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '20',
-                                          '-pix_fmt', 'yuv420p', os.path.join(out, f'{name}.mp4')],
+                                          '-pix_fmt', 'yuv420p', os.path.join(out, f'{name}.mkv')],   # mkv: still readable when ffmpeg is killed (2026-11-08: a killed mp4 had no moov)
                                          stdin=subprocess.PIPE)
                 print(f'[{name}] video started at T+{int(time.time() - t0)} s', flush=True)
             if int(time.time() - t0) % 5 == 0:
@@ -231,7 +235,7 @@ def run(name, parts, a, out):
                 video.communicate(b'q', timeout=30)
             except subprocess.TimeoutExpired:
                 video.kill()
-            print(f'[{name}] video {os.path.join(out, name + ".mp4")}', flush=True)
+            print(f'[{name}] video {os.path.join(out, name + ".mkv")}', flush=True)
         print(f'[{name}] foreground held {held}/{tries} checks', flush=True)
         if proc.poll() is not None:
             print(f'[{name}] game closed (code {proc.returncode}) after {int(time.time() - t0)} s (it quits by itself after the song)', flush=True)

@@ -83,6 +83,17 @@ def main():
     for i in range(0, n + 1, 4):
         out.append('	' + ' '.join(f'{{ {x:.2f}f, {y:.2f}f }},' for x, y in pts[i:i + 4]))
     out += ['};', '']
+    # the charging top edge fitted to the tapering glass (wor_1g.sp_edge_table): read off the built fill texture
+    fill_png = os.path.join(paths.REPO, 'build', 'preview', wor_1g.SP_FULL_NAMES[0] + '.png')
+    assert os.path.exists(fill_png), f'{fill_png} missing: run build.py first'
+    sx, sy = wor_1g.sp_edge_scale()
+    out += [f'// charging top edge (glow[0]) for level i / {n}: centre x at the level\'s height, x scale vs its base (kEdgeSX)',
+            f'static const float kEdgeSX = {sx:.5f}f, kEdgeSY = {sy:.5f}f;',
+            f'static const float kEdgeFit[{n + 1}][2] = {{']
+    fit = wor_1g.sp_edge_table(fill_png, n)
+    for i in range(0, n + 1, 4):
+        out.append('	' + ' '.join(f'{{ {x:.2f}f, {k:.4f}f }},' for x, k in fit[i:i + 4]))
+    out += ['};', '']
     # battle (tools/wor_battle.py): the needle slider, its stand-in ids (extendcrc'd per player), its stops; the cards
     big_card, _ = wor_battle.card_sizes()
     nd = wor_battle._pow2(wor_battle.NEEDLE_BOX * wor_battle.SS) / wor_battle.SS / wor_battle.SCALE
@@ -149,6 +160,12 @@ def main():
             f'static const uint32_t kPaintRgba = 0x{(255 << 24) | (wor_vocals.PAINT_RGB[2] << 16) | (wor_vocals.PAINT_RGB[1] << 8) | wor_vocals.PAINT_RGB[0]:08x};   // r, g, b, a bytes',
             f'static const uint32_t kPaintSpRgba = 0x{(255 << 24) | (wor_vocals.PAINT_SP_RGB[2] << 16) | (wor_vocals.PAINT_SP_RGB[1] << 8) | wor_vocals.PAINT_SP_RGB[0]:08x};',
             f'static const uint32_t kVFill = 0x{qbkey(wor_vocals.FILL_TEX):08x};   // {wor_vocals.FILL_TEX}: 1.92 sung-note fill pool',
+            '// 1.94: each note band\'s rectangle inside its walls, fractions of the note sprite (left, right, top, bottom),',
+            '// and how far the fill reaches into the walls (canvas units)',
+            f'static const float kVNoteIn[{len(wor_vocals.NOTE_BANDS)}][4] = {{ '
+            + ', '.join('{ ' + ', '.join(f'{v:.5f}f' for v in wor_vocals.note_interior(i)) + ' }'
+                        for i in range(len(wor_vocals.NOTE_BANDS))) + ' };',
+            f'static const float kVFillOverlap = {wor_vocals.FILL_OVERLAP:.3f}f;',
             f'static const float kVNowRootX = {wor_vocals.now_line_root_x():.3f}f;   // 1.93: the visible now line, highway root x',
             f'static const float kVLineL = {wor_vocals.SP_GLOW_X[0]:.2f}f, kVLineR = {wor_vocals.SP_GLOW_X[1]:.2f}f;   // the highway lines\' ends (root x)',
             # the vocal panel's "xN" box: z 0.2 (wor_vocals.mult_desc, unique) at the COMBO size

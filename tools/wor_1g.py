@@ -584,6 +584,47 @@ def sp_wall_line():
     return p0[0], p0[1], (p1[0] - p0[0]) / (p1[1] - p0[1])
 
 
+def sp_edge_scale():
+    """(sx, sy) the edge sprite (sp_glow_bottom) is drawn at, as sp_effect_sprites gives it."""
+    k = RAIL_SX * 1.1 * SP_MARKER_K
+    return k * SP_NEON_X_K, k
+
+
+def sp_edge_table(fill_png, n=SP_LEVEL_STEPS, below=2.0):
+    """[(centre x at the level's height, x scale factor)] for levels i / n: the charging top edge sprite fitted to the
+    fill's real span (alpha > 0.5 of the shipped spfull, horizontally on screen, `below` units under the level, inside
+    the edge's opaque band). 2026-11-08 (user: a tab stuck out of the glass's top right just under the divider): the
+    glass tapers (the fill is ~21.8 units wide at the bottom, ~17 at the divider, ~12.5 at the top) while the edge
+    sprite stayed SP_EDGE_GEOM['width'] wide on the walls' centre line, so it hung ~5 units out at 45-50%."""
+    import numpy as np
+    from PIL import Image
+    a = np.asarray(Image.open(fill_png).convert('RGBA'))[:, :, 3] / 255.0
+    o = np.array(RIGHT.tex((0.0, 0.0)))
+    m = np.linalg.inv(np.array([np.array(RIGHT.tex((1.0, 0.0))) - o, np.array(RIGHT.tex((0.0, 1.0))) - o]).T)
+    axis = sp_wall_line()[2]
+    xs = np.arange(760.0, 960.0, 0.05)
+    out = []
+    for i in range(n + 1):
+        lv = min(max(i / n, 0.01), 0.99)
+        y = sp_level_y(lv) + below
+        c, r = m @ (np.stack([xs, np.full_like(xs, y)]) - o[:, None]) - 0.5   # texel centres (bilinear, as drawn)
+        c0, r0 = np.floor(c).astype(int), np.floor(r).astype(int)
+        fc, fr = c - c0, r - r0
+        ok = (c0 >= 0) & (c0 + 1 < a.shape[1]) & (r0 >= 0) & (r0 + 1 < a.shape[0])
+        v = np.zeros_like(xs)
+        c0, r0, fc, fr = c0[ok], r0[ok], fc[ok], fr[ok]
+        v[ok] = ((a[r0, c0] * (1 - fc) + a[r0, c0 + 1] * fc) * (1 - fr)
+                 + (a[r0 + 1, c0] * (1 - fc) + a[r0 + 1, c0 + 1] * fc) * fr)
+        x = xs[v > 0.5]
+        out.append(((x[0] + x[-1]) / 2 - below * axis, (x[-1] - x[0]) / SP_EDGE_GEOM['width']) if len(x) else None)
+    # the lowest levels' line runs through the glass end's arch (a short or no span): those take the first level whose
+    # span is the full glass (within a texel of the widest)
+    widest = max(v[1] for v in out if v)
+    first = next(i for i, v in enumerate(out) if v and v[1] * SP_EDGE_GEOM['width'] > widest * SP_EDGE_GEOM['width'] - 0.8)
+    y_first = sp_level_y(first / n)
+    return [(out[first][0] + (sp_level_y(i / n) - y_first) * axis, out[first][1]) for i in range(first)] + out[first:]
+
+
 def sp_wall_width():
     """Horizontal width of the glass interior on screen (canvas units)."""
     s = sp_wall_line()[2]

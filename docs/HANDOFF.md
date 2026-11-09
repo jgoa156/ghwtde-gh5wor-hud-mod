@@ -1,4 +1,4 @@
-# GH5 / WoR HUD mod: session handoff (2026-11-07 ~05:10, plugin 1.93 + later fixes, partly uncommitted)
+# GH5 / WoR HUD mod: session handoff (2026-11-09, plugin 1.98 committed + pushed on branch fix/vocal-fill-inside-note)
 
 Start here in a new session. History: `docs/MODLOG.md` (latest sections at the end). Plugin internals:
 `docs/PLUGIN_NOTES.md`. Repo: github.com/jgoa156/ghwtde-gh5wor-hud-mod (git author Guilherme Almeida
@@ -14,7 +14,125 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - Runs are muted (the harness does it). The user said "this time we're gonna do a full band run": band = `--lineup 3g1v`.
 - `tests/results/capture_band.done` blocks a second run: delete it before each run you are allowed to make.
 
-## START HERE (2026-11-07 ~05:10): where things stand
+## 2026-11-09: 1.94-1.98 committed and pushed
+User: "read, update todo list and proceed". Offline 25/25 again, then everything below was committed on
+`fix/vocal-fill-inside-note` and the branch pushed to origin (NOT merged into main; merge / release 0.52 need the
+user). Installed build unchanged (1.98, hash B7AD90083AA0...). Every remaining item needs the user (list below).
+
+## START HERE (2026-11-08 ~15:00): plugin 1.98, two star power tube defects the user flagged
+Installed: plugin 1.98 (hash B7AD90083AA0...) + mod data of ~14:55. Offline 25/25. Committed 2026-11-09 (above).
+Rebuild order: `python build.py --install`, `python tools\gen_plugin_names.py`
+(reads build/preview), `$env:CL=''; cmd /c plugin\build.bat`, copy plugin\build\wor_hud_fixes.asi to the game folder
+and check the hash.
+- **Bright pixel on the tube's left wall** (user crop: "the smaller pixel on the left"): one texel at fill texture
+  (col 57, row 178), in every fill texture (spfull, spfull_b, all plasma frames). Cause: `wor_art.neon_edge` (the
+  bottom arc traced on each column's last opaque row) ran on a wall column whose last opaque row is mid-tube,
+  because SP_Base's wall steps in one texel at row 178. Fix: `neon_edge(end_row=wor_1g.glass_end_row, end_tol=8)`
+  skips columns whose bottom is not at the glass end. Only the 9x9 patch around the dot changed in the textures.
+- **Tab out of the glass's top right under the divider** (user: "you fucked the top now"; it predates 1.97): the
+  glass tapers (fill ~21.8 units wide at the bottom, ~17 at the divider, ~12.5 at the top) while the charging top
+  edge (glow[0], `edge_texture`, SP_EDGE_GEOM width 21) kept its bottom width on the walls' centre line, so at
+  45-50% it hung ~5 units out on the right. Fix: `wor_1g.sp_edge_table` measures the fill's real span on screen
+  (bilinear, alpha > 0.5 of build/preview/WoR_HUD_spfull.png, 2 units under the level) per level step;
+  gen_plugin_names writes `kEdgeFit[65][2]` (centre x, x scale) + `kEdgeSX/SY`; sp_frame places glow[0] at the
+  interpolated centre and SetScale's its x. gen_plugin_names now needs build.py run first (asserts the preview).
+- Verified run band-20261108-150620 (1g --sp-states --video, log says 1.98, save restored and verified): t041
+  (~45% charging) top edge follows the glass, no tab; t035 (25%) wall to wall; the left-wall pixel is gone charging
+  (t041) and charged (t047). Crops: docs/mocks/run_1.98_sp_top_edge.png, docs/mocks/run_1.98_sp_left_pixel.png.
+- Quick 1g run band-20261108-152202 (user: "run quick singleplayer test"): clean. Tube at ~25% wall to wall, no
+  pixel; streak hidden at 0 then 27..103; x3 / x4 / x8 under SP; charged drain fine; log 1.98, no errors; save and
+  the real ini (My Games\...\GHWTDE.ini, NOT the 2023 stub in the game folder) restored, byte-identical.
+- **What is left (all need the user):** merge the branch into main (committed + pushed 11-09); item 9 (3-highway mock: approve
+  docs/mocks/mock_3highway_sep_v1*.png or not); 10 (freeform purple: needs a DE song with a freeform section + a WoR
+  reference); 11 (blue blur: explain or drop); 12 (practice crash: Logs\debug.txt right after a crash); 15 (release
+  0.52: go-ahead); 16 (score panel "smaller like WoR": ours measured NOT bigger, what does "smaller" mean); the
+  vocal timing question (is the vocal highway ~370 ms late against the audio in real play?). Not exercised by the
+  bot so far: 45-50% charging glide with the new kEdgeFit between table steps (only snapped states were seen).
+
+## (previous) START HERE (2026-11-08 ~07:15): plugin 1.97, items 5 / 8 / bulb / 14 verified in game
+Installed: plugin 1.97 (hash BFF7C89B8F3F...) + mod data of 07:00 (`build.py --install` after the wor_band.py fix).
+Offline 25/25. Nothing committed (commit only when the user asks). The 1.96 release .asi is kept in the session
+scratchpad as wor_hud_fixes_196.asi.
+- **Item 5, sung-note fill: SOLVED (two causes).**
+  1. Geometry: a NEGATIVE note width does not flip the quad; notes and pool sprites draw over [pos, pos + |w|]
+     (`note_span`, long comment there). 1.92-1.96 took pos as the right end: every fill was one note width early
+     (box filled whole as it reached the line) and sat ~3 units left of its box. The "pairs" (and the "D per frame"
+     analysis in the 23:15 section below) were just consecutive notes read one width off: both are WRONG, ignore them.
+     The fill sprite is placed by its LEFT end (SetPos x0) and SetScale is written every frame.
+  2. Timing: the engine scores a note ~370 ms (~118 root units at the 0.32 units/ms scroll) before it reaches our line
+     (fills began 368..381 ms after the engine's note start for every note; the engine's "now" sits near root 236).
+     Read live, the phrase counters cut a note where the engine's note/phrase ended (219.1 note stopped at 134.6).
+     Now the on-pitch state is kept per frame (256-entry history) and read `kVEngineLead` (118) / scroll speed back.
+     Also: of two unfilled elements across the line the fill takes the one the line entered last (a recycled element
+     re-laid 180 wide over a sung 187 note took the fill at u 26).
+  Verified run 065303 (release): all 40 fills start at u 0, long notes fill to the wall (217.4 of 219.1, 183.9 of
+  187.3); frames: fills glued to their boxes, ending exactly at the line, nothing ahead of it.
+  OPEN QUESTION for the user (not changed): is the vocal highway itself 370 ms late against the audio in real play?
+  If a human sings to the notes at the line, the engine would score them late. GHWTDE.ini has no lag keys; the
+  calibration is in the save. Ask before moving the line or the notes.
+- **Item 8, streak from 10: WORKS** (run 070019 band: 61, 70, 92, 109, 115 under the score box; run 070735 1g: hidden
+  at 0, shown from 23 on). Cause: 1.96 read 0x478100 as CScreenElementConditionalFloatObserver's update; the
+  observer vtables are 4 slots long, so "0xa11f00 slot 8" was CScreenElementRGBALerpObserver's. The real update is
+  0x4778b0 (setup 0x477930 stores value_range at +0x1c / +0x20): a STEP, 1 when lo <= v <= hi, the int's bits read as
+  a float. wor_band.py range is now [bits(lo), 1e30]. The plugin's diagnostic hook moved to 0x4778b0.
+- **Bulb fade-out: WORKS** (run 070553, 30 fps video, --bulb-cycle): every multiplier change (bulb -> bulb) now plays
+  the reverse popup first (0.3 s back behind the score box, as WoR's hide_band_mult), then the new bulb grows out;
+  before, the old bulb vanished in one frame (only bulb -> blank had the hide). `Grow.next` holds the target texture.
+- **Item 14 (charged plasma top): OK** in run 070735 (1g --sp-states, t044..t051 at 2x): smooth soft top, no steps.
+- **Lyrics on the whole highway** (user 2026-11-08): fixed in 1.96, seen again in run 064855 (far lyrics visible).
+- Harness: `--video` now records the primary monitor only (the 3-monitor desktop is 6400x2165, odd height, libx264
+  refused: every earlier video was empty) to .mkv (survives a kill).
+- Diagnostic builds: `$env:CL='/DWOR_DIAG_FILLS'` (fill set spans as magenta bars, LONG/ORDER/SPRITES logs, fills
+  limited to slots 0..11) or `'/DWOR_DIAG_FIELDS'` (note field bars); reset with `$env:CL=''` (Remove-Item Env:CL is
+  blocked here) and rebuild before installing a release.
+- Still needs the user: 9 (3-highway mock), 10 (freeform capture + mock), 11 (blue blur: explain/drop), 12 (practice
+  crash: Logs\debug.txt), 15 (release 0.52), 16 (score panel "smaller": what does it mean), the timing question above.
+
+## (earlier) 2026-11-07 ~23:15, evening session: findings (items 5 / 8 analyses below were WRONG, see above)
+User: "be extremely critical towards the result and base reference, do everything from the list that doesn't need my
+input, proceed nonstop". No game run was possible: Bloodborne was full screen all evening (the harness refused, as it
+must). Installed in the game: still the 07:20 plugin 1.95 build and the 1.94-era mod data (nothing new installed).
+- **Item 8 (streak from 10), root cause found in the exe, fix built (tools/wor_band.py, offline 25/25, NOT installed):**
+  the DE build has only `CScreenElementConditionalFloatObserver` (no ...ConditionalInt: RTTI strings). Its update
+  (0x478100, vtable 0xa11f00) reads the input's 4 bytes with `movss` (as a float) and outputs
+  clamp((v - lo) / (hi - lo), 0, 1), a RAMP over value_range. The streaks are ints, so a streak of 10 arrives as the
+  denormal 1.4e-44, and [10, 1e6] gave 0 (it would have been 4e-5 even for a real 50.0). Fix: value_range
+  [bits(lo - 1), bits(lo)] (`wor_band.int_bits_float`): 0 up to lo - 1, 1 from lo on. The exe has no ldmxcsr (no DAZ).
+  Round trip: the decompiled range reads 1.387e-43 = bits(99) (the decompiler prints 9 characters). Needs a run.
+- **Item 5 (fills ahead of the line), what the frames say (run 072029, frames matched to dumps by clock, calibrated on
+  frame t041 where fills 0/1 begin):** the "pairs" idea is wrong. Within one frame EVERY note is drawn at
+  [pos.x - D, pos.x - D + w] with one D for all notes (t041: D = 49.6; t043: ~68; t044: ~57), whereas `note_span`
+  assumes [pos.x - w, pos.x]. So only notes about D wide line up; the 219.1 note was drawn 169 right of its field,
+  19-wide ones 30 left. The fill is clamped to the FIELD box, so it lands on another box or runs past the line
+  (t041: a 49.6 box filled to its end with the line in its middle; t054: one fill across a gap into the next long
+  note). D uniform per frame but changing over time points at a PARENT's size/anchor that `note_root` ignores (it
+  reads note_scale/window pos and scale, not their dims/just; the log gave note_scale dims 20 x 75 at start).
+  `vnote_fix_pairs` and probably `kVNoteLag` are compensations for this and should go once the real rule is known.
+  **Diagnostic build** (`set CL=/DWOR_DIAG_FIELDS` before plugin\build.bat; a copy is in the session scratchpad):
+  every pool sprite draws one live note's FIELD box as a thin magenta bar above the note, the last one a bar at
+  g_now_x, and it logs per note pos/target/start/dims/just and note_scale + window pos/dims/just/scale twice a second.
+  One 30 s 1v run with it shows field against drawn box in the same frame (no timing match needed).
+  Plan: install the diag .asi + `python build.py --install`, `capture_band.py --lineup 1v --play 30 --until 150
+  --every 1`, then put the normal build back.
+- **Item 16 (score panel "smaller like WoR")**: measured against WoR's band footage (OneDrive\Videos\GH\
+  WOR_full_band_gameplay.mp4 at 120 s, same canvas region): ours is NOT bigger. Box 1418..1700 vs WoR 1380..1690
+  (WoR ~10% wider), same height; our star ~15% bigger and lit gold with a glow (WoR's at 4 stars: darker, no glow);
+  WoR's digits are larger and fill the box. Comparison: docs/mocks/cmp_band_score_panel_v1.png. Ask the user what
+  "smaller" means before mocking.
+- **Item 10 (freeform purple)**: the WoR vocals video has no freeform section in its first 270 s (the purple there
+  is venue lighting); still needs a DE capture of a freeform section (a song with one) plus a WoR reference.
+- WoR full-band footage also confirms the fill target: the box fills from its start up to exactly the line and stays
+  filled after it passes; unsung notes stay outlines.
+
+## (earlier) 2026-11-07 ~07:25: where things stood
+- **Branch `fix/vocal-fill-inside-note`** (from main at `ae18726`). UNCOMMITTED: plugin 1.95 (wor_hud_fixes.cpp,
+  names.h), tools/gen_plugin_names.py, tools/wor_vocals.py, this file, docs/mocks/mock_3highway_sep_v1*.png. Commit
+  only when the user asks.
+- **Installed:** plugin 1.95 build of 07:20 (hash-verified in D:\Games\Guitar Hero World Tour\wor_hud_fixes.asi);
+  mod data as installed for 1.94 (solid fill texture, note_interior). Last run: `band-20261107-072029` (save + ini
+  restored, verified by hash).
+- **Top of the list:** the long-note pairs (fills ahead of the strike line), see the 1.95 bullets below; then the
+  user's answer on the 3-highway mock; then the open list further down.
 
 ### How to build, install, test (PowerShell; never while GHWT_Definitive runs)
 ```
@@ -58,9 +176,82 @@ Frames are 2560x1080 (canvas x = (px - 320) / 1.5, y = px / 1.5). Frames where t
     seen at x1 in band run 045835): in band scoring the DE puts `higway_icon_mic` in the vocalist's x1 slot. Latest
     build (not yet run): the hook finds the box by z 0.2 (unique) + its COMBO size (kVNixieZ/W/H) and sets the vocal
     x1 (`kVMultTex[0]`). (The set_texture_hook path keyed on the box's current texture never fired.)
-- **Next:** one muted band run to check lyric fade, the x1 box and the precision bar; then commit + push.
+- **Plugin 1.94, sung-note fill inside the box** (branch `fix/vocal-fill-inside-note`; user 2026-11-07: "the filled
+  boxes never can be outside the box, need to be the exact same color as the border and needs to be as tall as the
+  rectangle itself so it touches the walls"). Band run 045835 showed every fill 8 px (~5.3 units) LEFT of its note
+  (one frame of scroll: the notes draw a frame behind the positions we read), soft top/bottom with a dark gap to the
+  walls, a lighter yellow than the outline, cyan in star power. Now: the fill uses the note's position minus the last
+  frame's scroll (`g_vdx`, measured per note in vnote_remember), is clamped to the rectangle's inside from the band's
+  own texture geometry (`wor_vocals.note_interior` -> `kVNoteIn`) plus `FILL_OVERLAP` 0.75 into each wall, is that
+  inside's full height, solid (`_fill_tex`, no fade) and NOTE_RGB in every state. Seen in band run 061305: full
+  height, outline colour, inside ordinary notes. Fills still spilled on SLIDES: raw dumps (run 062219) show slides are
+  SHEARED (+0xbc, target +0x100, start +0x144; -0.13..-0.27 on slides, 0 elsewhere), never rotated (+0xd0 always 0), so
+  the old rotation test missed them. `is_slide` now skips them (no fill on slides). Installed, NOT seen in game yet.
+  Possible follow-up: shear the fill with the slide (write the same +0xbc) instead of skipping.
+  Run 063144 (slides skipped): no flat fills on slides any more. Two things left: (1) edge fade out of sync (user: "make
+  sure the sync is perfect so it fades with vocal notes"): fill/wall brightness 0.968 unfaded, 0.80..1.13 in the fade
+  zone; the fill now copies its note's rgba alpha byte (what vocal_edge_fade wrote) instead of recomputing edge_alpha
+  from its own corrected x. (2) PHANTOM note elements: a fill on 1543AE30 (68.7 wide, sung 0..66.8, inside that element)
+  drew across three short notes where no 68.7 box is drawn. Unknown what hides such an element; the installed build
+  dumps every note element spanning the now line when there are several ("note dump overlap") to compare them.
+- **Plugin 1.95 (2026-11-07 ~07:00, user: "make sure the 'hit' part of the note stays glued to it until it fades and
+  is perfectly synced"):** band run 065517 (1.94) showed every fill still ~5 px LEFT of its box (fill 750..783 on the box
+  750..793: over the left wall, a dark slot before the right wall). The lag is ~5.3 units in TIME (18.5 ms at the 286
+  units/s scroll), not one frame (the 1.94 one-frame correction was ~2 units at the run's frame rate): `note_drawn` now
+  shifts by `g_vspeed * kVNoteLag` (scroll speed measured per note, logged "vocals: notes scroll ..."). The phantom
+  diagnostics found NO note hidden by the engine (0 lines); the logged sets of elements spanning the now line showed the
+  fill jumping from a sung long note to a short one that began under the line (a 107-unit note cut at a third), and a
+  1024-wide element on the note textures (alpha byte 0, off screen right) taking the fill from a 265-unit note. Now the
+  note already being filled keeps it while sung, and elements over 600 units wide are skipped. Diagnostics removed
+  (VSeen / note_hidden / the now-line dump).
+- **1.95 later the same morning (user, screenshot: "when I talk about sync I'm talking about how the note is filled
+  before it gets past the strike line; the animation should still be slower"):** fills run AHEAD of the line on some
+  notes. Ruled out: the sprite's tween (it holds exactly what we set, no drift logged; the tween targets are written
+  anyway now), notes laid out twice per frame (never), the element moving right (only on reuse at the right edge).
+  Found (runs 071204 / 071547: every live note dumped once a second, matched box by box to the frames): note elements
+  come in PAIRS with the same left end in their fields; their fields differ only in pos, dims and pointers. Case 1: a
+  phrase's first note (30.4) is read at the next note's (69.0) left but drawn 38.3 = 30.4 + 7.9 earlier.
+  `vnote_fix_pairs` (once per frame) moves the short one of a pair back by its width + the long one's gap to the next
+  note: run 072029 shows those notes now fill from the line (u 1.1 / 1.2). Case 2 NOT solved: long notes (219.1,
+  187.3, 183.3) paired with a ~49.6 / ~30 note: the long one's hit begins with the line ~50 / ~32 units in ("fill
+  starts on note ... at 51.5 of 219.1"), and frames t042 / t054 of run 072029 still show fills ahead of the line or
+  across a gap. The once-a-second note dump ("vocals: dump N", "vocals:  note ... fix") is still in 1.95 for this.
+  Next: match run 072029's dumps to its frames for the long-note pairs (which element is drawn where), then extend the
+  pair rule (or find the field the drawing uses: the pointers at +0x230..+0x2b8 differ between the two).
+- **Checked in run 065517:** precision bar fill inside the tube's glass (OK). Note streak: NOT shown at 10+ in any
+  band frame (score box area, all 25 frames, every player at x4): the band path (`band1_streak`) doesn't drive it;
+  the 1-player path is unverified (no 1v run since the widget).
+- **3-highway spacing (user: "the 3 highways look slightly on top of each other ... just like in 2 highway mode"):**
+  mock `docs/mocks/mock_3highway_sep_v1.png` (+ `_seams`): SEP3 12.5 -> 15.0 in wor_battle.py (2 highways meet at
+  canvas y 717.1, 3 at 12.5 overlap to 711.6, at 15.0 they meet at 717.2). Sent to the user 07:23; awaiting approval.
+  On "yes": SEP3 = 15.0 in tools/wor_battle.py, `python build.py --install`, gen_plugin_names, plugin build, offline
+  tests, one muted 3g1v run, compare the seams with the mock.
+
+### Open list from the user's 2026-11-07 review ("proceed with everything except 5")
+- 5 (sung part glued + synced until it fades): IN PROGRESS, see the 1.95 bullets (long-note pairs still wrong).
+- 6 (fill colour/height): user: "its working".
+- 7 (precision bar fill): OK in run 065517 frames (inside the tube's glass).
+- 8 (streak from 10): NOT showing in band runs; needs the band variable checked and a 1v run.
+- 9 (3-highway spacing): mock sent, awaiting approval (above).
+- 10 (vocals purple freeform fill): needs a capture of a freeform section, then a mock.
+- 11 ("star power phrase notes' blue blur"): user: "what do you mean? that makes no sense". In WoR, the notes of a
+  star power phrase glow cyan/blue; explain that and ask whether to drop the item.
+- 12 (practice crash): needs the user's Logs\debug.txt right after a crash (the plugin no longer mirrors it).
+- 14 (charged plasma top): recheck in `--sp-states` frames.
+- 15 (release 0.52): at the end, confirm with the user before publishing.
+- 16 (score panel smaller like WoR; orange "band moment" lines): panel needs a mock (reference tests/reference/wor_1g,
+  OneDrive\Videos\GH\WOR.mp4); band moments: MODES_RULES says don't implement, ask the user.
 
 ### User feedback this session (latest first)
+- 07:2x, screenshot of a note crossing the line already filled to its end: "when I talk about sync I'm talking about
+  how the note is filled before it gets past the strike line; the animation should still be slower".
+- "5: I was hallucinating, just make sure the 'hit' part of the note stays glued to it until it fades and is
+  perfectly synced / 6: its working / 7: didnt check / 8: didnt check / 11: what do you mean? that makes no sense /
+  proceed with everything except 5 basically".
+- "the 3 highways look slightly on top of each other and we could fix that so they are just like in 2 highway mode
+  where they are perfectly glued to each other".
+- "make sure the sync is perfect so it fades with vocal notes"; "the filled boxes never can be outside the box, need
+  to be the exact same color as the border and needs to be as tall as the rectangle itself so it touches the walls".
 - "LOOKING GOOD" after the band run; then the precision bar + microphone items above.
 - Green line: 0.28 -> "slightly thicker" (0.32) -> "40".
 - "boxes still not quite there" -> fixed: fill drawn [pos - s, pos] when scaled, x anchor not centred, hit counter.

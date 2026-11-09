@@ -134,6 +134,7 @@ namespace
 		{ 0x64041b, { 0x8D, 0x34, 0x8D }, 3, "font unload slot address" },
 		{ kTubeUpdate, { 0x51, 0x53, 0x56, 0x8B, 0xF1, 0x80, 0x7E, 0x28, 0x00 }, 9, "SP tube update prologue" },
 		{ kVocalTick, { 0x64, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x6A, 0xFF, 0x68, 0x58, 0x5C, 0x96, 0x00 }, 13, "vocal update prologue" },
+	{ 0x4778b0, { 0x8B, 0x44, 0x24, 0x04, 0x8B, 0x00 }, 6, "conditional float widget update prologue" },
 		{ 0x4743f0, { 0x89, 0x86, 0xF4, 0xC7, 0x00, 0x00 }, 6, "vocal update: now store" },
 		{ 0x472898, { 0x83, 0x86, 0x0C, 0xC8, 0x00, 0x00, 0x01 }, 7, "vocal phrase tick: note ticks counter" },
 		{ 0x4735cd, { 0x8B, 0x8F, 0x08, 0xC8, 0x00, 0x00 }, 6, "vocal phrase end: hit ticks read" },
@@ -177,71 +178,15 @@ namespace
 		fflush(g_log);
 	}
 
-	// 1.83: the DE's Logs\debug.txt is restarted at every launch, so a crash's script log (practice crash,
-	// 2026-10-29) was always lost. 1.83 copied it at process detach / unhandled exception, but the game ends itself
-	// without either (10-29 test runs: closed by itself, no "exit" line), so 1.85 MIRRORS it while the game runs:
-	// every kMirrorMs the new bytes of debug.txt are appended to debug.live.txt (read with full sharing: the DE has it
-	// open); at the next launch debug.live.txt becomes debug.last.txt. Any kind of exit keeps all but the last
-	// kMirrorMs of the log.
-	constexpr DWORD kMirrorMs = 100;
-	char g_debug[MAX_PATH] = {}, g_debug_live[MAX_PATH] = {}, g_debug_last[MAX_PATH] = {};
+	// 1.83-1.93 tried to keep the DE's Logs\debug.txt past a crash (a copy at exit, then a mirror thread every 100 ms);
+	// both failed: the game ends itself without DLL_PROCESS_DETACH and keeps debug.txt locked against reading while it
+	// runs (10-30). 1.94 dropped the mirror; after a crash the user sends debug.txt before relaunching.
 	LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
-	SRWLOCK g_mirror_lock = SRWLOCK_INIT;
-	LONGLONG g_mirror_at = 0;
-
-	// wait = false from the crash filter / detach: the mirror thread may hold the lock (or be gone, holding it)
-	void mirror_debug_log(bool wait)
-	{
-		if (!g_debug[0])
-			return;
-		if (wait)
-			AcquireSRWLockExclusive(&g_mirror_lock);
-		else if (!TryAcquireSRWLockExclusive(&g_mirror_lock))
-			return;
-		HANDLE in = CreateFileA(g_debug, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-		                        OPEN_EXISTING, 0, nullptr);
-		if (in != INVALID_HANDLE_VALUE)
-		{
-			LARGE_INTEGER size = {};
-			GetFileSizeEx(in, &size);
-			if (size.QuadPart < g_mirror_at)      // restarted under us: start the mirror over
-				g_mirror_at = 0;
-			if (size.QuadPart > g_mirror_at)
-			{
-				HANDLE out = CreateFileA(g_debug_live, FILE_APPEND_DATA, FILE_SHARE_READ, nullptr,
-				                         g_mirror_at ? OPEN_ALWAYS : CREATE_ALWAYS, 0, nullptr);
-				if (out != INVALID_HANDLE_VALUE)
-				{
-					static char buf[64 * 1024];
-					LARGE_INTEGER at = {};
-					at.QuadPart = g_mirror_at;
-					SetFilePointerEx(in, at, nullptr, FILE_BEGIN);
-					DWORD got = 0, put = 0;
-					while (ReadFile(in, buf, sizeof(buf), &got, nullptr) && got &&
-					       WriteFile(out, buf, got, &put, nullptr) && put == got)
-						g_mirror_at += got;
-					CloseHandle(out);
-				}
-			}
-			CloseHandle(in);
-		}
-		ReleaseSRWLockExclusive(&g_mirror_lock);
-	}
-
-	DWORD WINAPI mirror_thread(void *)
-	{
-		for (;;)
-		{
-			mirror_debug_log(true);
-			Sleep(kMirrorMs);
-		}
-	}
 
 	LONG WINAPI crash_filter(EXCEPTION_POINTERS *ep)
 	{
 		const EXCEPTION_RECORD *r = ep ? ep->ExceptionRecord : nullptr;
 		log("crash: exception %08lx at %p", r ? r->ExceptionCode : 0, r ? r->ExceptionAddress : nullptr);
-		mirror_debug_log(false);
 		return g_prev_filter ? g_prev_filter(ep) : EXCEPTION_CONTINUE_SEARCH;
 	}
 
@@ -550,6 +495,12 @@ namespace
 	TubeUpdateFn g_tube_update = nullptr;
 	using VocalTickFn = void(__fastcall *)(void *vocal, void *edx);
 	VocalTickFn g_vocal_tick = nullptr;
+	// CScreenElementConditionalFloatObserver's update (vtable 0xa11f00 slot 3): thiscall (observer, value **, ?), ret 8;
+	// out = lo <= *(float *)*value <= hi ? 1 : 0 (range at +0x1c / +0x20). 1.96 hooked 0x478100, "slot 8": the vtables
+	// are 4 slots long, so that was CScreenElementRGBALerpObserver's update (1.97, RTTI vtables re-read)
+	constexpr uintptr_t kCondFloatUpdate = 0x4778b0;
+	using CondFloatFn = void(__fastcall *)(void *obs, void *edx, void **value, uint32_t a2);
+	CondFloatFn g_cond_float = nullptr;
 	using SetRgbaFn = void(__fastcall *)(void *element, void *edx, uint32_t rgba, int now);
 	ElementUpdateFn g_element_update = nullptr;
 	bool g_tube_logged = false;
@@ -968,8 +919,19 @@ namespace
 		const bool edge = shown && !g_sp.ready && g_sp.level < 0.999f;
 		// 1.90 (user 2026-11-06: "two rectangles together, unaligned"): on the glass walls' centre line at the level's
 		// height (the level path slants 0.556 against the walls' 0.505, up to 6 units off at the top)
+		// 1.98 (user 2026-11-08: a tab stuck out of the glass's top right under the divider): the glass tapers (~21.8
+		// units wide at the bottom, ~17 at the divider), the edge kept its bottom width; now centred and as wide as the
+		// fill at the level (kEdgeFit, measured off the built fill texture by tools/gen_plugin_names.py)
 		if (edge)
-			set_pos(g_sp.glow[0], nullptr, kEdgeX0 + (y - kEdgeY0) * kEdgeSlope, y, 1);
+		{
+			const float u = (g_sp.level < 0.0f ? 0.0f : g_sp.level > 1.0f ? 1.0f : g_sp.level) * kLevelSteps;
+			const int i = static_cast<int>(u) < kLevelSteps ? static_cast<int>(u) : kLevelSteps - 1;
+			const float f = u - i;
+			const float ex = kEdgeFit[i][0] + (kEdgeFit[i + 1][0] - kEdgeFit[i][0]) * f;
+			const float ek = kEdgeFit[i][1] + (kEdgeFit[i + 1][1] - kEdgeFit[i][1]) * f;
+			set_pos(g_sp.glow[0], nullptr, ex, y, 1);
+			reinterpret_cast<SetScaleFn>(kSetScale)(g_sp.glow[0], nullptr, kEdgeSX * ek, kEdgeSY, 0, 0);
+		}
 		set_alpha(g_sp.glow[0], edge ? 1.0f : 0.0f);
 		// 1.62 (user 2026-10-27: "you made it into a straight rectangle, WoR's is perfectly curved"): the curved cap
 		// (WoR's tube needle arc) also rides the fill's top while charging, dimmer (kCapChargeK), so the window's straight
@@ -1373,8 +1335,14 @@ namespace
 
 	// 1.40: the band bulb's popup; 1.58: WoR's (HUD_setup_band_mult_animation): it slides out from behind the score box
 	// (from its spot + kBulbFrom at kBulbFromScale) in kBulbPopupTime, the orange glow sprite next to it flashing
-	struct Grow { void *e = nullptr, *glow = nullptr; double t0 = 0.0; float sx = 1.0f, sy = 1.0f, x = 0.0f, y = 0.0f; };
+	// 1.96 (user 2026-11-08: "the lightbulb needs an equivalent fade out effect just like fade in"): WoR's hide_band_mult is
+	// the same 0.3 s move back to hide_pos (+118, +32) at hide_scale 0.5 (ghwor hud_widgets HUD_setup_band_mult_animation);
+	// the DE blanks the bulb at once. `out`: the popup played backwards, the bulb texture kept until it ends, then blank
+	// next: the texture the hide ends on (the DE's blank, or the next bulb, which then grows out)
+	struct Grow { void *e = nullptr, *glow = nullptr; double t0 = 0.0; float sx = 1.0f, sy = 1.0f, x = 0.0f, y = 0.0f; bool out = false;
+	              uint32_t next = 0; };
 	Grow g_grow[4];
+	bool g_bulb_blanking = false;   // our own blank write at the end of the hide (the texture hook lets it through)
 
 	// the bulb's glow sibling (texture kBandBulbGlow, same parent)
 	void *bulb_glow_of(void *e)
@@ -1389,7 +1357,7 @@ namespace
 		return nullptr;
 	}
 
-	void bulb_grow(void *e)
+	void bulb_grow(void *e, bool out = false)
 	{
 		Grow *slot = &g_grow[0];
 		for (Grow &g : g_grow)
@@ -1408,6 +1376,7 @@ namespace
 		}
 		slot->e = e;
 		slot->t0 = now();
+		slot->out = out;
 	}
 
 	void bulb_frame(void *e)
@@ -1423,9 +1392,28 @@ namespace
 				const float x = static_cast<float>(u);
 				k = x * x * (3.0f - 2.0f * x);                    // smooth start and stop
 				flash = 1.0f - x;
+				if (g.out)
+					k = 1.0f - k, flash = 0.0f;                   // the hide: back behind the score box, no flash
 			}
 			else
+			{
 				g.t0 = 0.0;
+				if (g.out)
+				{
+					// hidden: put the texture the DE asked for on (blank, or the next bulb), then the bulb back to its spot
+					// and size for the next show; a next bulb grows out right away
+					const uint32_t next = g.next ? g.next : kBlankTex;
+					g.out = false, g.next = 0;
+					g_bulb_blanking = true;
+					set_texture(e, next);
+					g_bulb_blanking = false;
+					if (next != kBlankTex)
+					{
+						g.t0 = now();
+						continue;   // u = 0 next frame: the new bulb starts hidden behind the score box
+					}
+				}
+			}
 			const float s = kBulbFromScale + (1.0f - kBulbFromScale) * k;
 			const float px = g.x + kBulbFrom[0] * (1.0f - k), py = g.y + kBulbFrom[1] * (1.0f - k);
 			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, g.sx * s, g.sy * s, 0, 0);
@@ -1518,6 +1506,17 @@ namespace
 	int g_vnote_nw = 0, g_vnote_nc = 0;
 
 	void vnote_remember(void *e);
+	bool note_root(void *n, float &left, float &w, float &cy, float *h = nullptr);
+
+	// 1.94 (band run 062219, raw dumps of 48 notes): slides (the slanted links between pitches) are SHEARED, not rotated:
+	// +0xd0 is 0 on every note, the shear sits at +0xbc (target +0x100, start +0x144), -0.13..-0.27 on the 5 slides
+	// dumped, 0 on the other 43. A flat fill can't stay inside a slanted box, so sheared notes get none.
+	constexpr size_t kElementShear = 0xbc;
+	bool is_slide(void *n)
+	{
+		return fabsf(f32(n, kElementRot)) > 0.01f || fabsf(f32(n, kElementShear)) > 1e-3f ||
+		       fabsf(f32(n, kElementShear + 0x44)) > 1e-3f;
+	}
 
 	void vocal_note(void *e, uint32_t tex)
 	{
@@ -1560,6 +1559,7 @@ namespace
 	{
 		void *e, *parent;
 		double t;
+		float left;             // 1.94: its left end in the root last frame (for the scroll per frame)
 	};
 	VNoteRec g_vnotes[128] = {};
 	int g_vnote_next = 0, g_vnote_geo_logs = 0;
@@ -1583,19 +1583,56 @@ namespace
 	float g_now_x = 10.0f;
 
 	bool vocal_counts(uint32_t &hits, uint32_t &ticks);   // the phrase counters (defined with the phrase tracker)
+	int32_t vocal_i32(size_t off);                         // a field of the vocal player (0 when none)
+
+	// 1.94: the notes draw behind the positions we read. Band run 045835 (no correction): every fill sat 8 px = 5.3 units
+	// left of its note; band run 065517 (corrected by one frame's scroll, ~2 units at the run's frame rate): still 5 px
+	// left (fill 750..783 on the box 750..793, its right wall 788). The lag is ~5.3 units at the 286 units/s scroll
+	// (note 15024340: 112.5 -> -44.1 in 0.547 s) = 18.5 ms, not one frame: the fill uses the note's position that long ago
+	constexpr float kVNoteLag = 0.020f;
+	constexpr float kVEngineLead = 118.0f;   // 1.97: root units the engine's scoring "now" runs right of our line (see the fill)
+	float g_vspeed = 0.0f;        // the notes' scroll, root units per second (negative: they move left)
+	double g_vspeed_t = 0.0;
+	int g_vspeed_logs = 0;
 
 	void vnote_remember(void *e)
 	{
+		const double t = now();
+		float l = 0.0f, w, c;
+		const bool have = note_root(e, l, w, c);
 		for (VNoteRec &r : g_vnotes)
 			if (r.e == e)
 			{
-				r.t = now();
+				const float dx = l - r.left;
+				const double dt = t - r.t;
+				// 1.95 diagnostics (band run 070208: a fill ran 80 units ahead of the now line on a long note; the element
+				// 15029C20 was 219.1 then 187.6 wide): is one element laid out more than once per frame, for several notes?
+				{
+					static int relay_logs = 0;
+					if (have && dt < 0.003 && fabsf(dx) > 0.5f && relay_logs < 24)
+						++relay_logs, log("vocals: note %p laid again within %.2f ms: left %.1f -> %.1f (w %.1f)", e, dt * 1000.0,
+						                  r.left, l, w);
+					static int jump_logs = 0;
+					if (have && dt >= 0.003 && dt < 0.05 && dx > 5.0f && jump_logs < 24)
+						++jump_logs, log("vocals: note %p moved RIGHT %.1f in %.1f ms (left %.1f, w %.1f)", e, dx, dt * 1000.0, l, w);
+				}
+				if (have && dt > 0.004 && dt < 0.05 && dx < 0.0f && dx > -30.0f)   // a later frame, same note
+				{
+					const float v = static_cast<float>(dx / dt);
+					g_vspeed = now() - g_vspeed_t < 0.2 ? g_vspeed + 0.1f * (v - g_vspeed) : v;
+					g_vspeed_t = t;
+					static double log_t = 0.0;
+					if (g_vspeed_logs < 6 && t - log_t > 5.0)
+						++g_vspeed_logs, log_t = t, log("vocals: notes scroll %.1f units/s (frame %.1f ms, %.2f units), drawn %.2f units behind", g_vspeed,
+						    dt * 1000.0, dx, -g_vspeed * kVNoteLag);
+				}
+				r.t = t, r.left = l;
 				return;
 			}
 		VNoteRec &r = g_vnotes[g_vnote_next++ % 128];
 		r.e = e;
 		r.parent = *reinterpret_cast<void **>(field(e, kElementParent));
-		r.t = now();
+		r.t = t, r.left = l;
 		if (g_vnote_geo_logs < 6)
 		{
 			++g_vnote_geo_logs;
@@ -1606,13 +1643,20 @@ namespace
 	}
 
 	// the note's left end and width (positive), from its live position, signed width and justification (just at
-	// 0x1a4/0x1a8: -1 = pos is the left/top edge); cy = its vertical centre
+	// 0x1a4/0x1a8: -1 = pos is the left/top edge); cy = its vertical centre.
+	// 1.97: a NEGATIVE width does not flip the quad: it still draws to the right of its anchor ([pos, pos + |w|]); the
+	// sign only mirrors the texture. 1.92-1.96 took pos for the right end, so every note was placed one width too far
+	// left. Proof (band runs 2026-11-08 061311..063410): two notes "sharing a left end" (a 30.4 and a 69.0, both
+	// reading 1201.6) got diagnostic bars set at that same left drawn 38.6 apart = 69.0 - 30.4, in the order and gap of
+	// the chart; a watch on the 69.0 one showed its pos changing only once a frame, before the element pass; and a note
+	// spawns at pos 1280 (the window's right edge): its LEFT end there, scrolling in. The pool sprites draw the same way
+	// (the bars set on [pos - w, pos] matched the boxes only because both were one width off): every fill came one width
+	// early, the box filled whole as it reached the line (user 2026-11-07), and each sung fill sat ~3 units left of its box
 	constexpr size_t kElementJust = 0x1a4;
 	void note_span(void *n, float &left, float &w, float *cy = nullptr)
 	{
 		const float x = f32(n, kElementPos), d = f32(n, kElementDims) * f32(n, kElementScale);
-		const float a = x - (f32(n, kElementJust) + 1.0f) * 0.5f * d;
-		left = d < 0.0f ? a + d : a;
+		left = x - (f32(n, kElementJust) + 1.0f) * 0.5f * fabsf(d);
 		w = fabsf(d);
 		if (cy)
 			*cy = f32(n, kElementPos + 4) - f32(n, kElementJust + 4) * 0.5f * f32(n, kElementDims + 4) * f32(n, kElementScale + 4);
@@ -1627,7 +1671,7 @@ namespace
 	// - the 1.92 pool sprites in note_scale (created 0 wide) never drew at all (frames of the 1.93 diagnostic run: placed,
 	//   opaque, yellow, invisible): the pool is in the root now, 1 wide at creation, like Get Ready and the glows
 	// note_scale sits (just -1) in window, window (just -1) in root; positions and scales read live
-	bool note_root(void *n, float &left, float &w, float &cy)
+	bool note_root(void *n, float &left, float &w, float &cy, float *h)
 	{
 		void *ns = *reinterpret_cast<void **>(field(n, kElementParent));
 		void *win = ns ? *reinterpret_cast<void **>(field(ns, kElementParent)) : nullptr;
@@ -1644,6 +1688,38 @@ namespace
 		left = ox + wsx * nsx * l;
 		w = wsx * nsx * ww;
 		cy = oy + wsy * nsy * c;
+		if (h)
+			*h = fabsf(wsy * nsy * f32(n, kElementDims + 4) * f32(n, kElementScale + 4));
+		return true;
+	}
+
+	// the note where it is drawn
+	// 1.96: NO corrections. Diagnostic runs 2026-11-07 235607 (1v) and 2026-11-08 054517 (3g1v), built with
+	// WOR_DIAG_FIELDS: a pool sprite laid over each note's raw note_root box, the same way the fills are laid, sat exactly
+	// on the drawn box in every frame (long notes, slides, both line-ups), and g_now_x on the drawn line. The 1.94 lag
+	// shift and the 1.95 pair fix moved correct positions (the pair fix moved a short note back by its width + gap, so
+	// u jumped and the stretch, a running maximum, kept the jump: boxes filled past the line, fills across gaps)
+	bool note_drawn(void *n, float &left, float &w, float &cy, float *h = nullptr)
+	{
+		return note_root(n, left, w, cy, h);
+	}
+
+	// 1.94: the inside of a note's rectangle (between its walls' inner edges, from its band's texture), in the root
+	bool note_inside(void *n, float &x0, float &x1, float &y0, float &y1)
+	{
+		float left, w, cy, h;
+		if (!note_drawn(n, left, w, cy, &h))
+			return false;
+		const uint32_t tex = texture_of(n);
+		constexpr int bands = sizeof(kVNote) / sizeof(kVNote[0]);
+		int band = bands / 2;
+		for (int i = 0; i < bands; ++i)
+			if (kVNote[i] == tex)
+				band = i;
+		const float *in = kVNoteIn[band];
+		const float top = cy - 0.5f * h;
+		x0 = left + in[0] * w, x1 = left + in[1] * w;
+		y0 = top + in[2] * h, y1 = top + in[3] * h;
 		return true;
 	}
 
@@ -1705,6 +1781,13 @@ namespace
 		g_vhit_seen = now();
 	}
 
+#ifdef WOR_DIAG_FILLS
+	double g_long_log_until = 0.0;
+	void *g_watch = nullptr;   // see watch_check
+	float g_watch_pos = 0.0f, g_watch_dims = 0.0f;
+	int g_watch_logs = 0;
+#endif
+
 	// once per frame: extend (or start) the hit stretch of the note at the now line, free stretches of notes gone
 	void vocal_fill_tick()
 	{
@@ -1712,6 +1795,74 @@ namespace
 		if (t - g_vtick < 0.004)
 			return;
 		g_vtick = t;
+#ifdef WOR_DIAG_FILLS
+		if (g_watch && g_watch_logs < 400)
+			++g_watch_logs, log("vocals: WATCH tick t %.6f pos %.2f dims %.2f", t, f32(g_watch, kElementPos), f32(g_watch, kElementDims));
+#endif
+		// 1.95 diagnostics (band run 070955: fills drawn on notes right of the line, or across a gap into the next note;
+		// the sprites hold what we set): once a second, every live note element (drawn left, width, centre y, raw pos x,
+		// dims x, scale x, slide) and every fill, to match box by box against the frames
+		{
+			static double dump_t = 0.0;
+			static int dumps = 0;
+			if (dumps < 40 && t - dump_t > 1.0 && g_vscale)
+			{
+				++dumps, dump_t = t;
+				log("vocals: dump %d t %.3f speed %.1f", dumps, t, g_vspeed);
+				for (const VNoteRec &r : g_vnotes)
+				{
+					float l, ww, c;
+					if (!r.e || t - r.t > 0.1 || !note_drawn(r.e, l, ww, c) || l > 1000.0f || l + ww < -300.0f)
+						continue;
+					log("vocals:  note %p l %.1f w %.1f cy %.1f%s", r.e, l, ww, c, is_slide(r.e) ? " slide" : "");
+				}
+				for (int i = 0; i < kFills; ++i)
+					if (g_fills[i].note)
+						log("vocals:  fill %d on %p u %.1f..%.1f", i, g_fills[i].note, g_fills[i].u0, g_fills[i].u1);
+			}
+		}
+#ifdef WOR_DIAG_FILLS
+		// two live notes sharing a left end with different widths (run 061006: a 49.6 note and a 219.1 note, both at 112.5):
+		// every dword that differs between the two elements, to find what makes one of them not draw there
+		[&] {
+			static int pair_logs = 0;
+			if (pair_logs >= 8 || !g_vscale)
+				return;
+			for (const VNoteRec &a : g_vnotes)
+			{
+				float la, wa, ca;
+				if (!a.e || t - a.t > 0.02 || a.parent != g_vscale || !note_root(a.e, la, wa, ca))
+					continue;
+				for (const VNoteRec &b : g_vnotes)
+				{
+					float lb, wb, cb;
+					if (&b <= &a || !b.e || t - b.t > 0.02 || b.parent != g_vscale || !note_root(b.e, lb, wb, cb) ||
+					    fabsf(la - lb) > 2.0f || fabsf(wa - wb) < 1.0f || la > 990.0f)
+						continue;
+					++pair_logs;
+					if (!g_watch)
+					{
+						g_watch = wb > wa ? b.e : a.e;
+						g_watch_pos = f32(g_watch, kElementPos), g_watch_dims = f32(g_watch, kElementDims);
+						log("vocals: WATCH starts on %p (pos %.2f dims %.2f) t %.6f", g_watch, g_watch_pos, g_watch_dims, t);
+					}
+					log("vocals: PAIR %p (l %.1f w %.1f cy %.1f alpha %.2f rgba %08x tex %08x) and %p (l %.1f w %.1f cy %.1f alpha %.2f rgba %08x tex %08x) t %.3f",
+					    a.e, la, wa, ca, f32(a.e, kElementAlpha), *reinterpret_cast<uint32_t *>(field(a.e, kElementRgbaTarget)),
+					    texture_of(a.e), b.e, lb, wb, cb, f32(b.e, kElementAlpha),
+					    *reinterpret_cast<uint32_t *>(field(b.e, kElementRgbaTarget)), texture_of(b.e), t);
+					const uint32_t *pa = static_cast<const uint32_t *>(a.e), *pb = static_cast<const uint32_t *>(b.e);
+					for (int k = 0; k < 0x240 / 4; ++k)
+						if (pa[k] != pb[k])
+						{
+							float fa, fb;
+							memcpy(&fa, pa + k, 4), memcpy(&fb, pb + k, 4);
+							log("vocals:   +%03x %08x %08x (%g | %g)", k * 4, pa[k], pb[k], fa, fb);
+						}
+					return;
+				}
+			}
+		}();
+#endif
 		for (VFill &f : g_fills)
 		{
 			if (!f.note)
@@ -1720,7 +1871,7 @@ namespace
 			for (const VNoteRec &r : g_vnotes)
 				live = live || (r.e == f.note && t - r.t < 0.3);
 			float nl, nw, nc;
-			if (live && note_root(f.note, nl, nw, nc))
+			if (live && note_drawn(f.note, nl, nw, nc))
 			{
 				if (nl > f.lastx + 5.0f)   // the element now holds a new note (1.93 test 3: an old fill on an unsung note)
 					live = false;
@@ -1729,8 +1880,8 @@ namespace
 			if (!live)
 			{
 				static int end_logs = 0;
-				if (end_logs < 12)
-					++end_logs, log("vocals: fill ends on note %p, stretch %.1f..%.1f", f.note, f.u0, f.u1);
+				if (end_logs < 40)
+					++end_logs, log("vocals: fill ends on note %p, stretch %.1f..%.1f (t %.3f)", f.note, f.u0, f.u1, t);
 				f = VFill();
 			}
 		}
@@ -1743,6 +1894,18 @@ namespace
 			uint32_t hits = 0, ticks = 0;
 			if (!vocal_counts(hits, ticks))
 				return;
+#ifdef WOR_DIAG_FILLS
+			// 1.97 run 063755: a perfectly sung 219.1 note (hits = ticks all phrase) filled only to 136.3: the counters,
+			// song time and the engine's current note, every tick for a second after a long note's fill starts
+			{
+				static int long_logs = 0;
+				if (t < g_long_log_until && long_logs < 300)
+					++long_logs, log("vocals: LONG t %.4f hits %u ticks %u (last %u %u) song %d note %d..%d hit_t -%.1f ms miss_t -%.1f ms", t,
+					                 hits, ticks, last_hits, last_ticks, vocal_i32(0xc7f4),
+					                 vocal_i32(0xc7f8),
+					                 vocal_i32(0xc7fc), (t - hit_t) * 1000.0, (t - miss_t) * 1000.0);
+			}
+#endif
 			if (hits < last_hits || ticks < last_ticks)
 				last_hits = last_ticks = 0;
 			if (hits > last_hits)
@@ -1750,26 +1913,49 @@ namespace
 			else if (ticks > last_ticks)
 				miss_t = t;
 			last_hits = hits, last_ticks = ticks;
-			if (t - hit_t > 0.06 || miss_t > hit_t || !g_vscale)
+			// 1.97 (band run 064243, LONG log): the engine scores a note ~370 ms before it reaches our line (fills began
+			// 368..381 ms after the engine's note start, for every note; at the 0.32 units/ms scroll that is ~118 units: the
+			// engine's "now" sits near root 236). Read live, the counters filled each note one lead early and cut it where the
+			// engine's note (or phrase) ended: a perfectly sung 219.1 note stopped at 134.6 when the phrase counters reset.
+			// The on-pitch state is kept per frame and read one lead back, so the note at the line shows how ITS moment was sung
+			static struct { double t; bool sung; } hist[256] = {};
+			static int hist_next = 0;
+			hist[hist_next++ % 256] = { t, !(t - hit_t > 0.06 || miss_t > hit_t) };
+			const float speed = fabsf(g_vspeed);
+			const double lead = speed > 100.0f && speed < 2000.0f ? kVEngineLead / speed : 0.37;
+			bool sung = false, found = false;
+			for (int k = 1; k <= 256 && !found; ++k)
+			{
+				const auto &s = hist[(hist_next - k + 512) % 256];
+				if (s.t > 0.0 && s.t <= t - lead)
+					found = true, sung = s.sung;
+			}
+			if (!sung || !g_vscale)
 				return;
 		}
+		// the note crossing the now line. Band run 065517 (each set of elements spanning the line logged): often two do, and
+		// the fill jumped to the one that came second, leaving a sung note half filled (e.g. a 107-unit note cut where a 30-unit
+		// one began); the note already being filled keeps it while it is sung. Also skipped: slides (the slanted links: a flat
+		// fill would cross the gap; sheared, see is_slide) and anything far wider than a note (a 1024-wide element on the note
+		// textures, off screen to the right, took the fill from a sung 265-unit note)
 		void *note = nullptr;
 		float left = 0.0f, w = 0.0f;
+		bool kept = false;
 		for (const VNoteRec &r : g_vnotes)
 		{
-			if (!r.e || r.parent != g_vscale || t - r.t > 0.2)
+			if (!r.e || r.parent != g_vscale || t - r.t > 0.2 || is_slide(r.e))
 				continue;
 			float l, ww, c;
-			if (!note_root(r.e, l, ww, c))
+			if (!note_drawn(r.e, l, ww, c) || ww > 600.0f || g_now_x < l || g_now_x > l + ww)
 				continue;
-			// slides (the slanted links between notes) are rotated notes: a flat fill would cross the gap
-			if (fabsf(f32(r.e, kElementRot)) > 0.01f)
-				continue;
-			if (g_now_x >= l && g_now_x <= l + ww)
-			{
-				note = r.e, left = l, w = ww;
-				break;
-			}
+			bool filling = false;
+			for (const VFill &f : g_fills)
+				filling = filling || (f.note == r.e && t - f.last < 0.1);
+			// 1.97 (band run 064855): of two unfilled elements across the line, the one the line entered last (smallest u).
+			// A recycled element (an old note's, re-laid 180 wide over a sung 187-unit note for a few frames) came first in
+			// the list and took the fill at u 26, so the real note's fill began 26 units in instead of snapping to its start
+			if (!note || (filling && !kept) || (!kept && !filling && l > left))
+				note = r.e, left = l, w = ww, kept = filling;
 		}
 		if (!note)
 			return;
@@ -1777,24 +1963,49 @@ namespace
 		for (VFill &f : g_fills)
 			if (f.note == note && t - f.last < 0.1)
 			{
-				f.u1 = u > f.u1 ? u : f.u1;
+				// 1.96 (user 2026-11-07: "the note is filled before it gets past the strike line"; band run 055137 frame t044:
+				// a box starting at the line already filled to its end): the end follows the line exactly while sung, never a
+				// running maximum (a larger u from earlier kept the fill ahead of the line); the start never passes the end
+				{
+					static int back_logs = 0;
+					if (f.u1 - u > 3.0f && back_logs < 30)
+						++back_logs, log("vocals: stretch end pulled back on note %p: %.1f -> %.1f (left %.1f, w %.1f, t %.3f)", note,
+						                 f.u1, u, left, w, t);
+				}
+				f.u1 = u;
+				if (f.u0 > u)
+					f.u0 = u;
 				f.last = t;
 				return;
 			}
+#ifdef WOR_DIAG_FILLS
+		for (int fi = 0; fi < kFills / 2; ++fi)
+			if (VFill &f = g_fills[fi]; !f.note)
+#else
 		for (VFill &f : g_fills)
 			if (!f.note)
+#endif
 			{
 				// our line is NOW_BAR_DX right of the DE's: the engine's timing may still be the DE's, so a note sung from
 				// its start first reports a hit when the line is up to that far in; such a start is the note's start
 				f.note = note, f.u0 = u <= kVNowSnap ? 0.0f : u, f.u1 = u, f.sp = vocal_sp(), f.last = t, f.lastx = left;
-				if (g_vfill_logs < 6)
+				if (g_vfill_logs < 40)
 				{
 					++g_vfill_logs;
-					log("vocals: fill starts on note %p at %.1f of %.1f (now line x %.1f)", note, u, w, g_now_x);
+					log("vocals: fill starts on note %p at %.1f of %.1f, left %.1f (t %.3f)", note, u, w, left, t);
 				}
+#ifdef WOR_DIAG_FILLS
+				if (w > 150.0f && g_long_log_until < t - 5.0)
+					g_long_log_until = t + 1.2;
+#endif
 				return;
 			}
 	}
+
+#ifdef WOR_DIAG_FILLS
+	struct FillSet { double t; float x0, x1; };
+	FillSet g_fill_set[kFills] = {};
+#endif
 
 	// a pool sprite: laid over its stretch (slot by first sight), hidden when free
 	void vocal_fill(void *e)
@@ -1807,55 +2018,224 @@ namespace
 		for (int i = 0; i < kFills && slot < 0; ++i)
 			if (!g_fill_sprite[i])
 				g_fill_sprite[i] = e, slot = i;
+#ifdef WOR_DIAG_FIELDS
+		// diagnostic build (set CL=/DWOR_DIAG_FIELDS): each pool sprite marks one live note's FIELD box (note_root, no lag
+		// or pair corrections) as a thin magenta bar just above the box, the last one marks g_now_x; the frames then show
+		// field against drawn box and our line against the drawn line, in the same frame (no timing match needed)
+		if (slot >= 0)
+		{
+			const double tn = now();
+			float x0 = 0.0f, x1 = 0.0f, ym = 0.0f, hh = 0.0f;
+			uint32_t diag_rgba = 0xffff00ffu;
+			bool show = false;
+			if (slot == kFills - 1)
+			{
+				x0 = g_now_x - 0.5f, x1 = g_now_x + 0.5f, ym = 30.0f, hh = 60.0f, show = g_vscale != nullptr;
+				static double ns_log_t = 0.0;
+				void *win = g_vscale ? *reinterpret_cast<void **>(field(g_vscale, kElementParent)) : nullptr;
+				if (win && tn - ns_log_t > 0.5)
+				{
+					ns_log_t = tn;
+					log("vocals: diag t %.3f note_scale pos %.1f,%.1f dims %.1f,%.1f just %.2f,%.2f scale %.3f | window pos %.1f,%.1f dims "
+					    "%.1f,%.1f just %.2f,%.2f scale %.3f", tn, f32(g_vscale, kElementPos), f32(g_vscale, kElementPos + 4),
+					    f32(g_vscale, kElementDims), f32(g_vscale, kElementDims + 4), f32(g_vscale, kElementJust),
+					    f32(g_vscale, kElementJust + 4), f32(g_vscale, kElementScale), f32(win, kElementPos), f32(win, kElementPos + 4),
+					    f32(win, kElementDims), f32(win, kElementDims + 4), f32(win, kElementJust), f32(win, kElementJust + 4),
+					    f32(win, kElementScale));
+				}
+			}
+			else
+			{
+				int k = 0;
+				for (const VNoteRec &r : g_vnotes)
+				{
+					float l, ww, c, h;
+					if (!r.e || r.parent != g_vscale || tn - r.t > 0.1 || !note_root(r.e, l, ww, c, &h) || ww > 600.0f ||
+					    l > 1000.0f || l + ww < -300.0f)
+						continue;
+					if (k++ == slot)
+					{
+						x0 = l, x1 = l + ww, ym = c - 0.5f * h - 2.0f, hh = 2.0f, show = true;
+						// a pair (another live note with the same left end): the narrower one cyan, the wider green
+						diag_rgba = 0xffff00ffu;
+						for (const VNoteRec &q : g_vnotes)
+						{
+							float lq, wq, cq;
+							if (q.e && q.e != r.e && q.parent == g_vscale && tn - q.t < 0.1 && note_root(q.e, lq, wq, cq) &&
+							    fabsf(lq - l) < 2.0f && fabsf(wq - ww) > 1.0f)
+								diag_rgba = wq > ww ? 0xffffff00u : 0xff00ff00u;
+						}
+						static double log_t[kFills] = {};
+						if (tn - log_t[slot] > 1.0)
+							log_t[slot] = tn, log("vocals: diag t %.3f slot %d note %p field %.1f..%.1f cy %.1f pos %.1f target %.1f start %.1f "
+							                      "dims %.1f just %.2f,%.2f scale %.2f", tn, slot, r.e, x0, x1, c, f32(r.e, kElementPos),
+							                      f32(r.e, kElementPosTarget), f32(r.e, 0x130), f32(r.e, kElementDims),
+							                      f32(r.e, kElementJust), f32(r.e, kElementJust + 4), f32(r.e, kElementScale));
+						break;
+					}
+				}
+			}
+			if (!show)
+			{
+				set_alpha(e, 0.0f);
+				return;
+			}
+			reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, x0, ym, 1);
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, x1 - x0, hh / kPaintH, 0, 0);
+			f32(e, kElementPosTarget) = x0, f32(e, kElementPosTarget + 4) = ym;
+			f32(e, kElementScaleTarget) = x1 - x0, f32(e, kElementScaleTarget + 4) = hh / kPaintH;
+			reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, diag_rgba, 1);
+			set_alpha(e, 1.0f);
+			return;
+		}
+#endif
+#ifdef WOR_DIAG_FILLS
+		// diagnostic build (set CL=/DWOR_DIAG_FILLS): fills use slots 0..11; sprite 12+i marks fill i's note FIELD box (as
+		// read here, at the sprite's update) with a thin magenta bar above it, so one frame shows the fill, the field it was
+		// placed from and the drawn box together
+		if (slot >= kFills / 2)
+		{
+			const VFill &g = g_fills[slot - kFills / 2];
+			float l, ww, c, h;
+			if (!g.note || !note_root(g.note, l, ww, c, &h))
+			{
+				set_alpha(e, 0.0f);
+				return;
+			}
+			{
+				static int order_logs = 0;
+				if (order_logs < 60 && now() - g.last > 0.3)   // a passed note's fill: its sprite and this bar, same frame
+				{
+					++order_logs;
+					log("vocals: ORDER bar slot %d t %.6f note %p left %.2f (note hook %.3f ms ago, left then %.2f)", slot, now(), g.note, l,
+					    [&] { for (const VNoteRec &r : g_vnotes) if (r.e == g.note) return (now() - r.t) * 1000.0; return -1.0; }(),
+					    [&] { for (const VNoteRec &r : g_vnotes) if (r.e == g.note) return r.left; return 0.0f; }());
+				}
+			}
+			// run 062247: the fields match the boxes (bars on the field, every run); now the bar shows the fill's SET span
+			// [x0, x1] this frame (the fills update just before the bars), thin, above the box
+			const FillSet &fs = g_fill_set[slot - kFills / 2];
+			if (now() - fs.t > 0.005 || fs.x1 <= fs.x0)
+			{
+				set_alpha(e, 0.0f);
+				return;
+			}
+			const float bx1 = fs.x0, bw = fs.x1 - fs.x0, bym = c - 0.5f * h - 2.0f;
+			reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, bx1, bym, 1);
+			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, bw, 2.0f / kPaintH, 0, 0);
+			f32(e, kElementPosTarget) = bx1, f32(e, kElementPosTarget + 4) = bym;
+			f32(e, kElementScaleTarget) = bw, f32(e, kElementScaleTarget + 4) = 2.0f / kPaintH;
+			reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, 0xffff00ffu, 1);
+			set_alpha(e, 1.0f);
+			return;
+		}
+#endif
 		const VFill *f = slot >= 0 && g_fills[slot].note ? &g_fills[slot] : nullptr;
 		if (!f)
 		{
 			set_alpha(e, 0.0f);
 			return;
 		}
-		float left, w, cy;
-		if (!note_root(f->note, left, w, cy))
+		float left, w, cy, ix0, ix1, iy0, iy1;
+		if (is_slide(f->note) || !note_drawn(f->note, left, w, cy) ||
+		    !note_inside(f->note, ix0, ix1, iy0, iy1))
 		{
 			set_alpha(e, 0.0f);
 			return;
 		}
-		float x0 = left + f->u0;
-		float len = f->u1 - f->u0 < 0.5f ? 0.5f : f->u1 - f->u0;
+		// 1.94 (user 2026-11-07: "the filled boxes never can be outside the box ... as tall as the rectangle itself so it
+		// touches the walls"): the stretch, clamped to the rectangle's inside plus kVFillOverlap into each wall; a stretch
+		// from the note's start begins at its left wall
+		float x0 = left + f->u0, x1 = left + (f->u1 - f->u0 < 0.5f ? f->u0 + 0.5f : f->u1);
+		const float lo = ix0 - kVFillOverlap, hi = ix1 + kVFillOverlap;
+		x0 = x0 < lo ? lo : x0;
+		x1 = x1 > hi ? hi : x1;
 		if (x0 < g_win_left)   // the window clips the notes there; the root doesn't clip the fill
-		{
-			len -= g_win_left - x0;
 			x0 = g_win_left;
-		}
-		if (len <= 0.0f)
+		if (x1 > g_win_right)
+			x1 = g_win_right;
+		const float len = x1 - x0;
+		const float y0 = iy0 - kVFillOverlap, y1 = iy1 + kVFillOverlap;
+		if (len <= 0.0f || y1 <= y0)
 		{
 			set_alpha(e, 0.0f);
 			return;
 		}
-		// x scaled by s, this sprite draws over [pos - s, pos] (test 3 frames: just -1 at pos x0 drew [x0 - s, x0], just 0 at
-		// x0 + s/2 drew the same; 1 wide it sat on pos): the stretch's right end is the position
-		reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, x0 + len, cy, 1);
-		// the length by SCALE (the sprite is 1 wide in the desc): the 1.93 test frames showed SetDims changes the field
-		// (46.2 in the log) but not the drawn quad (1 px ticks at each sung note's start); the phrase box grows by scale too
-		if (fabsf(f32(e, kElementScale) - len) > 1e-3f || fabsf(f32(e, kElementScale + 4) - g_fill_hscale) > 1e-3f)
-			reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, len, g_fill_hscale, 0, 0);
-		reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, f->sp ? kPaintSpRgba : kPaintRgba, 1);
-		set_alpha(e, edge_alpha(left + 0.5f * w));   // as its note
-		// 1.93 diagnostics (user 2026-11-06: the 1.92 fill never showed): what the pool sprite holds after the setters
-		static int draw_logs = 0;
-		static double last_log = 0.0;
-		const double t = now();
-		if (draw_logs < 16 && t - last_log > 0.25)
+		// 1.95 diagnostics (user 2026-11-07, screenshot: a note crossing the line already filled to its end, "the animation
+		// should still be slower"; every stretch ends AT the line when computed, so the drawn sprite differs from what we
+		// set): what the sprite holds at this hook against what we set last frame, and its tween targets
 		{
-			++draw_logs, last_log = t;
-			void *ep = *reinterpret_cast<void **>(field(e, kElementParent));
-			log("vocals: fill sprite %p slot %d parent %p (notes in %p) pos %.1f,%.1f dims %.1f x %.1f scale %.2f alpha %.2f "
-			    "rgba %08x z %.2f | note %p pos %.1f,%.1f dims %.1f x %.1f z %.2f | u %.1f..%.1f now x %.1f",
-			    e, slot, ep, g_vscale, f32(e, kElementPos), f32(e, kElementPos + 4), f32(e, kElementDims),
-			    f32(e, kElementDims + 4), f32(e, kElementScale), f32(e, kElementAlpha),
-			    *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget)), f32(e, kElementZ), f->note,
-			    f32(f->note, kElementPos), f32(f->note, kElementPos + 4), f32(f->note, kElementDims),
-			    f32(f->note, kElementDims + 4), f32(f->note, kElementZ), f->u0, f->u1, g_now_x);
+			static float set_x[kFills] = {}, set_len[kFills] = {};
+			static int drift_logs = 0;
+			const float px = f32(e, kElementPos), sx = f32(e, kElementScale);
+			if (drift_logs < 30 && set_len[slot] > 0.0f && (fabsf(px - set_x[slot]) > 0.5f || fabsf(sx - set_len[slot]) > 0.5f))
+				++drift_logs, log("vocals: fill sprite %d drifted: pos %.1f (set %.1f, target %.1f) scale %.2f (set %.2f, target %.2f); "
+				                  "now pos %.1f len %.2f, u %.1f..%.1f", slot, px, set_x[slot], f32(e, kElementPosTarget), sx,
+				                  set_len[slot], f32(e, kElementScaleTarget), x0, len, f->u0, f->u1);
+			set_x[slot] = x0, set_len[slot] = len;
 		}
+		// 1.97: x scaled by s, this sprite draws over [pos, pos + s] (as the notes, see note_span; 1.93's test 3 read
+		// [pos - s, pos] against note boxes that were themselves one width off): the stretch's LEFT end is the position;
+		// y centred (just 0)
+		const float ym = 0.5f * (y0 + y1);
+#ifdef WOR_DIAG_FILLS
+		g_fill_set[slot] = { now(), x0, x1 };
+		{
+			static int order_logs = 0;
+			if (order_logs < 60 && now() - f->last > 0.3)
+				++order_logs, log("vocals: ORDER fill slot %d t %.6f note %p left %.2f x %.2f..%.2f", slot, now(), f->note, left, x0, x1);
+		}
+		{
+			static double log_t[kFills] = {};
+			const double tn = now();
+			if (tn - log_t[slot] > 0.25)
+				log_t[slot] = tn, log("vocals: diagfill t %.3f slot %d note %p left %.1f w %.1f inside %.1f..%.1f u %.1f..%.1f -> x %.1f..%.1f "
+				                      "(note updated %.1f ms ago, left then %.1f)", tn, slot, f->note, left, w, ix0, ix1, f->u0, f->u1, x0,
+				                      x1, [&] { for (const VNoteRec &r : g_vnotes) if (r.e == f->note) return (tn - r.t) * 1000.0; return -1.0; }(),
+				                      [&] { for (const VNoteRec &r : g_vnotes) if (r.e == f->note) return r.left; return 0.0f; }());
+		}
+#endif
+		reinterpret_cast<SetPosFn>(kSetPos)(e, nullptr, x0, ym, 1);
+		// the length by SCALE (the sprite is 1 wide in the desc): the 1.93 test frames showed SetDims changes the field
+		// (46.2 in the log) but not the drawn quad (1 px ticks at each sung note's start); the phrase box grows by scale too.
+		// The height likewise: the desc's kPaintH scaled to the rectangle's inside
+		const float sy = (y1 - y0) / kPaintH;
+#ifdef WOR_DIAG_FILLS
+		// a fill sprite against a bar sprite (run 061311: the bars sit where set, the fills ~10 units left of it), raw
+		{
+			static int sprite_logs = 0;
+			void *bar = g_fill_sprite[slot + kFills / 2];
+			if (sprite_logs < 3 && bar && g_fills[slot].note && now() - g_fills[slot].last > 0.3)
+			{
+				++sprite_logs;
+				log("vocals: SPRITES fill %p (slot %d, set x1 %.1f len %.2f sy %.3f) vs bar %p", e, slot, x1, len, sy, bar);
+				const uint32_t *pa = static_cast<const uint32_t *>(e), *pb = static_cast<const uint32_t *>(bar);
+				for (int k = 0; k < 0x240 / 4; ++k)
+					if (pa[k] != pb[k])
+					{
+						float fa, fb;
+						memcpy(&fa, pa + k, 4), memcpy(&fb, pb + k, 4);
+						log("vocals:   +%03x %08x %08x (%g | %g)", k * 4, pa[k], pb[k], fa, fb);
+					}
+			}
+		}
+#endif
+		reinterpret_cast<SetScaleFn>(kSetScale)(e, nullptr, len, sy, 0, 0);
+		// 1.95: and the tween targets (as the needle, 1.50): left stale, the per-frame tween can carry the sprite toward an
+		// old fill's length / place
+		f32(e, kElementPosTarget) = x0, f32(e, kElementPosTarget + 4) = ym;
+		f32(e, kElementScaleTarget) = len, f32(e, kElementScaleTarget + 4) = sy;
+		// the outline's own colour, in star power too (the outlines stay yellow there)
+#ifdef WOR_DIAG_FILLS
+		reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, 0xffffff00u, 1);   // cyan: tells our fills from anything else yellow
+#else
+		reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, kPaintRgba, 1);
+#endif
+		// 1.94 (user 2026-11-07: "make sure the sync is perfect so it fades with vocal notes"): the note's own alpha byte,
+		// as vocal_edge_fade wrote it this frame (the notes update before the pool sprites, which come last in the root).
+		// 1.93 recomputed edge_alpha from the fill's own (scroll-corrected) x: runs 061305 / 063144 measured the fill up to
+		// ~0.1 off its note's alpha in the fade zone (about a frame of fade)
+		set_alpha(e, static_cast<float>(*reinterpret_cast<const uint32_t *>(field(f->note, kElementRgbaTarget)) >> 24) / 255.0f);
 	}
 	// the now line: green lightning, cyan in star power, a new bolt every 1/60 s (1.89, user 2026-11-04: WoR's animates
 	// at least 3x faster than the 1/20 s of 1.58), in a scrambled order so no bolt follows itself
@@ -1953,7 +2333,34 @@ namespace
 	// is taken from the update hook, read only while it keeps updating (no stale reads after the song).
 	void *g_vocal_obj = nullptr;
 	double g_vocal_obj_t = 0.0;
+	int32_t vocal_i32(size_t off)
+	{
+		return g_vocal_obj ? *reinterpret_cast<int32_t *>(field(g_vocal_obj, off)) : 0;
+	}
 	int g_vocal_logs = 0;
+
+	// 1.96 diagnostics for the streak widget (wor_band._streak_widget): our observers are the ones whose value_range low
+	// end (+0x1c) is denormal (a streak's int bits; the high end is 1e30); log their raw input bits whenever they change
+	// (up to 40 lines). 1.97: seen working, runs 070019 (band1_streak) and 070735 (1g note_streak)
+	void __fastcall cond_float_hook(void *obs, void *edx, void **value, uint32_t a2)
+	{
+		const uint32_t lo = *reinterpret_cast<uint32_t *>(field(obs, 0x1c)), hi = *reinterpret_cast<uint32_t *>(field(obs, 0x20));
+		if (value && *value && lo != 0u && lo < 0x00800000u)   // ours: lo = a streak's int bits (a denormal)
+		{
+			static int logs = 0;
+			static uint32_t last = 0xffffffffu;
+			const uint32_t raw = *reinterpret_cast<uint32_t *>(*value);
+			if (raw != last && logs < 40)
+			{
+				++logs, last = raw;
+				float f;
+				memcpy(&f, &raw, 4);
+				log("streak widget %p: input raw %u (as float %g), range bits %u..%u, count %d", obs, raw, f, lo, hi,
+				    *reinterpret_cast<int *>(field(obs, 0x28)));
+			}
+		}
+		g_cond_float(obs, edx, value, a2);
+	}
 
 	void __fastcall vocal_tick_hook(void *vocal, void *edx)
 	{
@@ -2038,7 +2445,7 @@ namespace
 				++g_vpp_logs;
 				log("vocals: phrase box %.2f (hits %u / ticks %u, time %d, note %d..%d, phrase %d..%d, %d note ms)", q,
 				    *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc808)), *reinterpret_cast<uint32_t *>(field(g_vocal_obj, 0xc80c)),
-				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f4)), *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7f8)),
+				    vocal_i32(0xc7f4), vocal_i32(0xc7f8),
 				    *reinterpret_cast<int32_t *>(field(g_vocal_obj, 0xc7fc)), qb_int(kPhraseStart, -1), qb_int(kPhraseEnd, -1),
 				    qb_int(kPhraseMs, 0));
 			}
@@ -2096,9 +2503,33 @@ namespace
 		const float a = edge_alpha(x);
 		set_alpha(e, a);
 		const uint32_t rgba = *reinterpret_cast<uint32_t *>(field(e, kElementRgbaTarget));
-		const uint32_t ab = static_cast<uint32_t>(a * 255.0f + 0.5f);
-		if (texture_of(e) == 0 && (rgba >> 24) != ab && (rgba >> 24) != 0)   // text: by its colour too (as the notes)
-			reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, (rgba & 0x00ffffffu) | (ab << 24), 1);
+		// text: by its colour too (as the notes). 1.96 (user 2026-11-08: "lyrics are only showing near the strike line and
+		// are hidden on the highway"): 1.95 wrote the faded alpha into the colour and then skipped any colour whose alpha
+		// was 0, so a word spawned at the right clip edge (alpha 0 there, log: "pos 1280 ... alpha 0.00") stayed at 0 until
+		// the DE recoloured it at the line. Now the DE's own alpha byte is remembered per element (a colour alpha that isn't
+		// the one we wrote last is the DE's) and the colour gets DE alpha x fade
+		if (texture_of(e) == 0)
+		{
+			struct TextFade { void *e; uint8_t wrote, base; };
+			static TextFade cache[96] = {};
+			static int next = 0;
+			TextFade *c = nullptr;
+			for (TextFade &t : cache)
+				if (t.e == e)
+				{
+					c = &t;
+					break;
+				}
+			const uint8_t cur = static_cast<uint8_t>(rgba >> 24);
+			if (!c)
+				c = &cache[next++ % 96], c->e = e, c->base = cur, c->wrote = cur;
+			else if (cur != c->wrote)
+				c->base = cur;
+			const uint8_t want = static_cast<uint8_t>(c->base * a + 0.5f);
+			if (cur != want)
+				reinterpret_cast<SetRgbaFn>(kSetRgba)(e, nullptr, (rgba & 0x00ffffffu) | (static_cast<uint32_t>(want) << 24), 1);
+			c->wrote = want;
+		}
 		static void *seen[20] = {};
 		static int n = 0;
 		bool s = false;
@@ -2113,6 +2544,25 @@ namespace
 		}
 	}
 
+#ifdef WOR_DIAG_FILLS
+	// run 063121: a pair's long note reads at the short one's left in the tick (first pool sprite) but where it is drawn
+	// at later pool sprites: what moves it within the frame. Watched around every element update (before / after the
+	// original), each change logged with the element whose update was running
+	void watch_check(void *element, const char *when)
+	{
+		if (!g_watch || g_watch_logs >= 400)
+			return;
+		const float p = f32(g_watch, kElementPos), d = f32(g_watch, kElementDims);
+		if (fabsf(p - g_watch_pos) > 0.001f || fabsf(d - g_watch_dims) > 0.001f)
+		{
+			++g_watch_logs;
+			log("vocals: WATCH t %.6f %s %p (tex %08x parent %p): pos %.2f -> %.2f, dims %.2f -> %.2f", now(), when, element,
+			    texture_of(element), *reinterpret_cast<void **>(field(element, kElementParent)), g_watch_pos, p, g_watch_dims, d);
+			g_watch_pos = p, g_watch_dims = d;
+		}
+	}
+#endif
+
 	// the star power glow bands: fade in / out with the flag
 	void vocal_sp_glow(void *e)
 	{
@@ -2126,6 +2576,9 @@ namespace
 
 	void __fastcall element_update_hook(void *element, void *edx)
 	{
+#ifdef WOR_DIAG_FILLS
+		watch_check(element, "before hook");
+#endif
 		if (element)
 		{
 			needle_remap(element);
@@ -2192,7 +2645,13 @@ namespace
 				}
 		if (!g_script_swaps_done)
 			script_swaps_try();
+#ifdef WOR_DIAG_FILLS
+		watch_check(element, "after our hook, before update of");
 		g_element_update(element, edx);
+		watch_check(element, "after update of");
+#else
+		g_element_update(element, edx);
+#endif
 		// 1.52 (user 2026-10-23: the versus streak appeared at its size, then flashed back to the 4-digit minimum): a new
 		// number re-lays the text block out at its desc scale inside the update, after the check above, so that frame
 		// drew at the minimum. Sized again once the update is done.
@@ -2236,6 +2695,33 @@ namespace
 				}
 			// 1.40: the band bulb appears (blank -> a bulb texture): grow it out of the score group; 1.57: and on every
 			// multiplier change (bulb -> another bulb; the x1 bulb is shown now, user 2026-10-26)
+			// 1.96: a bulb going blank hides first (the reverse popup); the bulb texture stays until it is out of sight.
+			// 1.97 (band run 070351, 30 fps video with --bulb-cycle: each change dropped the old bulb from full to nothing in
+			// one frame, then the new one grew out): a bulb changing to ANOTHER bulb hides the same way, and the new bulb
+			// grows out once the old one is out of sight (bulb_frame)
+			if (texture_of(element) != texture && !g_bulb_blanking)
+			{
+				bool is_bulb = false, to_bulb = texture == kBlankTex;
+				for (uint32_t b : kBandBulb)
+					is_bulb |= b == texture_of(element), to_bulb |= b == texture;
+				if (is_bulb && to_bulb)
+				{
+					Grow *hiding = nullptr;
+					for (Grow &g : g_grow)
+						if (g.e == element && g.out && g.t0 > 0.0)
+							hiding = &g;
+					if (!hiding)
+					{
+						bulb_grow(element, true);
+						for (Grow &g : g_grow)
+							if (g.e == element)
+								hiding = &g;
+					}
+					if (hiding)
+						hiding->next = texture;
+					texture = texture_of(element);
+				}
+			}
 			if (texture_of(element) != texture)
 			{
 				bool from_bulb = texture_of(element) == kBlankTex;
@@ -2923,25 +3409,9 @@ namespace
 		char prev[MAX_PATH];
 		sprintf_s(prev, "%.*s.prev.log", static_cast<int>(strlen(path) - 4), path);
 		const bool kept_log = CopyFileA(path, prev, FALSE) != 0;
-		// the boot copy of debug.txt never worked (the DE restarts it before we load): 1.85 mirrors it to
-		// debug.live.txt while the game runs (mirror_debug_log), and the last session's mirror becomes debug.last.txt
-		char docs[MAX_PATH] = {};
-		bool kept_debug = false;
-		if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
-		{
-			const char *logs = "My Games\\Guitar Hero World Tour Definitive Edition\\Logs";
-			sprintf_s(g_debug, "%s\\%s\\debug.txt", docs, logs);
-			sprintf_s(g_debug_live, "%s\\%s\\debug.live.txt", docs, logs);
-			sprintf_s(g_debug_last, "%s\\%s\\debug.last.txt", docs, logs);
-			kept_debug = MoveFileExA(g_debug_live, g_debug_last, MOVEFILE_REPLACE_EXISTING) != 0;
-		}
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.93 (GH5 / WoR HUD)");
-		log("previous session logs kept: wor_hud_fixes.prev.log %s, Logs\\debug.last.txt %s (debug.txt mirrored to debug.live.txt)",
-		    kept_log ? "yes" : "no", kept_debug ? "yes" : "no");
-		if (g_debug[0])
-			if (HANDLE t = CreateThread(nullptr, 0, mirror_thread, nullptr, 0, nullptr))
-				CloseHandle(t);
+		log("wor_hud_fixes 1.98 (GH5 / WoR HUD)");
+		log("previous session log kept: wor_hud_fixes.prev.log %s", kept_log ? "yes" : "no");
 		watch_crashes();
 		if (!sites_match())
 			return;
@@ -2962,6 +3432,9 @@ namespace
 		// not the 0x4727d0 first hooked, so the hook sits on their common caller)
 		g_vocal_tick = reinterpret_cast<VocalTickFn>(install_jmp(kVocalTick, 6, reinterpret_cast<void *>(&vocal_tick_hook)));
 		log(g_vocal_tick ? "vocals: phrase tracker hooked (live phrase box)" : "vocals: phrase tracker hook failed");
+		// sub esp, 2c; push edi; mov edi, ecx = 6 bytes of whole instructions
+		g_cond_float = reinterpret_cast<CondFloatFn>(install_jmp(kCondFloatUpdate, 6, reinterpret_cast<void *>(&cond_float_hook)));
+		log(g_cond_float ? "streak widget: observer update hooked (diagnostics)" : "streak widget: observer hook failed");
 		// push esi; mov esi, ecx; mov eax, [esi+8] = 6 bytes of whole instructions
 		QueryPerformanceFrequency(&g_qpf);
 		g_element_update = reinterpret_cast<ElementUpdateFn>(install_jmp(kElementUpdate, 6, reinterpret_cast<void *>(&element_update_hook)));
@@ -3007,7 +3480,5 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 		DisableThreadLibraryCalls(module);
 		init(module);
 	}
-	else if (reason == DLL_PROCESS_DETACH)
-		mirror_debug_log(false);
 	return TRUE;
 }

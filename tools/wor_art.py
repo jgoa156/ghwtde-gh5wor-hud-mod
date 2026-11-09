@@ -503,10 +503,14 @@ def neon_sprite(needle_png, out_core, out_halo, rgb, halo_blur=1.4, halo_gain=1.
     halo.save(out_halo)
 
 
-def neon_edge(img, rgb, core_px=1.6, halo_blur=1.6, halo_gain=2.2, inset=0.6, core_rgb=(255, 255, 255)):
+def neon_edge(img, rgb, core_px=1.6, halo_blur=1.6, halo_gain=2.2, inset=0.6, core_rgb=(255, 255, 255),
+              end_row=None, end_tol=8.0):
     """A neon line traced exactly along the fill's bottom contour (per column, the last opaque row), so it lies on
     the edge where the fill meets the tube's end cap: white core + `rgb` halo, both inside the fill's own alpha
-    footprint plus the halo's soft spill."""
+    footprint plus the halo's soft spill.
+    end_row(x): the glass end's row at column x; a column whose last opaque row is further than end_tol from it is
+    skipped (2026-11-08, user: a bright pixel on the tube's left wall mid-tube: SP_Base's wall steps in one texel at
+    row 178, so the wall column's last opaque row was there and got a neon dot)."""
     import numpy as np
     from PIL import ImageFilter
     a = np.asarray(img.split()[3]).astype(float) / 255.0
@@ -516,6 +520,8 @@ def neon_edge(img, rgb, core_px=1.6, halo_blur=1.6, halo_gain=2.2, inset=0.6, co
     for x in range(w):
         ys = np.where(a[:, x] > 0.5)[0]
         if len(ys) < 3:
+            continue
+        if end_row is not None and abs(ys[-1] - end_row(x)) > end_tol:
             continue
         yb = ys[-1] + 0.5 - inset                   # sub-pixel edge, slightly inside the fill
         line[:, x] = np.clip(1.0 - np.abs(yy - yb) / core_px, 0, 1)

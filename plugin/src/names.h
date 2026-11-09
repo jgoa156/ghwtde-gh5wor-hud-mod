@@ -122,6 +122,28 @@ static const float kLevelPt[65][2] = {
 	{ 820.65f, 471.10f },
 };
 
+// charging top edge (glow[0]) for level i / 64: centre x at the level's height, x scale vs its base (kEdgeSX)
+static const float kEdgeSX = 1.29938f, kEdgeSY = 0.96250f;
+static const float kEdgeFit[65][2] = {
+	{ 895.91f, 1.0524f }, { 894.65f, 1.0524f }, { 893.40f, 1.0524f }, { 892.14f, 1.0524f },
+	{ 890.69f, 1.0238f }, { 889.36f, 1.0167f }, { 888.11f, 1.0167f }, { 886.84f, 1.0143f },
+	{ 885.24f, 0.9810f }, { 883.94f, 0.9810f }, { 882.66f, 0.9786f }, { 881.41f, 0.9786f },
+	{ 880.16f, 0.9786f }, { 878.71f, 0.9595f }, { 877.04f, 0.9619f }, { 875.76f, 0.9643f },
+	{ 874.51f, 0.9643f }, { 873.04f, 0.9429f }, { 871.59f, 0.9286f }, { 870.34f, 0.9286f },
+	{ 869.09f, 0.9286f }, { 867.64f, 0.9095f }, { 866.19f, 0.8905f }, { 864.94f, 0.8905f },
+	{ 863.54f, 0.8810f }, { 862.01f, 0.8548f }, { 860.74f, 0.8571f }, { 859.46f, 0.8595f },
+	{ 858.19f, 0.8571f }, { 856.59f, 0.8238f }, { 855.31f, 0.8214f }, { 854.04f, 0.8238f },
+	{ 852.74f, 0.8190f }, { 851.56f, 0.7929f }, { 850.59f, 0.7857f }, { 849.69f, 0.7857f },
+	{ 848.79f, 0.7857f }, { 847.89f, 0.7810f }, { 846.74f, 0.7571f }, { 845.74f, 0.7476f },
+	{ 844.84f, 0.7476f }, { 843.94f, 0.7476f }, { 843.04f, 0.7476f }, { 841.89f, 0.7238f },
+	{ 840.86f, 0.7119f }, { 839.96f, 0.7119f }, { 839.06f, 0.7119f }, { 838.16f, 0.7119f },
+	{ 837.21f, 0.7071f }, { 836.04f, 0.6810f }, { 835.06f, 0.6738f }, { 834.16f, 0.6738f },
+	{ 833.26f, 0.6738f }, { 832.29f, 0.6667f }, { 831.11f, 0.6405f }, { 830.19f, 0.6381f },
+	{ 829.29f, 0.6381f }, { 828.39f, 0.6381f }, { 827.39f, 0.6286f }, { 826.29f, 0.6095f },
+	{ 825.31f, 0.6024f }, { 824.41f, 0.6024f }, { 823.51f, 0.6024f }, { 822.61f, 0.5976f },
+	{ 822.24f, 0.5952f },
+};
+
 // battle (tools/wor_battle.py): our needle (texture, layout dims), the DE-turned stand-in ids (p1, p2), the
 // needle offsets from the stand-in on the WoR LED stops (layout units), the slot card size and its container
 static const uint32_t kBNeedleTex = 0x443208ca;   // WoR_HUD_bneedle
@@ -180,9 +202,13 @@ static const uint32_t kVSpGlow = 0x1bbc4b8d;
 static const uint32_t kVocalSpFlag = 0xa9aedfd3;
 static const float kStreakNumZ = 13.2013f;   // the note streak under the score (shown from 10)
 static const float kPaintH = 11.00f;
-static const uint32_t kPaintRgba = 0xff3cecff;   // r, g, b, a bytes
+static const uint32_t kPaintRgba = 0xff3cf4ff;   // r, g, b, a bytes
 static const uint32_t kPaintSpRgba = 0xffffff78;
 static const uint32_t kVFill = 0xa0242c74;   // WoR_HUD_vfill: 1.92 sung-note fill pool
+// 1.94: each note band's rectangle inside its walls, fractions of the note sprite (left, right, top, bottom),
+// and how far the fill reaches into the walls (canvas units)
+static const float kVNoteIn[12][4] = { { 0.31543f, 0.68457f, 0.33594f, 0.64062f }, { 0.22363f, 0.77637f, 0.33594f, 0.64062f }, { 0.15918f, 0.84082f, 0.33594f, 0.64062f }, { 0.11230f, 0.88770f, 0.33594f, 0.64062f }, { 0.08008f, 0.91992f, 0.33594f, 0.64062f }, { 0.05664f, 0.94336f, 0.33594f, 0.64062f }, { 0.04004f, 0.95996f, 0.33594f, 0.64062f }, { 0.02832f, 0.97168f, 0.33594f, 0.64062f }, { 0.01953f, 0.98047f, 0.33594f, 0.64062f }, { 0.01562f, 0.98438f, 0.33594f, 0.64062f }, { 0.01074f, 0.98926f, 0.33594f, 0.64062f }, { 0.00781f, 0.99219f, 0.33594f, 0.64062f } };
+static const float kVFillOverlap = 0.750f;
 static const float kVNowRootX = 118.000f;   // 1.93: the visible now line, highway root x
 static const float kVLineL = -221.00f, kVLineR = 880.00f;   // the highway lines' ends (root x)
 static const float kVNixieZ = 0.2f, kVNixieW = 38.00f, kVNixieH = 24.00f;

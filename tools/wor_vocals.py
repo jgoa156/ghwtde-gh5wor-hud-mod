@@ -514,18 +514,37 @@ def _sp_glow():
     return out
 
 
+NOTE_S = 4                                                   # note textures are drawn at 4x, then downsampled
+
+
+def _note_outline(i):
+    """Band i's outline in the 4x drawing: (edge_x, edge_y, box), box = the outer rectangle's inclusive pixels."""
+    W, H, S = NOTE_W, 32, NOTE_S
+    mid = NOTE_BANDS[i] * 2 ** 0.25                          # geometric middle of the band
+    k = H / (NOTE_H_CANVAS * 32 / 17)                        # texels per canvas unit, vertically
+    edge_y = max(1, round(NOTE_EDGE * k * S))
+    edge_x = max(1, round(NOTE_EDGE * W / mid * S))
+    return edge_x, edge_y, (edge_x // 2, 7 * S, W * S - 1 - edge_x // 2, 24 * S)
+
+
+def note_interior(i):
+    """The inside of band i's rectangle (between the inner edges of its walls), as fractions of the note sprite:
+    (left, right) of its width and (top, bottom) of its height, 0 = the sprite's left / top edge. The sung-note fill
+    is laid over exactly this (plugin kVNoteIn*)."""
+    ex, ey, (x0, y0, x1, y1) = _note_outline(i)
+    w, h = NOTE_W * NOTE_S, 32 * NOTE_S
+    return (x0 + ex + 1) / w, (x1 - ex) / w, (y0 + ey + 1) / h, (y1 - ey) / h
+
+
 def _note(i):
     """Note texture for length band i: the DE's 32-row profile (tube rows 7..24) as WoR's yellow outline with a warm
     blur, end edges NOTE_EDGE units wide for a note of the band's middle length."""
     from PIL import ImageDraw, ImageFilter
     W, H = NOTE_W, 32
-    S = 4                                                    # drawn at 4x
-    mid = NOTE_BANDS[i] * 2 ** 0.25                          # geometric middle of the band
+    S = NOTE_S
     k = H / (NOTE_H_CANVAS * 32 / 17)                        # texels per canvas unit, vertically
-    edge_y = max(1, round(NOTE_EDGE * k * S))
-    edge_x = max(1, round(NOTE_EDGE * W / mid * S))
+    edge_x, edge_y, box = _note_outline(i)
     big = (W * S, H * S)
-    box = (edge_x // 2, 7 * S, W * S - 1 - edge_x // 2, 24 * S)
 
     def outline(fill, ex, ey, inset=0):
         m = Image.new('L', big, 0)
@@ -592,7 +611,7 @@ def textures():
     out[SP_FILL] = _sp_fill()
     out[SP_TIP_TEX] = _sp_tip()
     out[PAINT_TEX] = _paint_tex()
-    out[FILL_TEX] = _paint_tex()
+    out[FILL_TEX] = _fill_tex()
     for i in range(NOW_FRAMES):
         out[NOW_TEX[i]] = _lightning(NOW_CORE, NOW_GLOW, 11 + i)
         out[NOW_SP_TEX[i]] = _lightning(NOW_SP_CORE, NOW_SP_GLOW, 11 + i)
@@ -971,7 +990,12 @@ PAINT_WOR = {
 PAINT_TEX = 'WoR_HUD_vpaint'
 FILL_TEX, FILL_POOL = 'WoR_HUD_vfill', 24          # 1.92: the plugin's own sung-note fill (sprites in note_scale)
 PAINT_H = 11.0
-PAINT_RGB, PAINT_SP_RGB = (255, 236, 60), (120, 255, 255)
+# 1.94 (user 2026-11-07: "the filled boxes never can be outside the box, need to be the exact same color as the border
+# and needs to be as tall as the rectangle itself so it touches the walls"): the fill is the outline's own colour (in
+# star power too: the outlines stay yellow), solid, laid over the rectangle's inside (note_interior) and FILL_OVERLAP
+# canvas units into each wall so no dark seam shows between the fill and the walls
+PAINT_RGB, PAINT_SP_RGB = NOTE_RGB, (120, 255, 255)
+FILL_OVERLAP = 0.75
 PAINT_SWAPS = [('vocals_setup_paint_material', 'WoR_HUD_vocal_paint_setup', 'off'),
                ('vocals_paint_star_power_on', 'WoR_HUD_vocal_paint_sp_on', 'on'),
                ('vocals_paint_star_power_off', 'WoR_HUD_vocal_paint_sp_off', 'off')]
@@ -1060,6 +1084,12 @@ def _paint_tex():
     rgb = np.repeat((v * 255)[:, None], w, 1)
     al = np.repeat((a * 255)[:, None], w, 1)
     return Image.fromarray(np.dstack([rgb, rgb, rgb, al]).astype(np.uint8), 'RGBA')
+
+
+def _fill_tex():
+    """1.94: the plugin's sung-note fill: solid opaque white (tinted to the outline's colour), hard edges, so it meets
+    the walls with no fade or gradient."""
+    return Image.new('RGBA', (16, 16), (255, 255, 255, 255))
 
 
 def _panel_in_v1(d, dy):

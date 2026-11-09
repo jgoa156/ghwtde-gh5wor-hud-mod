@@ -175,9 +175,26 @@ def edit_layout(config, d):
     return d[:a] + blk + d[b:]
 
 
+def int_bits_float(n):
+    """The float whose bit pattern is the int n (a denormal for small n)."""
+    import struct
+    return struct.unpack('<f', struct.pack('<I', n))[0]
+
+
 def _streak_widget(ind, obj, value, lo):
-    """A conditional widget: the DE's streak value (value, of obj if given) -> our streak_alpha, 1 from lo on."""
+    """A conditional widget: the DE's streak value (value, of obj if given) -> our streak_alpha, 1 from lo on.
+
+    CScreenElementConditionalFloatObserver (vtable 0xa11f00: setup 0x477930 stores value_range at +0x1c / +0x20,
+    update 0x4778b0) reads its input's 4 bytes AS A FLOAT (movss) and outputs a STEP: 1.0 when lo <= v <= hi (compared
+    as doubles), else 0. The streaks are ints, so a streak of n arrives as the denormal with n's bit pattern (positive
+    ints keep their order as floats; no MXCSR write in the exe, so no DAZ). The 2026-11-07 range [10, 1e6] never lit
+    (10 as an int = 1.4e-44). The 2026-11-07 late range [bits(lo - 1), bits(lo)] came from reading 0x478100 as this
+    class's update; that is CScreenElementRGBALerpObserver's (the vtables hold 4 slots, 0xa11f00 + 8 * 4 is the next
+    class's), and the window lit only at lo - 1 and lo. Now [bits(lo), 1e30]: every streak from lo on is a denormal
+    below 1e30 (2026-11-08).
+    """
     i2, i3 = ind + '\t', ind + '\t\t'
+    lo_n = int(lo)
     return (f'{ind}:i $AttachHudWidget$:s{{\n'
             f'{i2}:i $Input$ = :s{{\n'
             + (f'{i3}:i {obj}\n' if obj else '') +
@@ -187,7 +204,7 @@ def _streak_widget(ind, obj, value, lo):
             f'{i3}:i $type$ = $screenelementconditionalfloat$\n'
             f'{i3}:i $desc_id$ = %GLOBAL%$WoR_HUD_bm_id$\n'
             f'{i3}:i $property$ = $streak_alpha$\n'
-            f'{i3}:i $value_range$ = :a{{%f({lo:.1f})%f(1000000.0):a}}\n'
+            f'{i3}:i $value_range$ = :a{{%f({int_bits_float(lo_n)!r})%f(1e30):a}}\n'
             f'{i2}:i :s}}\n'
             f'{ind}:i :s}}\n')
 

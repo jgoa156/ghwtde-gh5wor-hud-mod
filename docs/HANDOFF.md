@@ -14,6 +14,29 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - Runs are muted (the harness does it). The user said "this time we're gonna do a full band run": band = `--lineup 3g1v`.
 - `tests/results/capture_band.done` blocks a second run: delete it before each run you are allowed to make.
 
+## 2026-11-09 ~05:00: plugin 1.99 INSTALLED (hash 7BA7C725CEF1...), NOT yet seen in game
+- **Item 12, practice crash: root cause found, fix installed.** User: "it happens solely when switching from normal
+  quickplay directly to practice" (pause menu -> Practice). Evidence copied to tests/results/practice-crash-20261109
+  (debug.txt, plugin logs); WER dumps %LOCALAPPDATA%\CrashDumps\GHWT_Definitive.exe(1).36184.dmp (04:33). The 1.61
+  anim pak guard fired and worked; the crash came later: access violation in C:\Windows\System32\d3d9.dll+0x8cfef
+  (read 0x8) under ReShade's d3d9.dll, called from the 2D sprite draw (exe 0x66e1c0 via ghwtde_ultrawide.asi's
+  pass-through sprite_draw_hook, ultrawide+0x8748); wor_hud_fixes.asi not on the stack. Log: the pause -> practice
+  path never runs kill_gem_scroller (the song-end path and WoR's gameplay exit do), so start_song's Load_Venue ran
+  gemthemes_unload_paks under the paused song's live HUD; our border / SP / You Rock textures ride in the gem paks
+  (build_border_gempak), so the next frame drew a sprite on a freed texture. Normal quickplay: kill_gem_scroller at
+  song end, then gemthemes_unload_paks + gemthemes_load_paks, no crash. FIX (build.py WoR_HUD_Load_Venue, plugin swap
+  of Load_Venue 0x9da7a3e3): if hud_root still exists, kill_gem_scroller first (start_song does it right after
+  Load_Venue anyway). Logs "WoR_HUD: HUD still up at Load_Venue, killing the gem scroller first, practice crash guard
+  2". QB pitfall: a printf string with "(", ")" or ":" in mid-text broke the compiler ("String was malformed").
+  NEEDS: the user to try pause -> Practice again.
+- **Rock needle hidden in practice** (user: "remove the rockmeter needle from practice mode as well"): remap_on sets
+  the needle's alpha 0 while game_mode (0x8320d478) = training (0x2aed7570); logs "...: hidden in practice".
+- Holiday title screens: the purple brick is the DE's normal one (ui_shared_wtdehol.pak.xen, AllowHolidays=1); sheet
+  docs/mocks/de_holiday_backgrounds.png. User: "do nothing about it".
+- Showcase idea (user: full band autoplay WITH the venue): AutoLaunch runs have no venue (no Load_Venue in their
+  logs). The DE has a debug AutoPlay (qswtde strings "AutoPlay: OFF / Poor / Medium / Good", "AUTOPLAY PAUSED"),
+  reached through Options > GHWTDE Menu > Debug Settings: a normal menu band song with AutoPlay keeps the venue.
+
 ## 2026-11-09 later: user answers, item 9 done, item 11 in progress
 User: 1 merge only at the end; 9 approved; 10 to the bottom; 11 yes (mock approved); 12 raise priority, right after
 vocals; 15 no release; 16 recompare against references of the same aspect ratio.

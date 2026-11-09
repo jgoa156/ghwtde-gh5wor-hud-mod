@@ -1087,6 +1087,9 @@ namespace
 		// 1.61: practice from a band song crashed (anim pak flushed while the band held it): build.py PRACTICE_GUARD_SCRIPT
 		{ 0x0a8529c3 /* guitar_force_unload_anim_paks */, 0x7000ff0c /* wor_hud_force_unload_anim_paks */, 0,
 		  "practice crash guard: guitar_force_unload_anim_paks skips anim paks the band still holds" },
+		// 1.99: pause -> Practice crashed (gem paks unloaded under the paused song's live HUD): build.py WoR_HUD_Load_Venue
+		{ 0x9da7a3e3 /* Load_Venue */, 0xde8d6fe7 /* wor_hud_load_venue */, 0xe67dbbbc /* _orig */,
+		  "practice crash guard 2: Load_Venue kills the gem scroller first when the HUD is still up (pause -> practice)" },
 	};
 
 	uint8_t *find_symbol(uint32_t checksum)
@@ -1145,6 +1148,22 @@ namespace
 			(texture_of(c) == tex ? needle : src) = c;
 		if (!needle || !src)
 			return true;
+		// 1.99 (user 2026-11-09: "remove the rockmeter needle from practice mode as well"): practice can't fail, so
+		// no needle in game_mode training (the DE's "gamemode: training, practice: 1"); other modes keep the DE's alpha
+		{
+			const uint8_t *gm = find_symbol(0x8320d478 /* game_mode */);
+			if (gm && *reinterpret_cast<const uint32_t *>(gm + 0xc) == 0x2aed7570 /* training */)
+			{
+				set_alpha(needle, 0.0f);
+				static bool practice_logged = false;
+				if (!practice_logged)
+				{
+					practice_logged = true;
+					log("%s: hidden in practice (game_mode training)", what);
+				}
+				return true;
+			}
+		}
 		const float y = f32(src, kElementPos + 4);       // where the DE put its (invisible) needle
 		int i = 0;
 		while (i < 2 && y < de[i + 1][1])
@@ -3410,7 +3429,7 @@ namespace
 		sprintf_s(prev, "%.*s.prev.log", static_cast<int>(strlen(path) - 4), path);
 		const bool kept_log = CopyFileA(path, prev, FALSE) != 0;
 		fopen_s(&g_log, path, "w");
-		log("wor_hud_fixes 1.98 (GH5 / WoR HUD)");
+		log("wor_hud_fixes 1.99 (GH5 / WoR HUD)");
 		log("previous session log kept: wor_hud_fixes.prev.log %s", kept_log ? "yes" : "no");
 		watch_crashes();
 		if (!sites_match())

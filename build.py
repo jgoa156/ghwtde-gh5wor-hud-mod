@@ -905,6 +905,20 @@ PRACTICE_GUARD_SCRIPT = (
     '\t\t\t:i $i$ = (%GLOBAL%$i$ + %i(1))\n'
     '\t\t:i loop_to %GLOBAL%$array_size$\n'
     '\t:i endif\n'
+    '\t:i endfunction\n]\n\n'
+    # Practice crash 2 (user 2026-11-09: "it happens solely when switching from normal quickplay directly to
+    # practice"; Logs\debug.txt + WER dump in tests/results/practice-crash-20261109): pause menu -> Practice never runs
+    # kill_gem_scroller (the song-end path does, WoR's gameplay exit does too), so the paused song's HUD is still up
+    # when start_song's Load_Venue runs gemthemes_unload_paks. Our border / SP / You Rock textures ride in the gem paks
+    # (build_border_gempak), so the next frame drew a live 2D sprite on a freed texture: access violation in
+    # d3d9.dll (null + 8) under the 2D sprite draw. start_song kills the scroller right AFTER Load_Venue anyway; with
+    # the HUD still up this does it right before (plugin 1.99 swaps Load_Venue). Every theme: a crash guard.
+    'Script WoR_HUD_Load_Venue [\n'
+    '\t:i if $ScreenElementExists$$id$ = $hud_root$\n'
+    '\t\t:i $printf$%s("WoR_HUD: HUD still up at Load_Venue, killing the gem scroller first, practice crash guard 2")\n'
+    '\t\t:i $kill_gem_scroller$\n'
+    '\t:i endif\n'
+    '\t:i $WoR_HUD_Load_Venue_orig$ isNull\n'
     '\t:i endfunction\n]\n')
 
 

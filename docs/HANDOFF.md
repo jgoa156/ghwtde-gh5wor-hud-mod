@@ -34,8 +34,12 @@ vocals; 15 no release; 16 recompare against references of the same aspect ratio.
   (12174: 0 -> 25, 13902: 25 -> 50, then drains while active, +25 again after each phrase), including 13902..18211
   where no instrument's _star array has a phrase (expert_star 11710+1594, 28494+3022, ...). The bot sings 100%
   (hits = ticks), so whether a poorly sung phrase also pays is unknown. CONCLUSION: DE vocals have NO star power
-  phrases; nothing marks notes the way WoR does. Probe removed (build reinstalled without it). Item 11 needs the
-  user's call (drop, or a different trigger for the halo).
+  phrases; nothing marks notes the way WoR does. Probe removed (build reinstalled without it).
+  Confirmed: WikiHero's Star Power page (WT vocals: hype sections, glowing star sequences, or any phrase rated
+  "solid"/"excellent"; GH5/WoR: only glowing phrases at excellent) and all 142 installed song charts (96 with vocals:
+  no vocal star array; phrase flags only 0/1/2/3 = lyric line markers). The user checked it too.
+  **ITEM 11 CLOSED (user 2026-11-09: "keep yellow"):** every phrase can pay, so there is no phrase to mark; all
+  vocal notes stay yellow. The mock (mock_sp_note_halo_v1*) stays in the repo in case it comes back. Do not reopen.
 
 ## 2026-11-09: 1.94-1.98 committed and pushed
 User: "read, update todo list and proceed". Offline 25/25 again, then everything below was committed on

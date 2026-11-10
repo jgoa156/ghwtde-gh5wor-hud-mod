@@ -104,7 +104,9 @@ def clean_nowline(src, tint):
 
 
 OUTLINE = r'E:\Dev\ghwt\ghwor-extract\z_in_game_png2\outline.png'
-LIL_STAR = os.path.join(GEMS, '45c726d2.png')      # re-decoded 2026-11-10 (the first extraction read its size as 0)
+# the flying star (user 2026-11-10: outline only, "the last one" of lil_star / lil_star2 / Star03): WoR's Star03
+# (tex\models\Highway\Star03.dds, Mat_Star03; 128 x 128, thin glowing stroke, no alpha: luminance = coverage)
+LIL_STAR = os.path.join(GEMS, '42235207.png')
 
 
 def wor_lines(m, x0, x1, skip=()):
@@ -131,8 +133,8 @@ def wor_lines(m, x0, x1, skip=()):
 
 
 def lil_star(size_px, rot, rgb, k=1.0):
-    st = Image.open(LIL_STAR).convert('RGBA').resize((size_px, size_px), Image.BILINEAR).rotate(rot, Image.BILINEAR)
-    a = st.split()[3]
+    st = Image.open(LIL_STAR).convert('L').resize((size_px, size_px), Image.BILINEAR).rotate(rot, Image.BILINEAR)
+    a = st
     col = Image.new('RGB', st.size, tuple(min(255, int(v * k)) for v in rgb))
     return Image.composite(col, Image.new('RGB', st.size), a)
 
@@ -185,8 +187,8 @@ def row_a():
     cy = 179
     paste_add(m, radial(80, 7.0, (150, 255, 255), 1.0), (NOW_X - 40, cy - 40))
     for i, (dx, dy, s, rot) in enumerate(((0, 0, 1.0, 18), (-14, -16, 0.75, 140), (-30, -30, 0.5, 260), (-48, -40, 0.3, 30))):
-        size = max(6, int(34 * s))
-        st = lil_star(size, rot, (64, 128, 128), k=2.0 * s + 0.6)
+        size = max(8, int(44 * s))
+        st = lil_star(size, rot, (64, 128, 128), k=2.6 * s + 0.8)
         paste_add(m, st, (NOW_X + dx - size // 2, cy + dy - size // 2))
     return ours.crop(HW), m.crop(HW)
 
@@ -342,7 +344,7 @@ def main():
     W = 1920
     rows = []
     a0, a1 = row_a()
-    rows += [label(a0, 'A  ours: star power'), label(a1, 'A  mock: WoR outline lines, SP glow on the top line only (fades at both ends), small spark + WoR lil_star stars')]
+    rows += [label(a0, 'A  ours: star power'), label(a1, 'A  mock: WoR outline lines, SP glow on the top line only (fades at both ends), small spark + WoR Star03 outline stars')]
     b0, b1 = row_b()
     rows += [label(b0, 'B  ours: normal'), label(b1, 'B  mock: WoR outline lines, comet ~0.6x, spoken notes as trapezoids on the bottom line (illustration)')]
     # C: panels x3 side by side

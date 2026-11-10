@@ -14,6 +14,38 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
 - Runs are muted (the harness does it). The user said "this time we're gonna do a full band run": band = `--lineup 3g1v`.
 - `tests/results/capture_band.done` blocks a second run: delete it before each run you are allowed to make.
 
+## 2026-11-10: vocal / band corrections, mock v1 WAITING FOR APPROVAL (nothing built)
+User feedback (WoR frames in the session) -> docs/mocks/mock_vocal_wor_v1.png (tools/mock_vocal_wor_v1.py, drawn on
+band-20261110-034744). Findings, all measured on that run (2560x1080, 1.5 px per canvas unit):
+- **Vocal highway lines:** WoR draws top_outline_middle / bottom_outline_middle with texture `outline` (z_in_game,
+  64x16: bright row 2, thin grey row 6, shadow below), 1280 units wide (full 16:9); ours (the DE's desc) uses
+  `outline_middle` (one soft grey line), 974 wide. Switch the texture + width (also the ultrawide request: the user
+  wants the vocal highway stretched to the screen edges so notes stop flowing past the line ends: Ultrawide Fix repo).
+- **SP glow:** WoR's Create_Vocals_Star_Power_Effect (guitar_starpower.txt): Mat_sidebar_GLOW_01
+  (sidebar01_glow01.dds = basic_gems 9ecd4133) turned 90 deg, scale (1, 9) = 1152 x 64 units, cyan
+  (Default_SP_FX_Color Color1 0,255,255), slid +200 units: fades at both ends. **User: the glow is on the TOP line
+  only.** Ours: full-width cyan bands on the top line AND under the lyric band (remove the lower one).
+- **Comet:** WoR's ball ~11 units (WOR frame 96.png), ours ~17 + halo: COMET_SPARK x0.6. In star power the DE draws
+  scrolling_sp (identical to WoR's table): a big cyan Spark01 (1.5 -> 0.5) that buries the spinning star; shrink it
+  like the yellow one.
+- **Spinning star = WoR's Star03** (tex\models\Highway\Star03.dds, basic_gems 42235207, Mat_Star03: thin glowing
+  outline; user picked it 2026-11-10, "only stroke, no fill"). The comet table's sys_Particle_Star01 points at
+  lil_star (filled): the DE's lil_star is EMPTY (fully transparent DXT1 in gems_ghwt_hud / gems_ghwor_hud), so the
+  star never drew. Plan: ship Star03 as the star particle's texture in our gem pak copy (build_border_gempak).
+- **Extraction bug:** 7 basic_gems records had data size 0 (x360tex read them blank: 0f045a2f 2a589f46 2f6c9f31
+  45c726d2 4ee61746 e729574d f5ae1214). Re-decoded in place in ghwor-extract\basic_gems_png with size = gap to the
+  next record. wor_yourock ships 45c726d2 (lil_star): it has been BLANK in every build so far; the next build ships
+  the real one (You Rock stars).
+- **Spoken notes:** WoR's vocal_highway_note_spoken01 (db6620de) + _cap (a9fe3e00) + _Divider (50fc372d), sung glow
+  spoken_Glow01 (e65c3c15): trapezoids on the bottom line, silver outline, yellow when sung. The DE's spoken-note
+  texture field is not found yet (ours: red bars mid-highway).
+- **Vocal panel:** SP strip fill rows 91..101 vs the tube's 88..99 (2-3 px low, spills under it): lift ~1.5 units;
+  needle 2x (WoR's covers most of the lamp); lamps without gloss (user: "lose the glossiness"; the xN box question
+  is open); charged lightning along the strip, on from 50% and kept through the whole drain (user: the lightning does
+  NOT stop below half, that is GH5; the guitar tubes already do this since 1.70 / 1.86).
+- **Band tubes:** the fill's bottom arc hangs ~2 units below the glass end on all 3 highways: lift it along the tube.
+- **Highway background:** WoR frames suggest ~0.65 black vs our 0.45 (estimate; question open).
+
 ## 2026-11-09 ~05:00: plugin 1.99 INSTALLED (hash 7BA7C725CEF1...), NOT yet seen in game
 - **Item 12, practice crash: root cause found, fix installed.** User: "it happens solely when switching from normal
   quickplay directly to practice" (pause menu -> Practice). Evidence copied to tests/results/practice-crash-20261109

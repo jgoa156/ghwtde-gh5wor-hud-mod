@@ -103,6 +103,40 @@ def clean_nowline(src, tint):
     return col
 
 
+OUTLINE = r'E:\Dev\ghwt\ghwor-extract\z_in_game_png2\outline.png'
+LIL_STAR = os.path.join(GEMS, '45c726d2.png')      # re-decoded 2026-11-10 (the first extraction read its size as 0)
+
+
+def wor_lines(m, x0, x1, skip=()):
+    """our two lines -> WoR's `outline` texture (64 x 16, 16 units tall: bright row 2, thin second line row 6, shadow
+    below), stretched from x0 to x1 like WoR's 1280-wide top_outline_middle / bottom_outline_middle"""
+    px = m.load()
+    grey = lambda p: abs(p[0] - p[1]) < 24 and abs(p[1] - p[2]) < 24
+    tex = Image.open(OUTLINE).convert('RGBA').resize((x1 - x0, int(16 * U)), Image.BILINEAR)
+    for yl in (TOP_Y, BOT_Y):
+        for y in range(yl - 5, yl + 7):
+            for x in range(x0, x1):
+                if (any(a <= x < b for a, b in skip) and yl == TOP_Y) or abs(x - NOW_X) < 9:   # panel, arrowheads
+                    continue
+                if grey(px[x, y]):
+                    px[x, y] = (0, 0, 0)
+        top = int(yl - 2.5 * U)
+        layer = Image.new('RGBA', m.size, (0, 0, 0, 0))
+        layer.paste(tex, (x0, top))
+        if yl == TOP_Y:
+            for a, b in skip:
+                layer.paste((0, 0, 0, 0), (a, top, b, top + tex.height))
+        m.paste(Image.alpha_composite(m.convert('RGBA'), layer).convert('RGB'))
+    return m
+
+
+def lil_star(size_px, rot, rgb, k=1.0):
+    st = Image.open(LIL_STAR).convert('RGBA').resize((size_px, size_px), Image.BILINEAR).rotate(rot, Image.BILINEAR)
+    a = st.split()[3]
+    col = Image.new('RGB', st.size, tuple(min(255, int(v * k)) for v in rgb))
+    return Image.composite(col, Image.new('RGB', st.size), a)
+
+
 # ---- A: star power
 def row_a():
     ours = frame('t105')
@@ -141,15 +175,19 @@ def row_a():
     dm.polygon([(NOW_X - 6, TOP_Y + 3), (NOW_X + 6, TOP_Y + 3), (NOW_X, TOP_Y + 15)], fill=(225, 225, 225))
     dm.polygon([(NOW_X - 6, BOT_Y - 3), (NOW_X + 6, BOT_Y - 3), (NOW_X, BOT_Y - 15)], fill=(225, 225, 225))
     px = m.load()
-    # WoR glow on both lines: centre 200 units right of the highway centre (canvas 640 + 200 -> our root offset)
+    m = wor_lines(m, 320, 2240, skip=((528, 905),))
+    # WoR glow on the TOP line only (user 2026-11-10): centre 200 units right of the highway centre
     xc = 320 + (640 + 200 + 113) * U        # WoR root 288..1218 (centre 753) + 200 = 953
-    for y in (TOP_Y, BOT_Y):
-        layer, y0 = glow_strip(1920, 320, xc, y, gain=0.85)
-        paste_add(m, layer, (320, y0))
-    # comet in star power: small cyan spark + the spinning blue star
+    layer, y0 = glow_strip(1920, 320, xc, TOP_Y, gain=0.85)
+    paste_add(m, layer, (320, y0))
+    # comet in star power: small cyan spark + WoR's lil_star particles (64,128,128, scale 0.35 -> 0, life 1 s,
+    # rotation +-500 deg/s, drifting up): the newest at the comet, older ones smaller and dimmer
     cy = 179
     paste_add(m, radial(80, 7.0, (150, 255, 255), 1.0), (NOW_X - 40, cy - 40))
-    paste_add(m, star(80, 21, 9, 18, (80, 170, 235)), (NOW_X - 40 - 6, cy - 40 - 3))
+    for i, (dx, dy, s, rot) in enumerate(((0, 0, 1.0, 18), (-14, -16, 0.75, 140), (-30, -30, 0.5, 260), (-48, -40, 0.3, 30))):
+        size = max(6, int(34 * s))
+        st = lil_star(size, rot, (64, 128, 128), k=2.0 * s + 0.6)
+        paste_add(m, st, (NOW_X + dx - size // 2, cy + dy - size // 2))
     return ours.crop(HW), m.crop(HW)
 
 
@@ -185,6 +223,7 @@ def row_b():
     m.paste(clean_nowline(clean, (0.0, 1.0, 0.0)), (NOW_X - 14, TOP_Y - 6))
     cy = 177
     paste_add(m, radial(40, 4.2, (255, 235, 70), 1.25), (NOW_X - 20, cy - 20))
+    m = wor_lines(m, 320, 2240, skip=((528, 905),))
     # spoken notes (illustration: this song has none): two sung (left of the line), two coming
     h = int(12 * U)
     layer = Image.new('RGBA', m.size, (0, 0, 0, 0))
@@ -284,10 +323,7 @@ def row_e():
     o = frame('t165')
     m = o.copy()
     # lines: copy a clean line profile to the screen edges
-    for (y0, y1) in ((88, 101), (241, 254)):
-        prof = o.crop((1500, y0, 1501, y1))
-        for x in list(range(0, 470)) + list(range(2024, 2560)):
-            m.paste(prof, (x, y0))
+    m = wor_lines(m, 0, 2560, skip=((528, 905),))
     return o, m
 
 
@@ -306,9 +342,9 @@ def main():
     W = 1920
     rows = []
     a0, a1 = row_a()
-    rows += [label(a0, 'A  ours: star power'), label(a1, 'A  mock: WoR glow (fades at both ends), grey lines, small spark + spinning blue star')]
+    rows += [label(a0, 'A  ours: star power'), label(a1, 'A  mock: WoR outline lines, SP glow on the top line only (fades at both ends), small spark + WoR lil_star stars')]
     b0, b1 = row_b()
-    rows += [label(b0, 'B  ours: normal'), label(b1, 'B  mock: comet ~0.6x, spoken notes as trapezoids on the bottom line (illustration)')]
+    rows += [label(b0, 'B  ours: normal'), label(b1, 'B  mock: WoR outline lines, comet ~0.6x, spoken notes as trapezoids on the bottom line (illustration)')]
     # C: panels x3 side by side
     c = row_c()
     tiles = []
@@ -339,7 +375,7 @@ def main():
     e0, e1 = row_e()
     e0 = e0.crop((0, 30, 2560, 330)).resize((W, 225))
     e1 = e1.crop((0, 30, 2560, 330)).resize((W, 225))
-    rows += [label(e0, 'E  ours: ultrawide 2560x1080'), label(e1, 'E  mock: vocal highway stretched to the screen edges')]
+    rows += [label(e0, 'E  ours: ultrawide 2560x1080'), label(e1, 'E  mock: vocal highway (WoR outline lines) stretched to the screen edges')]
     H = sum(r.height + 10 for r in rows)
     sheet = Image.new('RGB', (W, H), (255, 0, 255))
     y = 0

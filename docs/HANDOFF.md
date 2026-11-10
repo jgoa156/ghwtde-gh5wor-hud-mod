@@ -29,6 +29,11 @@ Start here in a new session. History: `docs/MODLOG.md` (latest sections at the e
   Load_Venue anyway). Logs "WoR_HUD: HUD still up at Load_Venue, killing the gem scroller first, practice crash guard
   2". QB pitfall: a printf string with "(", ")" or ":" in mid-text broke the compiler ("String was malformed").
   NEEDS: the user to try pause -> Practice again.
+  2026-11-10: the first 1.99 data had no WoR_HUD_Load_Venue_orig script, so the plugin SKIPPED the swap ("script
+  swap 9da7a3e3 <- de8d6fe7 skipped (missing or unexpected symbols)": every save_to symbol must exist as a script).
+  Placeholder added, mod data reinstalled (plugin unchanged). Check for "practice crash guard 2" in the next log.
+- Full-song band run band-20261110-034744 (user recorded it; muted, 3g1v, no --play cap, save restored + verified):
+  whole song played, game quit by itself after the results (293 s). HUD intact throughout (frames t090..t180).
 - **Rock needle hidden in practice** (user: "remove the rockmeter needle from practice mode as well"): remap_on sets
   the needle's alpha 0 while game_mode (0x8320d478) = training (0x2aed7570); logs "...: hidden in practice".
 - Holiday title screens: the purple brick is the DE's normal one (ui_shared_wtdehol.pak.xen, AllowHolidays=1); sheet

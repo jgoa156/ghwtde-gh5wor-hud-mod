@@ -919,6 +919,10 @@ PRACTICE_GUARD_SCRIPT = (
     '\t\t:i $kill_gem_scroller$\n'
     '\t:i endif\n'
     '\t:i $WoR_HUD_Load_Venue_orig$ isNull\n'
+    '\t:i endfunction\n]\n\n'
+    # the swap saves the DE's Load_Venue here; it must exist as a script or the plugin skips the swap (1.99 first build)
+    'Script WoR_HUD_Load_Venue_orig [\n'
+    '\t:i $printf$%s("WoR_HUD: Load_Venue placeholder ran, plugin swap missing")\n'
     '\t:i endfunction\n]\n')
 
 
